@@ -1,0 +1,121 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/components/providers/auth-provider'
+import {
+  LayoutDashboard,
+  FolderKanban,
+  FileText,
+  Receipt,
+  Clock,
+  Users,
+  DollarSign,
+  Building2,
+  FileSpreadsheet,
+  Settings,
+  CreditCard,
+  Briefcase,
+  TrendingUp,
+  Hammer,
+  CalendarDays,
+  LogOut,
+} from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Separator } from '@/components/ui/separator'
+
+interface NavItem {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  roles?: ('admin' | 'project_manager' | 'employee')[]
+}
+
+const navItems: NavItem[] = [
+  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { title: 'Projects', href: '/projects', icon: FolderKanban },
+  { title: 'Contracts', href: '/contracts', icon: FileText },
+  { title: 'Invoices', href: '/invoices', icon: Receipt },
+  { title: 'Unbilled Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
+  { title: 'Time Entries', href: '/time-entries', icon: Clock },
+  { title: 'Reimbursables', href: '/reimbursables', icon: CreditCard, roles: ['admin', 'project_manager'] },
+  { title: 'Rates Matrix', href: '/rates', icon: DollarSign, roles: ['admin'] },
+  { title: 'Clients', href: '/clients', icon: Building2, roles: ['admin'] },
+  { title: 'Proposals', href: '/proposals', icon: Briefcase },
+  { title: 'Cash Flow', href: '/cash-flow', icon: TrendingUp, roles: ['admin'] },
+  { title: 'Income', href: '/income', icon: DollarSign, roles: ['admin', 'project_manager'] },
+  { title: 'Contract Labor', href: '/contract-labor', icon: Hammer, roles: ['admin'] },
+  { title: 'Memberships', href: '/memberships', icon: CalendarDays, roles: ['admin'] },
+  { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
+]
+
+export function Sidebar() {
+  const pathname = usePathname()
+  const { profile, role, signOut } = useAuth()
+
+  const filteredNavItems = navItems.filter((item) => {
+    if (!item.roles) return true
+    if (!role) return false
+    // Only show items for admin, project_manager, or employee roles
+    if (role === 'client') return false
+    return item.roles.includes(role)
+  })
+
+  return (
+    <div className="flex h-screen w-64 flex-col border-r bg-card">
+      <div className="flex h-16 items-center border-b px-6">
+        <Link href="/dashboard" className="flex items-center gap-2">
+          <img src="/B_Black.png" alt="BSE" className="h-8 w-8" />
+          <span className="text-lg font-semibold">BSE Management Portal</span>
+        </Link>
+      </div>
+
+      <ScrollArea className="flex-1 px-3 py-4">
+        <nav className="flex flex-col gap-1">
+          {filteredNavItems.map((item) => {
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.title}
+              </Link>
+            )
+          })}
+        </nav>
+      </ScrollArea>
+
+      <Separator />
+
+      <div className="p-4">
+        <div className="flex items-center gap-3 px-2 py-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-medium">
+            {profile?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-medium">{profile?.full_name || 'Loading...'}</span>
+            <span className="text-xs text-muted-foreground capitalize">{role || 'User'}</span>
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-3 mt-2"
+          onClick={signOut}
+        >
+          <LogOut className="h-4 w-4" />
+          Sign Out
+        </Button>
+      </div>
+    </div>
+  )
+}
