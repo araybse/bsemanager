@@ -14,10 +14,10 @@ import type { Views } from '@/lib/types/database'
 
 export default function DashboardPage() {
   const supabase = createClient()
-  const { isReady, session } = useAuth()
+  const { isReady, user } = useAuth()
 
-  // Only enable queries when auth is ready and we have a session
-  const queryEnabled = isReady && !!session
+  // Only enable queries when auth is ready and we have a user
+  const queryEnabled = isReady && !!user
 
   // Fetch billing candidates
   const { data: billingCandidates, isLoading: loadingCandidates } = useQuery({

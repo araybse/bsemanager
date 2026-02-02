@@ -56,8 +56,10 @@ export function Sidebar() {
   const { profile, role, signOut } = useAuth()
 
   const filteredNavItems = navItems.filter((item) => {
+    // Always show items without role restrictions
     if (!item.roles) return true
-    if (!role) return false
+    // If role not loaded yet, show all items (they'll be filtered on re-render)
+    if (!role) return true
     // Only show items for admin, project_manager, or employee roles
     if (role === 'client') return false
     return item.roles.includes(role)
