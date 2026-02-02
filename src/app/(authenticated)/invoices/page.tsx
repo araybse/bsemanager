@@ -216,7 +216,7 @@ export default function InvoicesPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Date From</label>
               <Input
                 type="date"
@@ -225,7 +225,7 @@ export default function InvoicesPage() {
                 className="w-[150px]"
               />
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Date To</label>
               <Input
                 type="date"
@@ -234,7 +234,7 @@ export default function InvoicesPage() {
                 className="w-[150px]"
               />
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Project</label>
               <Select value={projectFilter} onValueChange={setProjectFilter}>
                 <SelectTrigger className="w-[150px]">
@@ -248,7 +248,7 @@ export default function InvoicesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Status</label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="w-[130px]">
