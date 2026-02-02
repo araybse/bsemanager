@@ -1,8 +1,8 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+import type { User, AuthError } from '@supabase/supabase-js'
 import type { Tables, UserRole } from '@/lib/types/database'
 
 interface AuthContextType {
@@ -11,7 +11,6 @@ interface AuthContextType {
   role: UserRole | null
   isLoading: boolean
   signOut: () => Promise<void>
-  refreshSession: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -20,14 +19,14 @@ const AuthContext = createContext<AuthContextType>({
   role: null,
   isLoading: true,
   signOut: async () => {},
-  refreshSession: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Tables<'profiles'> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClient()
+  const supabaseRef = useRef(createClient())
+  const supabase = supabaseRef.current
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
@@ -48,62 +47,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [supabase])
 
-  const refreshSession = useCallback(async () => {
-    try {
-      // Use getUser() instead of getSession() - this validates with the server
-      const { data: { user: currentUser }, error } = await supabase.auth.getUser()
-      
-      if (error || !currentUser) {
-        // Session is invalid, clear state
-        setUser(null)
-        setProfile(null)
-        return
-      }
-
-      setUser(currentUser)
-      const profileData = await fetchProfile(currentUser.id)
-      setProfile(profileData)
-    } catch (err) {
-      console.error('Error refreshing session:', err)
-      setUser(null)
-      setProfile(null)
-    }
-  }, [supabase, fetchProfile])
-
   useEffect(() => {
     let mounted = true
+    let retryCount = 0
+    const maxRetries = 3
 
     const initializeAuth = async () => {
       try {
-        // First, try to get the user (validates with server)
-        const { data: { user: currentUser }, error } = await supabase.auth.getUser()
+        // First try to get the session (reads from storage)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (!mounted) return
 
-        if (error) {
-          // If there's an auth error, try refreshing the session
-          const { data: { session } } = await supabase.auth.refreshSession()
+        if (session?.user) {
+          // Session exists, validate it with getUser
+          const { data: { user: validatedUser }, error: userError } = await supabase.auth.getUser()
           
           if (!mounted) return
           
-          if (session?.user) {
-            setUser(session.user)
-            const profileData = await fetchProfile(session.user.id)
+          if (userError) {
+            console.log('Session validation failed, attempting refresh...')
+            // Try to refresh the session
+            const { data: { session: refreshedSession } } = await supabase.auth.refreshSession()
+            
+            if (!mounted) return
+            
+            if (refreshedSession?.user) {
+              setUser(refreshedSession.user)
+              const profileData = await fetchProfile(refreshedSession.user.id)
+              if (mounted) setProfile(profileData)
+            } else {
+              // Refresh failed, clear auth state
+              setUser(null)
+              setProfile(null)
+            }
+          } else if (validatedUser) {
+            setUser(validatedUser)
+            const profileData = await fetchProfile(validatedUser.id)
             if (mounted) setProfile(profileData)
-          } else {
-            setUser(null)
-            setProfile(null)
           }
-        } else if (currentUser) {
-          setUser(currentUser)
-          const profileData = await fetchProfile(currentUser.id)
-          if (mounted) setProfile(profileData)
         } else {
+          // No session
           setUser(null)
           setProfile(null)
         }
       } catch (err) {
         console.error('Auth initialization error:', err)
+        
+        // Retry on error
+        if (retryCount < maxRetries && mounted) {
+          retryCount++
+          console.log(`Retrying auth init (${retryCount}/${maxRetries})...`)
+          setTimeout(initializeAuth, 1000 * retryCount)
+          return
+        }
+        
         if (mounted) {
           setUser(null)
           setProfile(null)
@@ -125,7 +123,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_OUT') {
           setUser(null)
           setProfile(null)
-          setIsLoading(false)
           return
         }
 
@@ -136,13 +133,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (mounted) setProfile(profileData)
           }
         }
-
-        if (event === 'INITIAL_SESSION') {
-          // Initial session is handled by initializeAuth
-          return
-        }
-
-        setIsLoading(false)
       }
     )
 
@@ -166,7 +156,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: profile?.role ?? null,
         isLoading,
         signOut,
-        refreshSession,
       }}
     >
       {children}
