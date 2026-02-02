@@ -28,12 +28,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [supabase] = useState(() => createClient())
 
   const fetchProfile = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    return data
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      
+      if (error) {
+        console.error('Profile fetch error:', error)
+        return null
+      }
+      return data
+    } catch (err) {
+      console.error('Profile fetch exception:', err)
+      return null
+    }
   }, [supabase])
 
   useEffect(() => {
@@ -41,8 +51,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Initialize auth state
     const init = async () => {
+      console.log('Auth init starting...')
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase.auth.getSession()
+        console.log('Session result:', session ? 'has session' : 'no session', error ? error.message : '')
         
         if (mounted && session?.user) {
           setUser(session.user)
@@ -51,8 +63,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Auth init error:', error)
-      } finally {
-        if (mounted) setIsLoading(false)
+      }
+      
+      // Always set loading to false
+      if (mounted) {
+        console.log('Setting isLoading to false')
+        setIsLoading(false)
       }
     }
 
@@ -61,19 +77,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth event:', event)
+        console.log('Auth event:', event, session ? 'has session' : 'no session')
         
         if (!mounted) return
 
-        if (session?.user) {
-          setUser(session.user)
-          const profileData = await fetchProfile(session.user.id)
-          if (mounted) setProfile(profileData)
-        } else {
-          setUser(null)
-          setProfile(null)
+        try {
+          if (session?.user) {
+            setUser(session.user)
+            const profileData = await fetchProfile(session.user.id)
+            if (mounted) setProfile(profileData)
+          } else {
+            setUser(null)
+            setProfile(null)
+          }
+        } catch (err) {
+          console.error('Auth change handler error:', err)
         }
         
+        // Always set loading to false after auth change
         if (mounted) setIsLoading(false)
       }
     )
