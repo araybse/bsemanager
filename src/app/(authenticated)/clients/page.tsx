@@ -57,7 +57,7 @@ export default function ClientsPage() {
 
   const createMutation = useMutation({
     mutationFn: async (data: InsertTables<'clients'>) => {
-      const { error } = await supabase.from('clients').insert(data)
+      const { error } = await supabase.from('clients').insert(data as never)
       if (error) throw error
     },
     onSuccess: () => {
@@ -72,7 +72,7 @@ export default function ClientsPage() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: UpdateTables<'clients'> }) => {
-      const { error } = await supabase.from('clients').update(data).eq('id', id)
+      const { error } = await supabase.from('clients').update(data as never).eq('id', id as never)
       if (error) throw error
     },
     onSuccess: () => {
@@ -87,7 +87,7 @@ export default function ClientsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const { error } = await supabase.from('clients').delete().eq('id', id)
+      const { error } = await supabase.from('clients').delete().eq('id', id as never)
       if (error) throw error
     },
     onSuccess: () => {

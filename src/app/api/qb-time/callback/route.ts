@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
     
     // Delete any existing settings and insert new ones
-    await supabase.from('qb_settings').delete().neq('id', 0)
+    await supabase.from('qb_settings').delete().neq('id' as never, 0 as never)
     
     const { error: insertError } = await supabase.from('qb_settings').insert({
       access_token: tokens.access_token,
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
       token_expires_at: expiresAt.toISOString(),
       realm_id: realmId,
       connected_at: new Date().toISOString(),
-    })
+    } as never)
     
     if (insertError) {
       console.error('Failed to store tokens:', insertError)

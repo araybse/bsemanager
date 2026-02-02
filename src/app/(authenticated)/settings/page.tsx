@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -20,7 +20,38 @@ import {
 import { toast } from 'sonner'
 import type { Tables } from '@/lib/types/database'
 
+type QBSettings = {
+  id: number
+  access_token: string
+  refresh_token: string
+  realm_id: string
+  token_expires_at: string
+  connected_at: string
+  updated_at: string
+}
+
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsLoading />}>
+      <SettingsContent />
+    </Suspense>
+  )
+}
+
+function SettingsLoading() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Skeleton className="h-6 w-32" />
+        <Skeleton className="h-4 w-48 mt-2" />
+      </div>
+      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  )
+}
+
+function SettingsContent() {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
@@ -68,7 +99,7 @@ export default function SettingsPage() {
         console.error('QB settings error:', error)
         return null
       }
-      return data
+      return data as QBSettings | null
     },
   })
 

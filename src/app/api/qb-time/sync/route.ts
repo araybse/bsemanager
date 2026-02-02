@@ -1,7 +1,17 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-async function refreshTokenIfNeeded(supabase: ReturnType<typeof createAdminClient>) {
+type QBSettings = {
+  id: number
+  access_token: string
+  refresh_token: string
+  realm_id: string
+  token_expires_at: string
+  connected_at: string
+  updated_at: string
+}
+
+async function refreshTokenIfNeeded(supabase: ReturnType<typeof createAdminClient>): Promise<QBSettings> {
   const { data: settings } = await supabase
     .from('qb_settings')
     .select('*')
@@ -11,7 +21,8 @@ async function refreshTokenIfNeeded(supabase: ReturnType<typeof createAdminClien
     throw new Error('QuickBooks not connected')
   }
   
-  const expiresAt = new Date(settings.token_expires_at)
+  const typedSettings = settings as unknown as QBSettings
+  const expiresAt = new Date(typedSettings.token_expires_at)
   const now = new Date()
   
   // Refresh if token expires in less than 5 minutes
@@ -28,7 +39,7 @@ async function refreshTokenIfNeeded(supabase: ReturnType<typeof createAdminClien
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: settings.refresh_token,
+        refresh_token: typedSettings.refresh_token,
       }),
     })
     
@@ -47,13 +58,13 @@ async function refreshTokenIfNeeded(supabase: ReturnType<typeof createAdminClien
         refresh_token: tokens.refresh_token,
         token_expires_at: newExpiresAt.toISOString(),
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', settings.id)
+      } as never)
+      .eq('id' as never, typedSettings.id as never)
     
-    return { ...settings, access_token: tokens.access_token }
+    return { ...typedSettings, access_token: tokens.access_token }
   }
   
-  return settings
+  return typedSettings
 }
 
 export async function POST() {
@@ -149,7 +160,7 @@ export async function POST() {
         const { data: existing } = await supabase
           .from('time_entries')
           .select('id')
-          .eq('qb_time_id', qbId)
+          .eq('qb_time_id' as never, qbId as never)
           .maybeSingle()
         
         if (existing) {
@@ -197,14 +208,14 @@ export async function POST() {
         const { data: project } = await supabase
           .from('projects')
           .select('id')
-          .eq('project_number', projectNumber)
+          .eq('project_number' as never, projectNumber as never)
           .maybeSingle()
         
         // Insert time entry
         const { error: insertError } = await supabase.from('time_entries').insert({
           ...timeEntry,
-          project_id: project?.id || null,
-        })
+          project_id: (project as { id: number } | null)?.id || null,
+        } as never)
         
         if (insertError) {
           console.error('Failed to insert time entry:', insertError)
