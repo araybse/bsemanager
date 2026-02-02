@@ -20,24 +20,9 @@ export default function AuthenticatedLayout({
     }
   }, [user, isLoading, router])
 
-  // Show loading only for the first 3 seconds max, then show content anyway
-  // This prevents infinite loading if auth state is stuck
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // If no user after loading, don't render (will redirect)
-  if (!user) {
-    return null
-  }
-
+  // Don't block on loading - let the pages handle their own loading states
+  // The middleware already protects routes, so if we're here we should be authenticated
+  
   return (
     <div className="flex h-screen">
       <Sidebar />
