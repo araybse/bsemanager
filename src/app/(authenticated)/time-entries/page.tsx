@@ -170,7 +170,7 @@ export default function TimeEntriesPage() {
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap gap-4 items-end">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Date From</label>
               <Input
                 type="date"
@@ -179,7 +179,7 @@ export default function TimeEntriesPage() {
                 className="w-[150px]"
               />
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Date To</label>
               <Input
                 type="date"
@@ -188,7 +188,7 @@ export default function TimeEntriesPage() {
                 className="w-[150px]"
               />
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Employee</label>
               <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
                 <SelectTrigger className="w-[180px]">
@@ -202,7 +202,7 @@ export default function TimeEntriesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Project</label>
               <Select value={projectFilter} onValueChange={setProjectFilter}>
                 <SelectTrigger className="w-[150px]">
@@ -216,7 +216,7 @@ export default function TimeEntriesPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium">Phase</label>
               <Select value={phaseFilter} onValueChange={setPhaseFilter}>
                 <SelectTrigger className="w-[180px]">
