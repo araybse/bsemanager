@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
@@ -21,11 +22,25 @@ import { formatDate } from '@/lib/utils/dates'
 import { ArrowLeft, FileText } from 'lucide-react'
 import Link from 'next/link'
 import type { Tables } from '@/lib/types/database'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts'
 
 type ProjectWithRelations = Tables<'projects'> & {
   clients: { name: string; address_line_1: string | null; address_line_2: string | null } | null
-  profiles: { full_name: string } | null
 }
+
+const PIE_COLORS = ['#000000', '#333333', '#555555', '#777777', '#999999', '#bbbbbb', '#dddddd']
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -40,8 +55,7 @@ export default function ProjectDetailPage() {
         .from('projects')
         .select(`
           *,
-          clients (name, address_line_1, address_line_2),
-          profiles (full_name)
+          clients (name, address_line_1, address_line_2)
         `)
         .eq('id', projectId)
         .single()
@@ -78,7 +92,21 @@ export default function ProjectDetailPage() {
     },
   })
 
-  // Fetch time entries
+  // Fetch ALL time entries for this project (for charts)
+  const { data: allTimeEntries, isLoading: loadingAllTime } = useQuery({
+    queryKey: ['project-all-time', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('entry_date', { ascending: false })
+      if (error) throw error
+      return data as Tables<'time_entries'>[]
+    },
+  })
+
+  // Fetch recent time entries for the table (limit 50)
   const { data: timeEntries, isLoading: loadingTime } = useQuery({
     queryKey: ['project-time', projectId],
     queryFn: async () => {
@@ -112,6 +140,47 @@ export default function ProjectDetailPage() {
   const totalBilled = phases?.reduce((sum, p) => sum + Number(p.billed_to_date), 0) || 0
   const totalRemaining = totalFee - totalBilled
   const pctComplete = totalFee > 0 ? totalBilled / totalFee : 0
+
+  // Calculate labor cost and multiplier
+  const totalLaborCost = useMemo(() => {
+    if (!allTimeEntries) return 0
+    return allTimeEntries.reduce((sum, entry) => sum + (Number(entry.labor_cost) || 0), 0)
+  }, [allTimeEntries])
+
+  const multiplier = useMemo(() => {
+    if (totalLaborCost === 0) return null
+    return totalBilled / totalLaborCost
+  }, [totalBilled, totalLaborCost])
+
+  // Prepare phase chart data
+  const phaseChartData = useMemo(() => {
+    if (!phases) return []
+    return phases.map(phase => ({
+      name: phase.phase_code,
+      fullName: phase.phase_name,
+      contract: Number(phase.total_fee),
+      billed: Number(phase.billed_to_date),
+    }))
+  }, [phases])
+
+  // Prepare employee time distribution data
+  const employeeTimeData = useMemo(() => {
+    if (!allTimeEntries || allTimeEntries.length === 0) return []
+    
+    const byEmployee: Record<string, number> = {}
+    allTimeEntries.forEach(entry => {
+      const emp = entry.employee_name || 'Unknown'
+      byEmployee[emp] = (byEmployee[emp] || 0) + (entry.hours || 0)
+    })
+    
+    return Object.entries(byEmployee)
+      .map(([name, hours]) => ({ name, hours }))
+      .sort((a, b) => b.hours - a.hours)
+  }, [allTimeEntries])
+
+  const totalHours = useMemo(() => {
+    return employeeTimeData.reduce((sum, e) => sum + e.hours, 0)
+  }, [employeeTimeData])
 
   if (loadingProject) {
     return (
@@ -153,8 +222,6 @@ export default function ProjectDetailPage() {
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground ml-10">
             <span>Client: {project.clients?.name || 'None'}</span>
-            <span>•</span>
-            <span>PM: {project.profiles?.full_name || 'Unassigned'}</span>
           </div>
         </div>
         <Button asChild>
@@ -166,7 +233,7 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Total Contract</CardDescription>
@@ -191,6 +258,19 @@ export default function ProjectDetailPage() {
             <CardTitle className="text-xl">{formatPercent(pctComplete)}</CardTitle>
           </CardHeader>
         </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Project Multiplier</CardDescription>
+            <CardTitle className="text-xl">
+              {multiplier !== null ? multiplier.toFixed(2) + 'x' : '—'}
+            </CardTitle>
+            {totalLaborCost > 0 && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Labor: {formatCurrency(totalLaborCost)}
+              </p>
+            )}
+          </CardHeader>
+        </Card>
       </div>
 
       {/* Tabs */}
@@ -198,7 +278,7 @@ export default function ProjectDetailPage() {
         <TabsList>
           <TabsTrigger value="phases">Contract Phases</TabsTrigger>
           <TabsTrigger value="invoices">Invoices ({invoices?.length || 0})</TabsTrigger>
-          <TabsTrigger value="time">Time Entries ({timeEntries?.length || 0})</TabsTrigger>
+          <TabsTrigger value="time">Time Entries ({allTimeEntries?.length || 0})</TabsTrigger>
           <TabsTrigger value="reimbursables">Reimbursables ({reimbursables?.length || 0})</TabsTrigger>
         </TabsList>
 
@@ -412,6 +492,85 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Charts Section */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Phase Progress Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Phase Progress</CardTitle>
+            <CardDescription>Contract amount vs billed-to-date by phase</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingPhases || loadingAllTime ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : phaseChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={phaseChartData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                  <XAxis type="number" tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                  <YAxis type="category" dataKey="name" width={60} />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(Number(value))}
+                    labelFormatter={(label) => {
+                      const phase = phaseChartData.find(p => p.name === label)
+                      return phase?.fullName || label
+                    }}
+                  />
+                  <Bar dataKey="contract" fill="#d4d4d4" name="Contract" radius={[0, 4, 4, 0]} />
+                  <Bar dataKey="billed" fill="#000000" name="Billed" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No phase data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Employee Time Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Employee Time Distribution</CardTitle>
+            <CardDescription>
+              Total hours by employee ({formatHours(totalHours)} total)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {loadingAllTime ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : employeeTimeData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={employeeTimeData}
+                    dataKey="hours"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ name, percent }) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                    labelLine={true}
+                  >
+                    {employeeTimeData.map((entry, index) => (
+                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value) => formatHours(Number(value))}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No time entry data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

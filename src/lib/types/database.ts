@@ -240,6 +240,7 @@ export interface Database {
           is_billed: boolean
           invoice_id: number | null
           billing_period: string | null
+          labor_cost: number
           created_at: string
         }
         Insert: {
@@ -257,6 +258,7 @@ export interface Database {
           is_billed?: boolean
           invoice_id?: number | null
           billing_period?: string | null
+          labor_cost?: number
           created_at?: string
         }
         Update: {
@@ -274,6 +276,7 @@ export interface Database {
           is_billed?: boolean
           invoice_id?: number | null
           billing_period?: string | null
+          labor_cost?: number
           created_at?: string
         }
       }

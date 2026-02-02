@@ -81,14 +81,34 @@ export async function POST() {
       )
     }
     
-    // Get date range for sync (last 90 days)
+    // Get the latest entry date from the database
+    const { data: latestEntry } = await supabase
+      .from('time_entries')
+      .select('entry_date')
+      .order('entry_date', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    
+    const typedLatestEntry = latestEntry as { entry_date: string } | null
+    
+    // Start from the latest entry date, or 90 days ago if no entries exist
     const endDate = new Date()
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - 90)
+    let startDate: Date
+    
+    if (typedLatestEntry && typedLatestEntry.entry_date) {
+      // Start from the day of the latest entry (to catch any same-day additions)
+      startDate = new Date(typedLatestEntry.entry_date)
+    } else {
+      // No existing entries, go back 90 days
+      startDate = new Date()
+      startDate.setDate(startDate.getDate() - 90)
+    }
     
     // Format dates for QBO query
     const startDateStr = startDate.toISOString().split('T')[0]
     const endDateStr = endDate.toISOString().split('T')[0]
+    
+    console.log(`Syncing time entries from ${startDateStr} to ${endDateStr}`)
     
     // Query TimeActivity from QuickBooks Online
     // Using the QBO API v3
@@ -191,6 +211,11 @@ export async function POST() {
           hours = activity.Minutes / 60
         }
         
+        // Calculate labor cost if available
+        // QBO may provide CostRate or we can calculate from hourly rate
+        const costRate = activity.CostRate || activity.HourlyRate || 0
+        const laborCost = hours * costRate
+        
         // Build time entry
         const timeEntry = {
           qb_time_id: qbId,
@@ -202,6 +227,7 @@ export async function POST() {
           notes: activity.Description || null,
           is_billable: activity.BillableStatus === 'Billable',
           is_billed: activity.BillableStatus === 'HasBeenBilled',
+          labor_cost: laborCost,
         }
         
         // Try to match project
