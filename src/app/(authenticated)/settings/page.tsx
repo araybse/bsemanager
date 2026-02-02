@@ -104,15 +104,8 @@ function SettingsContent() {
   })
 
   const handleConnect = () => {
-    // Build OAuth URL directly
-    const clientId = 'ABNwS1wdlFZUksK4cvygv7UTcExBlNPnRTf1cszsRR9uaLSukX'
-    const redirectUri = encodeURIComponent('http://localhost:3000/api/qb-time/callback')
-    const state = Math.random().toString(36).substring(7)
-    
-    const authUrl = `https://appcenter.intuit.com/connect/oauth2?client_id=${clientId}&response_type=code&scope=com.intuit.quickbooks.accounting&redirect_uri=${redirectUri}&state=${state}`
-    
-    // Navigate directly (same tab)
-    window.location.href = authUrl
+    // Use the API route to handle OAuth (it has access to server env vars)
+    window.location.href = '/api/qb-time/auth'
   }
 
   const handleDisconnect = async () => {
