@@ -2,29 +2,35 @@
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { User } from '@supabase/supabase-js'
+import type { User, Session } from '@supabase/supabase-js'
 import type { Tables, UserRole } from '@/lib/types/database'
 
 interface AuthContextType {
   user: User | null
+  session: Session | null
   profile: Tables<'profiles'> | null
   role: UserRole | null
   isLoading: boolean
+  isReady: boolean
   signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
+  session: null,
   profile: null,
   role: null,
   isLoading: true,
+  isReady: false,
   signOut: async () => {},
 })
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Tables<'profiles'> | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isReady, setIsReady] = useState(false)
   const [supabase] = useState(() => createClient())
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -49,55 +55,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true
 
-    // Initialize auth state
-    const init = async () => {
-      console.log('Auth init starting...')
+    const initAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
-        console.log('Session result:', session ? 'has session' : 'no session', error ? error.message : '')
+        // Get the initial session - this reads from localStorage
+        const { data: { session: initialSession } } = await supabase.auth.getSession()
         
-        if (mounted && session?.user) {
-          setUser(session.user)
-          const profileData = await fetchProfile(session.user.id)
+        if (!mounted) return
+        
+        if (initialSession) {
+          setSession(initialSession)
+          setUser(initialSession.user)
+          
+          // Fetch profile
+          const profileData = await fetchProfile(initialSession.user.id)
           if (mounted) setProfile(profileData)
         }
       } catch (error) {
         console.error('Auth init error:', error)
-      }
-      
-      // Always set loading to false
-      if (mounted) {
-        console.log('Setting isLoading to false')
-        setIsLoading(false)
+      } finally {
+        if (mounted) {
+          setIsLoading(false)
+          setIsReady(true)
+        }
       }
     }
 
-    init()
-
-    // Listen for auth changes
+    // Listen for auth state changes FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth event:', event, session ? 'has session' : 'no session')
-        
+      async (event, newSession) => {
         if (!mounted) return
-
-        try {
-          if (session?.user) {
-            setUser(session.user)
-            const profileData = await fetchProfile(session.user.id)
-            if (mounted) setProfile(profileData)
-          } else {
-            setUser(null)
-            setProfile(null)
-          }
-        } catch (err) {
-          console.error('Auth change handler error:', err)
+        
+        console.log('Auth event:', event)
+        
+        setSession(newSession)
+        setUser(newSession?.user ?? null)
+        
+        if (newSession?.user) {
+          const profileData = await fetchProfile(newSession.user.id)
+          if (mounted) setProfile(profileData)
+        } else {
+          setProfile(null)
         }
         
-        // Always set loading to false after auth change
-        if (mounted) setIsLoading(false)
+        setIsLoading(false)
+        setIsReady(true)
       }
     )
+
+    // Then initialize
+    initAuth()
 
     return () => {
       mounted = false
@@ -109,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(true)
     await supabase.auth.signOut()
     setUser(null)
+    setSession(null)
     setProfile(null)
     setIsLoading(false)
   }
@@ -117,9 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        session,
         profile,
         role: profile?.role ?? null,
         isLoading,
+        isReady,
         signOut,
       }}
     >

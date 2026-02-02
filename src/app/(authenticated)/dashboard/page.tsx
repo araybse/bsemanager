@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useAuth } from '@/components/providers/auth-provider'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,10 @@ import type { Views } from '@/lib/types/database'
 
 export default function DashboardPage() {
   const supabase = createClient()
+  const { isReady, session } = useAuth()
+
+  // Only enable queries when auth is ready and we have a session
+  const queryEnabled = isReady && !!session
 
   // Fetch billing candidates
   const { data: billingCandidates, isLoading: loadingCandidates } = useQuery({
@@ -24,6 +29,7 @@ export default function DashboardPage() {
       if (error) throw error
       return data as Views<'billing_candidates'>[]
     },
+    enabled: queryEnabled,
   })
 
   // Fetch backlog summary
@@ -37,6 +43,7 @@ export default function DashboardPage() {
       if (error) throw error
       return data as Views<'backlog_summary'>
     },
+    enabled: queryEnabled,
   })
 
   // Fetch accounts receivable
@@ -51,7 +58,10 @@ export default function DashboardPage() {
       const total = typedData?.reduce((sum, inv) => sum + (inv.amount || 0), 0) || 0
       return { invoices: typedData, total }
     },
+    enabled: queryEnabled,
   })
+
+  const isLoading = !isReady || loadingBacklog || loadingAR || loadingCandidates
 
   return (
     <div className="space-y-6">
@@ -63,7 +73,7 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loadingBacklog ? (
+            {isLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
@@ -84,7 +94,7 @@ export default function DashboardPage() {
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loadingAR ? (
+            {isLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
@@ -105,7 +115,7 @@ export default function DashboardPage() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loadingCandidates ? (
+            {isLoading ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
@@ -130,7 +140,7 @@ export default function DashboardPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {loadingCandidates ? (
+          {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-20 w-full" />
