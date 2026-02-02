@@ -38,7 +38,7 @@ export default function UnbilledReportPage() {
   const supabase = createClient()
   const billingMonth = getBillingMonthName()
 
-  const { data: unbilledData, isLoading } = useQuery({
+  const { data: unbilledData, isLoading, error } = useQuery({
     queryKey: ['unbilled-report'],
     queryFn: async () => {
       // Get unbilled time entries with rates
@@ -72,11 +72,11 @@ export default function UnbilledReportPage() {
         const { data: rate } = await supabase
           .from('billable_rates')
           .select('hourly_rate')
-          .eq('project_id', entry.project_id || 0)
-          .eq('employee_name', entry.employee_name)
-          .single()
+          .eq('project_id' as never, (entry.project_id || 0) as never)
+          .eq('employee_name' as never, entry.employee_name as never)
+          .maybeSingle()
 
-        const hourlyRate = (rate as { hourly_rate: number } | null)?.hourly_rate || 0
+        const hourlyRate = (rate as { hourly_rate: number } | null)?.hourly_rate || 150 // Default rate if none set
         entriesWithRates.push({
           id: entry.id,
           employee_name: entry.employee_name,
@@ -173,7 +173,13 @@ export default function UnbilledReportPage() {
         )}
       </div>
 
-      {isLoading ? (
+      {error ? (
+        <Card>
+          <CardContent className="py-8 text-center text-destructive">
+            Error loading unbilled data: {error.message}
+          </CardContent>
+        </Card>
+      ) : isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
             <Skeleton key={i} className="h-64 w-full" />

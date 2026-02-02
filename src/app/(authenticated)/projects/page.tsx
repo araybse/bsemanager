@@ -10,27 +10,28 @@ import { Plus, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
 import type { Tables } from '@/lib/types/database'
 
-type ProjectWithRelations = Tables<'projects'> & {
+type ProjectWithClient = Tables<'projects'> & {
   clients: { name: string } | null
-  profiles: { full_name: string } | null
 }
 
 export default function ProjectsPage() {
   const supabase = createClient()
 
-  const { data: projects, isLoading } = useQuery({
+  const { data: projects, isLoading, error } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
-          clients (name),
-          profiles (full_name)
+          clients (name)
         `)
         .order('project_number', { ascending: false })
-      if (error) throw error
-      return data as ProjectWithRelations[]
+      if (error) {
+        console.error('Projects query error:', error)
+        throw error
+      }
+      return data as (Tables<'projects'> & { clients: { name: string } | null })[]
     },
   })
 
@@ -51,7 +52,11 @@ export default function ProjectsPage() {
 
       <Card>
         <CardContent className="p-0">
-          {isLoading ? (
+          {error ? (
+            <div className="p-8 text-center text-destructive">
+              Error loading projects: {error.message}
+            </div>
+          ) : isLoading ? (
             <div className="p-4 space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
                 <Skeleton key={i} className="h-16 w-full" />
@@ -71,9 +76,7 @@ export default function ProjectsPage() {
                       <span className="font-medium">{project.name}</span>
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{(project.clients as { name: string } | null)?.name || 'No client'}</span>
-                      <span>•</span>
-                      <span>PM: {(project.profiles as { full_name: string } | null)?.full_name || 'Unassigned'}</span>
+                      <span>{project.clients?.name || 'No client'}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
