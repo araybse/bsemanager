@@ -5,6 +5,9 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const cookieStore = await cookies()
   
+  console.log('[/api/auth/me] Starting auth check')
+  console.log('[/api/auth/me] Cookies present:', cookieStore.getAll().map(c => c.name).join(', '))
+  
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -24,15 +27,20 @@ export async function GET() {
 
   const { data: { user }, error: userError } = await supabase.auth.getUser()
 
+  console.log('[/api/auth/me] User result:', user ? user.email : 'null', 'Error:', userError?.message || 'none')
+
   if (userError || !user) {
+    console.log('[/api/auth/me] Returning 401 - no user')
     return NextResponse.json({ user: null, profile: null }, { status: 401 })
   }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('*')
     .eq('id', user.id)
     .single()
+
+  console.log('[/api/auth/me] Profile result:', profile?.full_name || 'null', 'Error:', profileError?.message || 'none')
 
   return NextResponse.json({ user, profile })
 }

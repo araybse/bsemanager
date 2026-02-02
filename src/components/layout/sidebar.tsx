@@ -1,16 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { useAuth } from '@/components/providers/auth-provider'
+import { createClient } from '@/lib/supabase/client'
+import type { Tables } from '@/lib/types/database'
 import {
   LayoutDashboard,
   FolderKanban,
   FileText,
   Receipt,
   Clock,
-  Users,
   DollarSign,
   Building2,
   FileSpreadsheet,
@@ -51,19 +51,31 @@ const navItems: NavItem[] = [
   { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ]
 
-export function Sidebar() {
+interface SidebarProps {
+  initialProfile: Tables<'profiles'> | null
+}
+
+export function Sidebar({ initialProfile }: SidebarProps) {
   const pathname = usePathname()
-  const { profile, role, signOut } = useAuth()
+  const router = useRouter()
+  const supabase = createClient()
+  
+  const role = initialProfile?.role
 
   const filteredNavItems = navItems.filter((item) => {
     // Always show items without role restrictions
     if (!item.roles) return true
-    // If role not loaded yet, show all items (they'll be filtered on re-render)
+    // If role not loaded yet, show all items
     if (!role) return true
     // Only show items for admin, project_manager, or employee roles
     if (role === 'client') return false
     return item.roles.includes(role)
   })
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
 
   return (
     <div className="flex h-screen w-64 flex-col border-r bg-card">
@@ -102,17 +114,17 @@ export function Sidebar() {
       <div className="p-4">
         <div className="flex items-center gap-3 px-2 py-2">
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-medium">
-            {profile?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
+            {initialProfile?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-medium">{profile?.full_name || 'Loading...'}</span>
+            <span className="text-sm font-medium">{initialProfile?.full_name || 'User'}</span>
             <span className="text-xs text-muted-foreground capitalize">{role || 'User'}</span>
           </div>
         </div>
         <Button
           variant="ghost"
           className="w-full justify-start gap-3 mt-2"
-          onClick={signOut}
+          onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4" />
           Sign Out

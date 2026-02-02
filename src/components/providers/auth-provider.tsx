@@ -33,25 +33,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const initRef = useRef(false)
   const supabase = createClient()
 
-  const fetchAuthState = async () => {
+  const fetchAuthState = async (retries = 2): Promise<boolean> => {
     try {
       // Fetch from server-side API route which has fresh cookies
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
+        cache: 'no-store',
       })
       
       if (response.ok) {
         const data = await response.json()
         setUser(data.user)
         setProfile(data.profile)
+        console.log('[Auth] Fetch success:', data.user?.email)
         return true
+      } else if (response.status === 401 && retries > 0) {
+        // Session might not be ready yet, retry after a short delay
+        console.log('[Auth] 401 received, retrying in 500ms...')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        return fetchAuthState(retries - 1)
       } else {
+        console.log('[Auth] Fetch failed:', response.status)
         setUser(null)
         setProfile(null)
         return false
       }
     } catch (error) {
       console.error('[Auth] Fetch error:', error)
+      if (retries > 0) {
+        console.log('[Auth] Retrying after error...')
+        await new Promise(resolve => setTimeout(resolve, 500))
+        return fetchAuthState(retries - 1)
+      }
       setUser(null)
       setProfile(null)
       return false

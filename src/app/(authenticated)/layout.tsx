@@ -1,32 +1,61 @@
-'use client'
-
 import { Sidebar } from '@/components/layout/sidebar'
-import { useAuth } from '@/components/providers/auth-provider'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { Header } from '@/components/layout/header'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 
-export default function AuthenticatedLayout({
+async function getAuthState() {
+  const cookieStore = await cookies()
+  
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookieStore.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options)
+          })
+        },
+      },
+    }
+  )
+
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    redirect('/login')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', user.id)
+    .single()
+
+  return { user, profile }
+}
+
+export default async function AuthenticatedLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { user, isLoading } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    // Only redirect if we're done loading AND there's no user
-    if (!isLoading && !user) {
-      router.push('/login')
-    }
-  }, [user, isLoading, router])
-
-  // Don't block on loading - let the pages handle their own loading states
-  // The middleware already protects routes, so if we're here we should be authenticated
+  // Get auth state server-side
+  const { profile } = await getAuthState()
   
   return (
-    <div className="flex h-screen">
-      <Sidebar />
-      <main className="flex-1 overflow-auto p-6">{children}</main>
+    <div className="flex h-screen bg-background">
+      <Sidebar initialProfile={profile} />
+      <div className="flex flex-1 flex-col overflow-hidden">
+        <Header />
+        <main className="flex-1 overflow-auto p-6">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }
