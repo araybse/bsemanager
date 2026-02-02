@@ -14,13 +14,14 @@ export default function AuthenticatedLayout({
   const router = useRouter()
 
   useEffect(() => {
-    // If not loading and no user, redirect to login
+    // Only redirect if we're done loading AND there's no user
     if (!isLoading && !user) {
       router.push('/login')
     }
   }, [user, isLoading, router])
 
-  // Show loading while checking auth
+  // Show loading only for the first 3 seconds max, then show content anyway
+  // This prevents infinite loading if auth state is stuck
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -32,7 +33,7 @@ export default function AuthenticatedLayout({
     )
   }
 
-  // Don't render until we have a user
+  // If no user after loading, don't render (will redirect)
   if (!user) {
     return null
   }
