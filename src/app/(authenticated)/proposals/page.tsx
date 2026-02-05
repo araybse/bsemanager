@@ -161,7 +161,7 @@ export default function ProposalsPage() {
           date_submitted: formData.submittedDate,
           total_amount: totalAmount,
           bse_amount: totalAmount,
-        } as never)
+        } as any)
         .select('id')
         .single()
 
