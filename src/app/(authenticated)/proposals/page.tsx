@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +37,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { toast } from 'sonner'
-import type { Tables, InsertTables } from '@/lib/types/database'
+import type { Database, Tables, InsertTables } from '@/lib/types/database'
 import {
   BarChart,
   Bar,
@@ -53,7 +54,7 @@ type ProposalWithPhases = Tables<'proposals'> & {
 }
 
 export default function ProposalsPage() {
-  const supabase = createClient()
+  const supabase = createClient() as SupabaseClient<Database>
   const queryClient = useQueryClient()
   
   const [searchQuery, setSearchQuery] = useState('')
