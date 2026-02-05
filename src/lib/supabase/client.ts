@@ -1,9 +1,10 @@
 import { createBrowserClient } from '@supabase/ssr'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/lib/types/database'
 
-let client: ReturnType<typeof createBrowserClient<Database>> | null = null
+let client: SupabaseClient<Database> | null = null
 
-export function createClient() {
+export function createClient(): SupabaseClient<Database> {
   if (client) return client
   
   client = createBrowserClient<Database>(
