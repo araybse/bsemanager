@@ -30,6 +30,25 @@ type QBSettings = {
   updated_at: string
 }
 
+type SyncSummary = {
+  imported: number
+  updated: number
+  total: number
+}
+
+type TimeSyncSummary = {
+  imported: number
+  skipped: number
+  total: number
+}
+
+type SyncResults = {
+  customers?: SyncSummary
+  projects?: SyncSummary
+  invoices?: SyncSummary
+  timeEntries?: TimeSyncSummary
+}
+
 export default function SettingsPage() {
   return (
     <Suspense fallback={<SettingsLoading />}>
@@ -57,7 +76,7 @@ function SettingsContent() {
   const searchParams = useSearchParams()
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncType, setSyncType] = useState<'all' | 'customers' | 'projects' | 'invoices' | 'time'>('all')
-  const [lastSyncResults, setLastSyncResults] = useState<Record<string, unknown> | null>(null)
+  const [lastSyncResults, setLastSyncResults] = useState<SyncResults | null>(null)
 
   // Show toast messages based on URL params
   useEffect(() => {
@@ -372,33 +391,33 @@ function SettingsContent() {
                   {lastSyncResults.customers && (
                     <div className="text-sm">
                       <span className="font-medium">Customers:</span>{' '}
-                      {(lastSyncResults.customers as { imported: number; updated: number; total: number }).imported} imported,{' '}
-                      {(lastSyncResults.customers as { imported: number; updated: number; total: number }).updated} updated{' '}
-                      (of {(lastSyncResults.customers as { imported: number; updated: number; total: number }).total} total)
+                      {lastSyncResults.customers.imported} imported,{' '}
+                      {lastSyncResults.customers.updated} updated{' '}
+                      (of {lastSyncResults.customers.total} total)
                     </div>
                   )}
                   {lastSyncResults.projects && (
                     <div className="text-sm">
                       <span className="font-medium">Projects:</span>{' '}
-                      {(lastSyncResults.projects as { imported: number; updated: number; total: number }).imported} imported,{' '}
-                      {(lastSyncResults.projects as { imported: number; updated: number; total: number }).updated} updated{' '}
-                      (of {(lastSyncResults.projects as { imported: number; updated: number; total: number }).total} total)
+                      {lastSyncResults.projects.imported} imported,{' '}
+                      {lastSyncResults.projects.updated} updated{' '}
+                      (of {lastSyncResults.projects.total} total)
                     </div>
                   )}
                   {lastSyncResults.invoices && (
                     <div className="text-sm">
                       <span className="font-medium">Invoices:</span>{' '}
-                      {(lastSyncResults.invoices as { imported: number; updated: number; total: number }).imported} imported,{' '}
-                      {(lastSyncResults.invoices as { imported: number; updated: number; total: number }).updated} updated{' '}
-                      (of {(lastSyncResults.invoices as { imported: number; updated: number; total: number }).total} total)
+                      {lastSyncResults.invoices.imported} imported,{' '}
+                      {lastSyncResults.invoices.updated} updated{' '}
+                      (of {lastSyncResults.invoices.total} total)
                     </div>
                   )}
                   {lastSyncResults.timeEntries && (
                     <div className="text-sm">
                       <span className="font-medium">Time Entries:</span>{' '}
-                      {(lastSyncResults.timeEntries as { imported: number; skipped: number; total: number }).imported} imported,{' '}
-                      {(lastSyncResults.timeEntries as { imported: number; skipped: number; total: number }).skipped} skipped{' '}
-                      (of {(lastSyncResults.timeEntries as { imported: number; skipped: number; total: number }).total} total)
+                      {lastSyncResults.timeEntries.imported} imported,{' '}
+                      {lastSyncResults.timeEntries.skipped} skipped{' '}
+                      (of {lastSyncResults.timeEntries.total} total)
                     </div>
                   )}
                 </div>
