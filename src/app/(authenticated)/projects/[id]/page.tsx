@@ -2,13 +2,20 @@
 
 import { useMemo } from 'react'
 import { useParams } from 'next/navigation'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -22,6 +29,7 @@ import { formatDate } from '@/lib/utils/dates'
 import { ArrowLeft, FileText } from 'lucide-react'
 import Link from 'next/link'
 import type { Tables } from '@/lib/types/database'
+import { toast } from 'sonner'
 import {
   BarChart,
   Bar,
@@ -46,6 +54,7 @@ export default function ProjectDetailPage() {
   const params = useParams()
   const projectId = Number(params.id)
   const supabase = createClient()
+  const queryClient = useQueryClient()
 
   // Fetch project details
   const { data: project, isLoading: loadingProject } = useQuery({
@@ -61,6 +70,36 @@ export default function ProjectDetailPage() {
         .single()
       if (error) throw error
       return data as ProjectWithRelations
+    },
+  })
+
+  const { data: projectManagers } = useQuery({
+    queryKey: ['project-managers'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, role')
+        .eq('role', 'project_manager')
+        .order('full_name')
+      if (error) throw error
+      return data as { id: string; full_name: string }[]
+    },
+  })
+
+  const updateProjectManager = useMutation({
+    mutationFn: async (pmId: string | null) => {
+      const { error } = await supabase
+        .from('projects')
+        .update({ pm_id: pmId } as never)
+        .eq('id', projectId as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['project', projectId] })
+      toast.success('Project manager updated')
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update project manager')
     },
   })
 
@@ -135,6 +174,20 @@ export default function ProjectDetailPage() {
     },
   })
 
+  // Fetch submittals
+  const { data: submittals, isLoading: loadingSubmittals } = useQuery({
+    queryKey: ['project-submittals', projectId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('project_submittals')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('commented_at', { ascending: false })
+      if (error) throw error
+      return data as Tables<'project_submittals'>[]
+    },
+  })
+
   // Calculate totals
   const totalFee = phases?.reduce((sum, p) => sum + Number(p.total_fee), 0) || 0
   const totalBilled = phases?.reduce((sum, p) => sum + Number(p.billed_to_date), 0) || 0
@@ -182,6 +235,71 @@ export default function ProjectDetailPage() {
     return employeeTimeData.reduce((sum, e) => sum + e.hours, 0)
   }, [employeeTimeData])
 
+  const submittalsByAgency = useMemo(() => {
+    if (!submittals) return []
+    const grouped = new Map<string, Tables<'project_submittals'>[]>()
+
+    const isDepartmentRow = (item: Tables<'project_submittals'>) => {
+      const department = (item.department || '').trim()
+      const status = (item.status || '').toLowerCase()
+      const comment = (item.comment || '').toLowerCase()
+
+      if (!department) return false
+      if (department.toLowerCase() === 'daily check') return false
+      if (status === 'latest pdf uploaded') return false
+      if (comment.includes('automated')) return false
+
+      return true
+    }
+
+    submittals.forEach((item) => {
+      const agency = item.agency || 'Unknown'
+      const list = grouped.get(agency)
+      if (list) {
+        list.push(item)
+      } else {
+        grouped.set(agency, [item])
+      }
+    })
+
+    return Array.from(grouped.entries())
+      .map(([agency, items]) => {
+        const sortedByDate = [...items].sort((a, b) => {
+          const aDate = a.commented_at ? new Date(a.commented_at).getTime() : 0
+          const bDate = b.commented_at ? new Date(b.commented_at).getTime() : 0
+          return bDate - aDate
+        })
+        const latestPdf = sortedByDate.find((item) => item.pdf_url)?.pdf_url || null
+        const departmentItems = items.filter(isDepartmentRow)
+
+        const departmentMap = new Map<string, Tables<'project_submittals'>[]>()
+        departmentItems.forEach((item) => {
+          const dept = (item.department || 'Unknown').trim() || 'Unknown'
+          const list = departmentMap.get(dept)
+          if (list) {
+            list.push(item)
+          } else {
+            departmentMap.set(dept, [item])
+          }
+        })
+
+        const departments = Array.from(departmentMap.entries())
+          .map(([department, deptItems]) => {
+            const sorted = [...deptItems].sort((a, b) => {
+              const aDate = a.commented_at ? new Date(a.commented_at).getTime() : 0
+              const bDate = b.commented_at ? new Date(b.commented_at).getTime() : 0
+              return bDate - aDate
+            })
+            return { department, items: sorted }
+          })
+          .sort((a, b) => a.department.localeCompare(b.department))
+
+        return { agency, departments, latestPdf }
+      })
+      .filter(({ departments }) => departments.length > 0)
+      .sort((a, b) => a.agency.localeCompare(b.agency))
+  }, [submittals])
+
   if (loadingProject) {
     return (
       <div className="space-y-6">
@@ -214,7 +332,7 @@ export default function ProjectDetailPage() {
               </Link>
             </Button>
             <h1 className="text-2xl font-bold">
-              {project.project_number} — {project.name}
+              {project.project_number} {project.name}
             </h1>
             <Badge variant={project.status === 'active' ? 'default' : 'secondary'}>
               {project.status}
@@ -222,6 +340,27 @@ export default function ProjectDetailPage() {
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground ml-10">
             <span>Client: {project.clients?.name || 'None'}</span>
+            <div className="flex items-center gap-2">
+              <span>Project Manager:</span>
+              <Select
+                value={project.pm_id ?? 'unassigned'}
+                onValueChange={(value) =>
+                  updateProjectManager.mutate(value === 'unassigned' ? null : value)
+                }
+              >
+                <SelectTrigger className="h-8 w-[200px]">
+                  <SelectValue placeholder="Select PM" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {projectManagers?.map((manager) => (
+                    <SelectItem key={manager.id} value={manager.id}>
+                      {manager.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
         <Button asChild>
@@ -277,9 +416,10 @@ export default function ProjectDetailPage() {
       <Tabs defaultValue="phases">
         <TabsList>
           <TabsTrigger value="phases">Contract Phases</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices ({invoices?.length || 0})</TabsTrigger>
-          <TabsTrigger value="time">Time Entries ({allTimeEntries?.length || 0})</TabsTrigger>
-          <TabsTrigger value="reimbursables">Reimbursables ({reimbursables?.length || 0})</TabsTrigger>
+          <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          <TabsTrigger value="time">Time Entries</TabsTrigger>
+          <TabsTrigger value="reimbursables">Reimbursables</TabsTrigger>
+          <TabsTrigger value="submittals">Submittals</TabsTrigger>
         </TabsList>
 
         <TabsContent value="phases" className="mt-4">
@@ -487,6 +627,113 @@ export default function ProjectDetailPage() {
                     )}
                   </TableBody>
                 </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="submittals" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              {loadingSubmittals ? (
+                <div className="p-4">
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-3 p-4">
+                  <div className="text-xs text-muted-foreground">
+                    Comments updated at 7am and 1pm daily.
+                  </div>
+                  {submittalsByAgency.map(({ agency, departments, latestPdf }) => (
+                    <details key={agency} className="rounded-lg border">
+                      <summary className="cursor-pointer select-none px-4 py-3 text-sm font-medium flex items-center justify-between gap-4">
+                        <span>{agency} ({departments.length})</span>
+                        {latestPdf ? (
+                          <a
+                            href={latestPdf}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <Button variant="outline" size="sm">
+                              View PDF
+                            </Button>
+                          </a>
+                        ) : null}
+                      </summary>
+                      <div className="px-4 pb-4 space-y-3">
+                        {departments.map((dept) => {
+                          const latest = dept.items[0]
+                          return (
+                            <details key={dept.department} className="rounded-lg border bg-muted/20">
+                              <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium flex items-center justify-between gap-3">
+                                <span>{dept.department}</span>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                                  {latest?.status ? (
+                                    <Badge variant="secondary">{latest.status}</Badge>
+                                  ) : null}
+                                  <span>
+                                    {latest?.commented_at ? formatDate(latest.commented_at) : '—'}
+                                  </span>
+                                </div>
+                              </summary>
+                              <div className="px-3 pb-3">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow>
+                                      <TableHead>Status</TableHead>
+                                      <TableHead>Comment</TableHead>
+                                      <TableHead>Comment Date</TableHead>
+                                      <TableHead>Source</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {dept.items.map((submittal) => (
+                                      <TableRow key={submittal.id}>
+                                        <TableCell>
+                                          {submittal.status ? (
+                                            <Badge variant="secondary">{submittal.status}</Badge>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </TableCell>
+                                        <TableCell className="whitespace-pre-wrap text-muted-foreground text-sm">
+                                          {submittal.comment || '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                          {submittal.commented_at ? formatDate(submittal.commented_at) : '—'}
+                                        </TableCell>
+                                        <TableCell>
+                                          {submittal.source_url ? (
+                                            <a
+                                              href={submittal.source_url}
+                                              target="_blank"
+                                              rel="noreferrer"
+                                              className="text-sm text-primary hover:underline"
+                                            >
+                                              View
+                                            </a>
+                                          ) : (
+                                            '—'
+                                          )}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </details>
+                          )
+                        })}
+                      </div>
+                    </details>
+                  ))}
+                  {submittalsByAgency.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No submittal comments yet
+                    </div>
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>

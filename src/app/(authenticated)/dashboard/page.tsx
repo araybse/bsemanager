@@ -143,19 +143,14 @@ export default function DashboardPage() {
                   key={project.project_id}
                   className="flex items-center justify-between rounded-lg border p-4"
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{project.project_number}</span>
-                      <span className="text-muted-foreground">—</span>
-                      <span>{project.project_name}</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {project.reasons?.map((reason) => (
-                        <Badge key={reason} variant="secondary">
-                          {reason}
-                        </Badge>
-                      ))}
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{project.project_number}</span>
+                    <span>{project.project_name}</span>
+                    {project.reasons?.map((reason) => (
+                      <Badge key={reason} variant="secondary">
+                        {reason}
+                      </Badge>
+                    ))}
                   </div>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm" asChild>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,11 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { formatCurrency } from '@/lib/utils/format'
 import { formatDate } from '@/lib/utils/dates'
 import {
@@ -349,96 +344,90 @@ export default function InvoicesPage() {
                   const isExpanded = expandedRows.has(invoice.id)
                   
                   return (
-                    <Collapsible key={invoice.id} open={isExpanded} asChild>
-                      <>
-                        <TableRow className={hasLineItems ? 'cursor-pointer hover:bg-muted/50' : ''}>
-                          <TableCell className="w-[40px]">
-                            {hasLineItems && (
-                              <CollapsibleTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-6 w-6 p-0"
-                                  onClick={() => toggleRow(invoice.id)}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown className="h-4 w-4" />
-                                  ) : (
-                                    <ChevronRight className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              </CollapsibleTrigger>
-                            )}
-                          </TableCell>
-                          <TableCell 
-                            className="font-mono font-medium"
-                            onClick={() => hasLineItems && toggleRow(invoice.id)}
-                          >
-                            {invoice.invoice_number}
-                          </TableCell>
-                          <TableCell onClick={() => hasLineItems && toggleRow(invoice.id)}>
-                            <div>
-                              <span className="font-mono">{invoice.project_number}</span>
-                              <span className="text-muted-foreground"> — {invoice.project_name}</span>
+                    <React.Fragment key={invoice.id}>
+                      <TableRow className={hasLineItems ? 'cursor-pointer hover:bg-muted/50' : ''}>
+                        <TableCell className="w-[40px]">
+                          {hasLineItems && (
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 w-6 p-0"
+                              onClick={() => toggleRow(invoice.id)}
+                            >
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4" />
+                              )}
+                            </Button>
+                          )}
+                        </TableCell>
+                        <TableCell 
+                          className="font-mono font-medium"
+                          onClick={() => hasLineItems && toggleRow(invoice.id)}
+                        >
+                          {invoice.invoice_number}
+                        </TableCell>
+                        <TableCell onClick={() => hasLineItems && toggleRow(invoice.id)}>
+                          <div>
+                            <span className="font-mono">{invoice.project_number}</span>
+                            <span className="text-muted-foreground"> {invoice.project_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell onClick={() => hasLineItems && toggleRow(invoice.id)}>
+                          {formatDate(invoice.date_issued)}
+                        </TableCell>
+                        <TableCell 
+                          className="text-right font-mono"
+                          onClick={() => hasLineItems && toggleRow(invoice.id)}
+                        >
+                          {formatCurrency(invoice.amount)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={invoice.date_paid ? 'default' : 'secondary'}>
+                            {invoice.date_paid ? 'Paid' : 'Unpaid'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell onClick={() => hasLineItems && toggleRow(invoice.id)}>
+                          {invoice.date_paid ? formatDate(invoice.date_paid) : '—'}
+                        </TableCell>
+                      </TableRow>
+                      {hasLineItems && isExpanded && (
+                        <TableRow className="bg-muted/30 hover:bg-muted/30">
+                          <TableCell colSpan={7} className="p-0">
+                            <div className="px-8 py-3">
+                              <div className="text-xs font-medium text-muted-foreground mb-2">
+                                Invoice Line Items
+                              </div>
+                              <Table>
+                                <TableHeader>
+                                  <TableRow className="hover:bg-transparent">
+                                    <TableHead className="h-8 text-xs">Phase</TableHead>
+                                    <TableHead className="h-8 text-xs text-right">Amount</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {invoiceLineItems.map((item) => (
+                                    <TableRow key={item.id} className="hover:bg-muted/50">
+                                      <TableCell className="py-1.5">{item.phase_name}</TableCell>
+                                      <TableCell className="py-1.5 text-right font-mono">
+                                        {formatCurrency(item.amount)}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                  <TableRow className="hover:bg-transparent border-t">
+                                    <TableCell className="py-1.5 font-medium">Total</TableCell>
+                                    <TableCell className="py-1.5 text-right font-mono font-medium">
+                                      {formatCurrency(invoiceLineItems.reduce((sum, item) => sum + item.amount, 0))}
+                                    </TableCell>
+                                  </TableRow>
+                                </TableBody>
+                              </Table>
                             </div>
                           </TableCell>
-                          <TableCell onClick={() => hasLineItems && toggleRow(invoice.id)}>
-                            {formatDate(invoice.date_issued)}
-                          </TableCell>
-                          <TableCell 
-                            className="text-right font-mono"
-                            onClick={() => hasLineItems && toggleRow(invoice.id)}
-                          >
-                            {formatCurrency(invoice.amount)}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={invoice.date_paid ? 'default' : 'secondary'}>
-                              {invoice.date_paid ? 'Paid' : 'Unpaid'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell onClick={() => hasLineItems && toggleRow(invoice.id)}>
-                            {invoice.date_paid ? formatDate(invoice.date_paid) : '—'}
-                          </TableCell>
                         </TableRow>
-                        {hasLineItems && (
-                          <CollapsibleContent asChild>
-                            <TableRow className="bg-muted/30 hover:bg-muted/30">
-                              <TableCell colSpan={7} className="p-0">
-                                <div className="px-8 py-3">
-                                  <div className="text-xs font-medium text-muted-foreground mb-2">
-                                    Invoice Line Items
-                                  </div>
-                                  <Table>
-                                    <TableHeader>
-                                      <TableRow className="hover:bg-transparent">
-                                        <TableHead className="h-8 text-xs">Phase</TableHead>
-                                        <TableHead className="h-8 text-xs text-right">Amount</TableHead>
-                                      </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                      {invoiceLineItems.map((item) => (
-                                        <TableRow key={item.id} className="hover:bg-muted/50">
-                                          <TableCell className="py-1.5">{item.phase_name}</TableCell>
-                                          <TableCell className="py-1.5 text-right font-mono">
-                                            {formatCurrency(item.amount)}
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
-                                      <TableRow className="hover:bg-transparent border-t">
-                                        <TableCell className="py-1.5 font-medium">Total</TableCell>
-                                        <TableCell className="py-1.5 text-right font-mono font-medium">
-                                          {formatCurrency(invoiceLineItems.reduce((sum, item) => sum + item.amount, 0))}
-                                        </TableCell>
-                                      </TableRow>
-                                    </TableBody>
-                                  </Table>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          </CollapsibleContent>
-                        )}
-                      </>
-                    </Collapsible>
+                      )}
+                    </React.Fragment>
                   )
                 })}
                 {filteredInvoices.length === 0 && (

@@ -1,10 +1,18 @@
 'use client'
 
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import {
   Table,
@@ -14,10 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Search, ChevronDown, ChevronRight } from 'lucide-react'
 import type { Views } from '@/lib/types/database'
 
 export default function ContractsPage() {
   const supabase = createClient()
+  const [searchQuery, setSearchQuery] = useState('')
+  const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
 
   const { data: contracts, isLoading } = useQuery({
     queryKey: ['active-contracts'],
@@ -33,18 +44,60 @@ export default function ContractsPage() {
   })
 
   // Group by project
-  const groupedContracts = contracts?.reduce((acc, contract) => {
-    const key = contract.project_number
-    if (!acc[key]) {
-      acc[key] = {
-        project_number: contract.project_number,
-        project_name: contract.project_name,
-        phases: [],
+  const groupedContracts = useMemo(() => {
+    if (!contracts) return {}
+    
+    return contracts.reduce((acc, contract) => {
+      const key = contract.project_number
+      if (!acc[key]) {
+        acc[key] = {
+          project_number: contract.project_number,
+          project_name: contract.project_name,
+          phases: [],
+        }
       }
-    }
-    acc[key].phases.push(contract)
-    return acc
-  }, {} as Record<string, { project_number: string; project_name: string; phases: typeof contracts }>) || {}
+      acc[key].phases.push(contract)
+      return acc
+    }, {} as Record<string, { project_number: string; project_name: string; phases: typeof contracts }>)
+  }, [contracts])
+
+  // Filter by search query
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery) return Object.values(groupedContracts)
+    
+    const query = searchQuery.toLowerCase()
+    return Object.values(groupedContracts).filter(project => {
+      // Match project number or name
+      if (project.project_number?.toLowerCase().includes(query)) return true
+      if (project.project_name?.toLowerCase().includes(query)) return true
+      
+      // Match any phase code or name
+      return project.phases.some(phase => 
+        phase.phase_code?.toLowerCase().includes(query) ||
+        phase.phase_name?.toLowerCase().includes(query)
+      )
+    })
+  }, [groupedContracts, searchQuery])
+
+  const toggleProject = (projectNumber: string) => {
+    setExpandedProjects(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(projectNumber)) {
+        newSet.delete(projectNumber)
+      } else {
+        newSet.add(projectNumber)
+      }
+      return newSet
+    })
+  }
+
+  const expandAll = () => {
+    setExpandedProjects(new Set(filteredProjects.map(p => p.project_number)))
+  }
+
+  const collapseAll = () => {
+    setExpandedProjects(new Set())
+  }
 
   return (
     <div className="space-y-6">
@@ -55,6 +108,39 @@ export default function ContractsPage() {
         </p>
       </div>
 
+      {/* Search Bar */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex flex-wrap gap-4 items-end">
+            <div className="flex-1 min-w-[200px] max-w-[400px]">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by project or phase..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={expandAll}>
+                Expand All
+              </Button>
+              <Button variant="outline" size="sm" onClick={collapseAll}>
+                Collapse All
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Results count */}
+      <div className="text-sm text-muted-foreground">
+        {filteredProjects.length} project{filteredProjects.length !== 1 ? 's' : ''}
+        {searchQuery && ` matching "${searchQuery}"`}
+      </div>
+
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
@@ -62,65 +148,91 @@ export default function ContractsPage() {
           ))}
         </div>
       ) : (
-        Object.values(groupedContracts).map((project) => (
-          <Card key={project.project_number}>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">
-                {project.project_number} — {project.project_name}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Phase</TableHead>
-                    <TableHead>Phase Name</TableHead>
-                    <TableHead className="w-[60px]">Type</TableHead>
-                    <TableHead className="text-right">Total Fee</TableHead>
-                    <TableHead className="text-right">%</TableHead>
-                    <TableHead className="text-right">Billed</TableHead>
-                    <TableHead className="text-right">Remaining</TableHead>
-                    <TableHead className="text-right">This Month</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {project.phases.map((phase) => (
-                    <TableRow key={phase.id}>
-                      <TableCell className="font-mono">{phase.phase_code}</TableCell>
-                      <TableCell>{phase.phase_name}</TableCell>
-                      <TableCell>
-                        <Badge variant={phase.billing_type === 'H' ? 'outline' : 'secondary'}>
-                          {phase.billing_type === 'H' ? 'Hourly' : 'Lump'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(phase.total_fee)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {formatPercent(phase.pct_complete)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(phase.billed_to_date)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {formatCurrency(phase.remaining)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {phase.bill_this_month > 0 ? formatCurrency(phase.bill_this_month) : '—'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        ))
+        filteredProjects.map((project) => {
+          const isExpanded = expandedProjects.has(project.project_number)
+          
+          return (
+            <Collapsible
+              key={project.project_number}
+              open={isExpanded}
+              onOpenChange={() => toggleProject(project.project_number)}
+            >
+              <Card>
+                <CollapsibleTrigger asChild>
+                  <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                        {project.project_number} {project.project_name}
+                      </CardTitle>
+                      <Badge variant="secondary">
+                        {project.phases.length} phase{project.phases.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[100px]">Phase</TableHead>
+                          <TableHead>Phase Name</TableHead>
+                          <TableHead className="w-[60px]">Type</TableHead>
+                          <TableHead className="text-right">Total Fee</TableHead>
+                          <TableHead className="text-right">%</TableHead>
+                          <TableHead className="text-right">Billed</TableHead>
+                          <TableHead className="text-right">Remaining</TableHead>
+                          <TableHead className="text-right">This Month</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {project.phases.map((phase) => (
+                          <TableRow key={phase.id}>
+                            <TableCell className="font-mono">{phase.phase_code}</TableCell>
+                            <TableCell>{phase.phase_name}</TableCell>
+                            <TableCell>
+                              <Badge variant={phase.billing_type === 'H' ? 'outline' : 'secondary'}>
+                                {phase.billing_type === 'H' ? 'Hourly' : 'Lump Sum'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(phase.total_fee)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatPercent(phase.pct_complete)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(phase.billed_to_date)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(phase.remaining)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {phase.bill_this_month > 0 ? formatCurrency(phase.bill_this_month) : '—'}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </CollapsibleContent>
+              </Card>
+            </Collapsible>
+          )
+        })
       )}
 
-      {!isLoading && Object.keys(groupedContracts).length === 0 && (
+      {!isLoading && filteredProjects.length === 0 && (
         <Card>
           <CardContent className="py-8 text-center text-muted-foreground">
-            No active contracts found. Add projects and their phases to get started.
+            {searchQuery 
+              ? 'No contracts match the current search'
+              : 'No active contracts found. Add projects and their phases to get started.'}
           </CardContent>
         </Card>
       )}

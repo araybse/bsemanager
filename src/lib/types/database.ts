@@ -88,6 +88,7 @@ export interface Database {
           bse_amount: number | null
           date_submitted: string | null
           date_executed: string | null
+          status: string | null
           created_at: string
           updated_at: string
         }
@@ -103,6 +104,7 @@ export interface Database {
           bse_amount?: number | null
           date_submitted?: string | null
           date_executed?: string | null
+          status?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -118,6 +120,39 @@ export interface Database {
           bse_amount?: number | null
           date_submitted?: string | null
           date_executed?: string | null
+          status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      proposal_phases: {
+        Row: {
+          id: number
+          proposal_id: number
+          phase_code: string
+          phase_name: string
+          amount: number
+          billing_type: BillingType
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          proposal_id: number
+          phase_code: string
+          phase_name: string
+          amount?: number
+          billing_type?: BillingType
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          proposal_id?: number
+          phase_code?: string
+          phase_name?: string
+          amount?: number
+          billing_type?: BillingType
           created_at?: string
           updated_at?: string
         }
@@ -153,6 +188,50 @@ export interface Database {
           pm_id?: string | null
           proposal_id?: number | null
           status?: ProjectStatus
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_submittals: {
+        Row: {
+          id: number
+          project_id: number
+          agency: string
+          department: string | null
+          status: string | null
+          comment: string | null
+          commented_at: string | null
+          source_url: string | null
+          pdf_url: string | null
+          external_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: number
+          agency: string
+          department?: string | null
+          status?: string | null
+          comment?: string | null
+          commented_at?: string | null
+          source_url?: string | null
+          pdf_url?: string | null
+          external_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: number
+          agency?: string
+          department?: string | null
+          status?: string | null
+          comment?: string | null
+          commented_at?: string | null
+          source_url?: string | null
+          pdf_url?: string | null
+          external_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -566,6 +645,15 @@ export interface Database {
       }
     }
     Views: {
+      project_financial_totals: {
+        Row: {
+          project_id: number
+          project_number: string
+          project_name: string
+          revenue: number
+          labor_cost: number
+        }
+      }
       billing_candidates: {
         Row: {
           project_id: number

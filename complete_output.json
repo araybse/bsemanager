@@ -1,0 +1,1197 @@
+﻿[
+  {
+    "proposal_number": "24-01",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Planning & Analysis",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Engineering Plan Preparation",
+        "amount": 63000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Permitting",
+        "amount": 18000,
+        "billing_type": "L"
+      },
+      {
+        "code": "LA",
+        "name": "Code Landscape and Irrigation Design",
+        "amount": 7000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 15000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-02",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Plan",
+        "amount": 3500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Agency Due Diligence",
+        "amount": 1500,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-03",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Plan",
+        "amount": 2000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Master Development Plan",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Schematic Design and EOPC",
+        "amount": 2500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Engineering Plan Preparation",
+        "amount": 16000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Permitting",
+        "amount": 7500,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 6500,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-04",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Engineering Plan Preparation",
+        "amount": 60000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 8000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Permitting",
+        "amount": 14000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "JEA Electric, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 12000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 8000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-05",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Engineering Plan Preparation",
+        "amount": 102000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 8000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Permitting",
+        "amount": 18000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "JEA Electric, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 16000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 12000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-06",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Engineering Plan Preparation",
+        "amount": 84000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 8000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Offsite Utility Design",
+        "amount": 7500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Permitting",
+        "amount": 16000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "FPL, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 16000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 8000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-07",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Plan",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Agency Due Diligence",
+        "amount": 2000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-08",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Planning & Analysis",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "PUD Verification",
+        "amount": 2500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Engineering Plan Preparation",
+        "amount": 13000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Permitting",
+        "amount": 10000,
+        "billing_type": "L"
+      },
+      {
+        "code": "MTG",
+        "name": "Coordination Meetings",
+        "amount": 1000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA",
+        "name": "Code Landscape and Irrigation Design",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA1",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 8000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-09",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Engineering Plan Preparation",
+        "amount": 66000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 8000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Permitting",
+        "amount": 15000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "JEA Electric, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 15000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 6000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-10",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Planning",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Agency Due Diligence",
+        "amount": 1500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Engineering Plan Preparation",
+        "amount": 85000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 7000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A6",
+        "name": "Permitting",
+        "amount": 14000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A7",
+        "name": "JEA Electric, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 12000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 8000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-11",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Engineering Plan Preparation",
+        "amount": 56000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 7000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Offsite Utility Design",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Main Street North Turn Lanes",
+        "amount": 12000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A6",
+        "name": "Permitting",
+        "amount": 14000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A7",
+        "name": "JEA Electric, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 12000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 8000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-12",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Engineering Plan Preparation",
+        "amount": 35000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Permitting",
+        "amount": 18000,
+        "billing_type": "L"
+      },
+      {
+        "code": "LA",
+        "name": "Code Landscape and Irrigation Design",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 8000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-13",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "ICPR Analysis",
+        "amount": 2500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Offsite Drainage Analysis",
+        "amount": 2500,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-14",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Planning & Analysis",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Concept Plan Review",
+        "amount": 1500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Engineering Plan Preparation",
+        "amount": 65000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 8000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Turn Lane Design",
+        "amount": 12000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A6",
+        "name": "Permitting",
+        "amount": 12000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A7",
+        "name": "Secondary Utility Support",
+        "amount": 6000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA",
+        "name": "Code Landscape and Irrigation Design",
+        "amount": 9000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 15000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-15",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Value Engineering Review",
+        "amount": 3500,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-16",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Preliminary Site Planning",
+        "amount": 10000,
+        "billing_type": "H"
+      },
+      {
+        "code": "C2",
+        "name": "Agency Due Diligence",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C3",
+        "name": "Engineering Plan Preparation",
+        "amount": 125000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C4",
+        "name": "SR 121 Turn Lanes",
+        "amount": 24000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C5",
+        "name": "Street Lighting",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C6",
+        "name": "Permitting",
+        "amount": 14000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C7",
+        "name": "FPL Electric, AT&T, and Comcast Support",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 20000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA1",
+        "name": "Code Landscape Design",
+        "amount": 25000,
+        "billing_type": "L"
+      },
+      {
+        "code": "MTG",
+        "name": "Coordination Meetings",
+        "amount": 5000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-17",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Planning",
+        "amount": 4000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-18",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Plan",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Agency Due Diligence",
+        "amount": 2500,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-19",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Preliminary Site Planning",
+        "amount": 2500,
+        "billing_type": "H"
+      },
+      {
+        "code": "C2",
+        "name": "Agency Due Diligence",
+        "amount": 2500,
+        "billing_type": "L"
+      },
+      {
+        "code": "C3",
+        "name": "Engineering Plan Preparation",
+        "amount": 24000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C4",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 8000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C5",
+        "name": "Offsite Utility Design",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C6",
+        "name": "Street Lighting",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C7",
+        "name": "Permitting",
+        "amount": 14000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C8",
+        "name": "FPL Electric, AT&T, and Comcast Support",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 12000,
+        "billing_type": "H"
+      },
+      {
+        "code": "MTG",
+        "name": "Coordination Meetings",
+        "amount": 3000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-20",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Plat",
+        "amount": 1200,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-21",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Project Analysis & Data Collection",
+        "amount": 4000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C2",
+        "name": "Tree Mitigation Construction Documents",
+        "amount": 6000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-22",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Preliminary Site Plan",
+        "amount": 3500,
+        "billing_type": "L"
+      },
+      {
+        "code": "C2",
+        "name": "Agency Due Diligence",
+        "amount": 1500,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-23",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "PUD Support",
+        "amount": 4000,
+        "billing_type": "H"
+      },
+      {
+        "code": "C2",
+        "name": "Engineering Plan Preparation",
+        "amount": 100000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C3",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 7000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C4",
+        "name": "Permitting",
+        "amount": 15000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C5",
+        "name": "FPL, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C6",
+        "name": "St Johns Avenue Turn Lane (Optional)",
+        "amount": 12000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 15000,
+        "billing_type": "H"
+      },
+      {
+        "code": "LA",
+        "name": "Code Landscape and Irrigation Design",
+        "amount": 19000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-24",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Preliminary Site Planning",
+        "amount": 3000,
+        "billing_type": "H"
+      },
+      {
+        "code": "C2",
+        "name": "Agency Due Diligence",
+        "amount": 2000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C3",
+        "name": "Engineering Plan Preparation",
+        "amount": 35000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C4",
+        "name": "Lift Station and Onsite Force Main (Optional)",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C5",
+        "name": "Permitting",
+        "amount": 10000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C6",
+        "name": "FPL, AT&T, and Comcast Support",
+        "amount": 4000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 10000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-25",
+    "phases": [
+      {
+        "code": "L1",
+        "name": "Entry Landscape Design",
+        "amount": 2000,
+        "billing_type": "L"
+      },
+      {
+        "code": "L2",
+        "name": "Conceptual Entry Sign Design",
+        "amount": 2000,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-26",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Preliminary Site Planning",
+        "amount": 3000,
+        "billing_type": "H"
+      },
+      {
+        "code": "C2",
+        "name": "Agency Due Diligence (Optional)",
+        "amount": 2000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C3",
+        "name": "Engineering Plan Preparation",
+        "amount": 35000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C4",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C5",
+        "name": "Permitting",
+        "amount": 13000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C6",
+        "name": "JEA, AT&T, and Comcast Support",
+        "amount": 4000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 10000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-27",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Plan",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Agency Due Diligence",
+        "amount": 1500,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-28",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Preliminary Site Plan",
+        "amount": 3000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "Agency Due Diligence",
+        "amount": 1500,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-29",
+    "phases": [
+      {
+        "code": "A1",
+        "name": "Agency Due Diligence",
+        "amount": 3500,
+        "billing_type": "L"
+      },
+      {
+        "code": "A2",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A3",
+        "name": "Engineering Plan Preparation",
+        "amount": 30000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A4",
+        "name": "Lift Station and Onsite Force Main",
+        "amount": 7000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A5",
+        "name": "Offsite Utility Design",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A6",
+        "name": "Permitting",
+        "amount": 10000,
+        "billing_type": "L"
+      },
+      {
+        "code": "A7",
+        "name": "JEA Electric, AT&T, and Comcast Support",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certs. & Construction Obser.",
+        "amount": 12000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-30",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "PUD Verification",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C2",
+        "name": "Engineering Plan Preparation",
+        "amount": 35000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C3",
+        "name": "Private Lift Station Design",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C4",
+        "name": "Permitting",
+        "amount": 12000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C5",
+        "name": "JEA Electric, Telephone, and Cable Design Support",
+        "amount": 4000,
+        "billing_type": "L"
+      },
+      {
+        "code": "Hourly",
+        "name": "Phase LA Code Landscape Design",
+        "amount": 10400,
+        "billing_type": "L"
+      },
+      {
+        "code": "GEO",
+        "name": "Geotechnical Exploration",
+        "amount": 9100,
+        "billing_type": "L"
+      },
+      {
+        "code": "ENV",
+        "name": "Environmental Services",
+        "amount": 20700,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-31",
+    "phases": [
+      {
+        "code": "STR",
+        "name": "Structural Engineering Design",
+        "amount": 7500,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-32",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Mass Clearing & Grading Plans",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C2",
+        "name": "Permitting",
+        "amount": 5000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certifications & Construction Observation",
+        "amount": 5000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-33",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Lot Site Plans (Phase 1)",
+        "amount": 3250,
+        "billing_type": "L"
+      },
+      {
+        "code": "C2",
+        "name": "Lot Site Plans (Phase 2)",
+        "amount": 6075,
+        "billing_type": "L"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-34",
+    "phases": [
+      {
+        "code": "C1",
+        "name": "Mass Clearing & Grading Plans",
+        "amount": 12000,
+        "billing_type": "L"
+      },
+      {
+        "code": "C2",
+        "name": "Permitting",
+        "amount": 6000,
+        "billing_type": "L"
+      },
+      {
+        "code": "CA",
+        "name": "Final Certifications & Construction Observation",
+        "amount": 5000,
+        "billing_type": "H"
+      }
+    ]
+  },
+  {
+    "proposal_number": "24-35",
+    "phases": [
+      {
+        "code": "INS1",
+        "name": "Private Inspection (Phase 1)",
+        "amount": 16000,
+        "billing_type": "L"
+      },
+      {
+        "code": "INS2",
+        "name": "Private Inspection (Phase 2)",
+        "amount": 32000,
+        "billing_type": "L"
+      }
+    ]
+  }
+]

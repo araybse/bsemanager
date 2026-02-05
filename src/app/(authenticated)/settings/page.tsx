@@ -56,6 +56,8 @@ function SettingsContent() {
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
   const [isSyncing, setIsSyncing] = useState(false)
+  const [syncType, setSyncType] = useState<'all' | 'customers' | 'projects' | 'invoices' | 'time'>('all')
+  const [lastSyncResults, setLastSyncResults] = useState<Record<string, unknown> | null>(null)
 
   // Show toast messages based on URL params
   useEffect(() => {
@@ -124,23 +126,31 @@ function SettingsContent() {
     }
   }
 
-  const handleSync = async () => {
+  const handleSync = async (type: 'all' | 'customers' | 'projects' | 'invoices' | 'time' = 'all') => {
     setIsSyncing(true)
+    setSyncType(type)
+    setLastSyncResults(null)
     try {
       const response = await fetch('/api/qb-time/sync', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type }),
       })
       
       const data = await response.json()
       
       if (response.ok) {
         toast.success(data.message)
+        setLastSyncResults(data.results)
         queryClient.invalidateQueries({ queryKey: ['time-entries'] })
+        queryClient.invalidateQueries({ queryKey: ['invoices'] })
+        queryClient.invalidateQueries({ queryKey: ['clients'] })
+        queryClient.invalidateQueries({ queryKey: ['projects'] })
       } else {
         toast.error(data.error || 'Sync failed')
       }
     } catch (error) {
-      toast.error('Failed to sync time entries')
+      toast.error('Failed to sync')
     } finally {
       setIsSyncing(false)
     }
@@ -224,10 +234,10 @@ function SettingsContent() {
         <CardHeader>
           <div className="flex items-center gap-2">
             <RefreshCw className="h-5 w-5" />
-            <CardTitle>QuickBooks Time Integration</CardTitle>
+            <CardTitle>QuickBooks Online Integration</CardTitle>
           </div>
           <CardDescription>
-            Sync time entries from QuickBooks Time
+            Sync customers, projects, invoices, and time entries from QuickBooks Online
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -242,7 +252,7 @@ function SettingsContent() {
                   <XCircle className="h-5 w-5 text-muted-foreground" />
                 )}
                 <div>
-                  <div className="font-medium">QuickBooks Time</div>
+                  <div className="font-medium">QuickBooks Online</div>
                   <div className="text-sm text-muted-foreground">
                     {isConnected 
                       ? `Connected on ${connectionDate}`
@@ -252,28 +262,9 @@ function SettingsContent() {
               </div>
               <div className="flex gap-2">
                 {isConnected ? (
-                  <>
-                    <Button 
-                      variant="outline" 
-                      onClick={handleSync}
-                      disabled={isSyncing}
-                    >
-                      {isSyncing ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Syncing...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Sync Now
-                        </>
-                      )}
-                    </Button>
-                    <Button variant="ghost" onClick={handleDisconnect}>
-                      Disconnect
-                    </Button>
-                  </>
+                  <Button variant="ghost" onClick={handleDisconnect}>
+                    Disconnect
+                  </Button>
                 ) : (
                   <Button onClick={handleConnect}>
                     Connect QuickBooks
@@ -283,15 +274,147 @@ function SettingsContent() {
             </div>
           )}
           
+          {isConnected && (
+            <div className="space-y-4">
+              <div className="text-sm font-medium">Sync Options</div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleSync('all')}
+                  disabled={isSyncing}
+                  className="h-auto py-3"
+                >
+                  {isSyncing && syncType === 'all' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-2 h-4 w-4" />
+                  )}
+                  <div className="text-left">
+                    <div className="font-medium">Sync All</div>
+                    <div className="text-xs text-muted-foreground">Everything</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleSync('customers')}
+                  disabled={isSyncing}
+                  className="h-auto py-3"
+                >
+                  {isSyncing && syncType === 'customers' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Users className="mr-2 h-4 w-4" />
+                  )}
+                  <div className="text-left">
+                    <div className="font-medium">Customers</div>
+                    <div className="text-xs text-muted-foreground">Clients</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleSync('projects')}
+                  disabled={isSyncing}
+                  className="h-auto py-3"
+                >
+                  {isSyncing && syncType === 'projects' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                  )}
+                  <div className="text-left">
+                    <div className="font-medium">Projects</div>
+                    <div className="text-xs text-muted-foreground">Jobs</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleSync('invoices')}
+                  disabled={isSyncing}
+                  className="h-auto py-3"
+                >
+                  {isSyncing && syncType === 'invoices' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                  <div className="text-left">
+                    <div className="font-medium">Invoices</div>
+                    <div className="text-xs text-muted-foreground">Bills sent</div>
+                  </div>
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleSync('time')}
+                  disabled={isSyncing}
+                  className="h-auto py-3"
+                >
+                  {isSyncing && syncType === 'time' ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  )}
+                  <div className="text-left">
+                    <div className="font-medium">Time</div>
+                    <div className="text-xs text-muted-foreground">Time entries</div>
+                  </div>
+                </Button>
+              </div>
+              
+              {lastSyncResults && (
+                <div className="p-4 rounded-lg border bg-muted/50 space-y-2">
+                  <div className="text-sm font-medium">Last Sync Results</div>
+                  {lastSyncResults.customers && (
+                    <div className="text-sm">
+                      <span className="font-medium">Customers:</span>{' '}
+                      {(lastSyncResults.customers as { imported: number; updated: number; total: number }).imported} imported,{' '}
+                      {(lastSyncResults.customers as { imported: number; updated: number; total: number }).updated} updated{' '}
+                      (of {(lastSyncResults.customers as { imported: number; updated: number; total: number }).total} total)
+                    </div>
+                  )}
+                  {lastSyncResults.projects && (
+                    <div className="text-sm">
+                      <span className="font-medium">Projects:</span>{' '}
+                      {(lastSyncResults.projects as { imported: number; updated: number; total: number }).imported} imported,{' '}
+                      {(lastSyncResults.projects as { imported: number; updated: number; total: number }).updated} updated{' '}
+                      (of {(lastSyncResults.projects as { imported: number; updated: number; total: number }).total} total)
+                    </div>
+                  )}
+                  {lastSyncResults.invoices && (
+                    <div className="text-sm">
+                      <span className="font-medium">Invoices:</span>{' '}
+                      {(lastSyncResults.invoices as { imported: number; updated: number; total: number }).imported} imported,{' '}
+                      {(lastSyncResults.invoices as { imported: number; updated: number; total: number }).updated} updated{' '}
+                      (of {(lastSyncResults.invoices as { imported: number; updated: number; total: number }).total} total)
+                    </div>
+                  )}
+                  {lastSyncResults.timeEntries && (
+                    <div className="text-sm">
+                      <span className="font-medium">Time Entries:</span>{' '}
+                      {(lastSyncResults.timeEntries as { imported: number; skipped: number; total: number }).imported} imported,{' '}
+                      {(lastSyncResults.timeEntries as { imported: number; skipped: number; total: number }).skipped} skipped{' '}
+                      (of {(lastSyncResults.timeEntries as { imported: number; skipped: number; total: number }).total} total)
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
           <div className="text-sm text-muted-foreground">
             {isConnected ? (
               <p>
-                Click "Sync Now" to import the latest time entries from QuickBooks Time.
-                Entries will be matched to projects based on job codes.
+                Select a sync option above to import data from QuickBooks Online.
+                Projects are synced from QBO sub-customers (jobs). Data will be matched to existing records by ID or name.
               </p>
             ) : (
               <p>
-                Connect your QuickBooks Time account to import time entries automatically.
+                Connect your QuickBooks Online account to sync customers, projects, invoices, and time entries.
                 You'll be redirected to Intuit to authorize the connection.
               </p>
             )}
