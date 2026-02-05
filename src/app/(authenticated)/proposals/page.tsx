@@ -36,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { toast } from 'sonner'
-import type { Tables } from '@/lib/types/database'
+import type { Tables, InsertTables } from '@/lib/types/database'
 import {
   BarChart,
   Bar,
@@ -161,7 +161,7 @@ export default function ProposalsPage() {
           date_submitted: formData.submittedDate,
           total_amount: totalAmount,
           bse_amount: totalAmount,
-        } as any)
+        } as InsertTables<'proposals'>)
         .select('id')
         .single()
 
