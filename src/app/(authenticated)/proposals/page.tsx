@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -37,7 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { toast } from 'sonner'
-import type { Database, Tables, InsertTables } from '@/lib/types/database'
+import type { Tables } from '@/lib/types/database'
 import {
   BarChart,
   Bar,
@@ -54,7 +53,7 @@ type ProposalWithPhases = Tables<'proposals'> & {
 }
 
 export default function ProposalsPage() {
-  const supabase = createClient() as SupabaseClient<Database>
+  const supabase = createClient()
   const queryClient = useQueryClient()
   
   const [searchQuery, setSearchQuery] = useState('')
@@ -154,7 +153,7 @@ export default function ProposalsPage() {
 
       const totalAmount = parsedPhases.reduce((sum, phase) => sum + phase.amount, 0)
 
-      const { data: proposal, error } = await supabase
+      const { data: proposal, error } = await (supabase as any)
         .from('proposals')
         .insert({
           proposal_number: trimmedNumber,
@@ -162,7 +161,7 @@ export default function ProposalsPage() {
           date_submitted: formData.submittedDate,
           total_amount: totalAmount,
           bse_amount: totalAmount,
-        } as InsertTables<'proposals'>)
+        })
         .select('id')
         .single()
 
