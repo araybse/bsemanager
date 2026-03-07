@@ -30,12 +30,18 @@ export async function updateSession(request: NextRequest) {
   // Do not run code between createServerClient and
   // supabase.auth.getUser(). A simple mistake could make it very hard to debug
   // issues with users being randomly logged out.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const timeoutResult = {
+    data: { user: null },
+    error: new Error('Supabase auth timeout'),
+  }
+
+  const { data: { user } } = (await Promise.race([
+    supabase.auth.getUser(),
+    new Promise(resolve => setTimeout(() => resolve(timeoutResult), 3000)),
+  ])) as { data: { user: { id: string } | null }, error: Error | null }
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/income', '/contract-labor', '/memberships', '/settings']
+  const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/income', '/contract-labor', '/settings']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   if (!user && isProtectedPath) {

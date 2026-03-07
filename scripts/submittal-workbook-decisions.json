@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "version": 1,
+    "description": "Decision map for flagged workbook rows. action: required_item | note | ignore | pending_review"
+  },
+  "default_actions": {
+    "special_marker:OPEN": "ignore",
+    "special_marker:ITEM": "ignore",
+    "special_marker:REQUIRED UPLOADS": "note",
+    "special_marker:TOTAL DOCUMENTS": "ignore",
+    "special_marker:IF APPLICABLE": "note",
+    "special_marker:PHASE": "note",
+    "repeated_header": "ignore"
+  },
+  "agency_overrides": {
+    "FDOT": {},
+    "COJ": {},
+    "JEA": {},
+    "SJC": {},
+    "CCUA": {},
+    "CLAY": {},
+    "FDEP": {},
+    "FPL": {},
+    "Putnam": {},
+    "SJRWMD": {}
+  }
+}

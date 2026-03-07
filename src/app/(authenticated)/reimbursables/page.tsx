@@ -1,11 +1,12 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
 import { formatCurrency } from '@/lib/utils/format'
 import { formatDate } from '@/lib/utils/dates'
 import { Plus } from 'lucide-react'
@@ -17,20 +18,55 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import type { Tables } from '@/lib/types/database'
+import { toast } from 'sonner'
+
+type ProjectExpenseRow = {
+  id: number
+  project_number: string | null
+  expense_date: string
+  description: string | null
+  fee_amount: number | null
+  amount_to_charge: number | null
+  is_reimbursable: boolean
+  status: string
+  invoice_number: string | null
+}
 
 export default function ReimbursablesPage() {
   const supabase = createClient()
+  const queryClient = useQueryClient()
 
   const { data: reimbursables, isLoading } = useQuery({
     queryKey: ['reimbursables'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('reimbursables')
-        .select('*')
-        .order('date_charged', { ascending: false })
+        .from('project_expenses')
+        .select(
+          'id, project_number, expense_date, description, fee_amount, amount_to_charge, is_reimbursable, status, invoice_number'
+        )
+        .in('status' as never, ['pending', 'invoiced'] as never)
+        .order('expense_date', { ascending: false })
       if (error) throw error
-      return data as Tables<'reimbursables'>[]
+      return (data || []) as ProjectExpenseRow[]
+    },
+  })
+
+  const updateExpense = useMutation({
+    mutationFn: async (payload: {
+      id: number
+      patch: { is_reimbursable?: boolean; status?: string }
+    }) => {
+      const { error } = await supabase
+        .from('project_expenses')
+        .update(payload.patch as never)
+        .eq('id' as never, payload.id as never)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reimbursables'] })
+    },
+    onError: (error) => {
+      toast.error(error.message || 'Failed to update expense')
     },
   })
 
@@ -43,9 +79,9 @@ export default function ReimbursablesPage() {
             Third-party costs to be billed (15% markup)
           </p>
         </div>
-        <Button>
+        <Button variant="outline" disabled>
           <Plus className="mr-2 h-4 w-4" />
-          Add Reimbursable
+          Add Reimbursable (Coming Soon)
         </Button>
       </div>
 
@@ -66,6 +102,7 @@ export default function ReimbursablesPage() {
                   <TableHead>Description</TableHead>
                   <TableHead className="text-right">Fee Amount</TableHead>
                   <TableHead className="text-right">Amount to Charge</TableHead>
+                  <TableHead>Reimbursable</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Invoice #</TableHead>
                 </TableRow>
@@ -75,12 +112,9 @@ export default function ReimbursablesPage() {
                   <TableRow key={reimb.id}>
                     <TableCell>
                       <div className="font-mono">{reimb.project_number}</div>
-                      {reimb.project_name && (
-                        <div className="text-xs text-muted-foreground">{reimb.project_name}</div>
-                      )}
                     </TableCell>
-                    <TableCell>{formatDate(reimb.date_charged)}</TableCell>
-                    <TableCell>{reimb.fee_description}</TableCell>
+                    <TableCell>{formatDate(reimb.expense_date)}</TableCell>
+                    <TableCell>{reimb.description || '—'}</TableCell>
                     <TableCell className="text-right font-mono">
                       {formatCurrency(reimb.fee_amount)}
                     </TableCell>
@@ -88,8 +122,28 @@ export default function ReimbursablesPage() {
                       {formatCurrency(reimb.amount_to_charge)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={reimb.invoice_id ? 'default' : 'secondary'}>
-                        {reimb.invoice_id ? 'Invoiced' : 'Pending'}
+                      <Checkbox
+                        checked={reimb.is_reimbursable}
+                        onCheckedChange={(checked) => {
+                          updateExpense.mutate({
+                            id: reimb.id,
+                            patch: { is_reimbursable: Boolean(checked) },
+                          })
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={reimb.status === 'invoiced' ? 'default' : 'secondary'}
+                        className="cursor-pointer"
+                        onClick={() =>
+                          updateExpense.mutate({
+                            id: reimb.id,
+                            patch: { status: reimb.status === 'invoiced' ? 'pending' : 'invoiced' },
+                          })
+                        }
+                      >
+                        {reimb.status === 'invoiced' ? 'Invoiced' : 'Pending'}
                       </Badge>
                     </TableCell>
                     <TableCell className="font-mono">
@@ -99,7 +153,7 @@ export default function ReimbursablesPage() {
                 ))}
                 {reimbursables?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No reimbursables found
                     </TableCell>
                   </TableRow>

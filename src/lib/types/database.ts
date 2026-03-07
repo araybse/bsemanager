@@ -20,6 +20,7 @@ export interface Database {
           email: string
           full_name: string
           title: string | null
+          rate_position_id: number | null
           role: UserRole
           is_active: boolean
           created_at: string
@@ -30,6 +31,7 @@ export interface Database {
           email: string
           full_name: string
           title?: string | null
+          rate_position_id?: number | null
           role?: UserRole
           is_active?: boolean
           created_at?: string
@@ -40,6 +42,7 @@ export interface Database {
           email?: string
           full_name?: string
           title?: string | null
+          rate_position_id?: number | null
           role?: UserRole
           is_active?: boolean
           created_at?: string
@@ -164,6 +167,8 @@ export interface Database {
           name: string
           client_id: number | null
           pm_id: string | null
+          municipality: string | null
+          permit_reference: string | null
           proposal_id: number | null
           status: ProjectStatus
           created_at: string
@@ -175,6 +180,8 @@ export interface Database {
           name: string
           client_id?: number | null
           pm_id?: string | null
+          municipality?: string | null
+          permit_reference?: string | null
           proposal_id?: number | null
           status?: ProjectStatus
           created_at?: string
@@ -186,6 +193,8 @@ export interface Database {
           name?: string
           client_id?: number | null
           pm_id?: string | null
+          municipality?: string | null
+          permit_reference?: string | null
           proposal_id?: number | null
           status?: ProjectStatus
           created_at?: string
@@ -232,6 +241,35 @@ export interface Database {
           source_url?: string | null
           pdf_url?: string | null
           external_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_permits: {
+        Row: {
+          id: number
+          project_id: number
+          agency: string
+          permit_type: string
+          permit_identifier: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: number
+          agency: string
+          permit_type: string
+          permit_identifier: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: number
+          agency?: string
+          permit_type?: string
+          permit_identifier?: string
           created_at?: string
           updated_at?: string
         }
@@ -301,6 +339,160 @@ export interface Database {
           employee_name?: string
           hourly_rate?: number
           effective_from?: string
+        }
+      }
+      rate_positions: {
+        Row: {
+          id: number
+          code: string
+          name: string
+          sort_order: number
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          code: string
+          name: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          code?: string
+          name?: string
+          sort_order?: number
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rate_schedules: {
+        Row: {
+          id: number
+          year_label: number
+          name: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          year_label: number
+          name: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          year_label?: number
+          name?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      rate_schedule_items: {
+        Row: {
+          id: number
+          schedule_id: number
+          position_id: number
+          hourly_rate: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          schedule_id: number
+          position_id: number
+          hourly_rate: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          schedule_id?: number
+          position_id?: number
+          hourly_rate?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_rate_schedule_assignments: {
+        Row: {
+          id: number
+          project_id: number
+          schedule_id: number
+          source: 'proposal_default' | 'manual_override'
+          set_by: string | null
+          set_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: number
+          schedule_id: number
+          source?: 'proposal_default' | 'manual_override'
+          set_by?: string | null
+          set_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: number
+          schedule_id?: number
+          source?: 'proposal_default' | 'manual_override'
+          set_by?: string | null
+          set_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      project_rate_position_overrides: {
+        Row: {
+          id: number
+          project_id: number
+          position_id: number
+          hourly_rate: number
+          effective_from: string | null
+          effective_to: string | null
+          reason: string | null
+          set_by: string | null
+          set_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: number
+          project_id: number
+          position_id: number
+          hourly_rate: number
+          effective_from?: string | null
+          effective_to?: string | null
+          reason?: string | null
+          set_by?: string | null
+          set_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: number
+          project_id?: number
+          position_id?: number
+          hourly_rate?: number
+          effective_from?: string | null
+          effective_to?: string | null
+          reason?: string | null
+          set_by?: string | null
+          set_at?: string
+          created_at?: string
+          updated_at?: string
         }
       }
       time_entries: {
@@ -573,39 +765,51 @@ export interface Database {
       contract_labor: {
         Row: {
           id: number
-          project_id: number
-          project_number: string
+          project_id: number | null
+          project_number: string | null
           project_name: string | null
           vendor_name: string
+          payment_date: string | null
           description: string | null
           year: number
           month: number
           amount: number
+          qb_expense_id: string | null
+          last_synced_at: string | null
           created_at: string
+          updated_at: string | null
         }
         Insert: {
           id?: number
-          project_id: number
-          project_number: string
+          project_id?: number | null
+          project_number?: string | null
           project_name?: string | null
           vendor_name: string
+          payment_date?: string | null
           description?: string | null
           year: number
           month: number
           amount: number
+          qb_expense_id?: string | null
+          last_synced_at?: string | null
           created_at?: string
+          updated_at?: string | null
         }
         Update: {
           id?: number
-          project_id?: number
-          project_number?: string
+          project_id?: number | null
+          project_number?: string | null
           project_name?: string | null
           vendor_name?: string
+          payment_date?: string | null
           description?: string | null
           year?: number
           month?: number
           amount?: number
+          qb_expense_id?: string | null
+          last_synced_at?: string | null
           created_at?: string
+          updated_at?: string | null
         }
       }
       qbo_income: {

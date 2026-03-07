@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, Fragment } from 'react'
+import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,11 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
 import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import {
   Table,
@@ -26,6 +22,12 @@ import { Search, ChevronDown, ChevronRight } from 'lucide-react'
 import type { Views } from '@/lib/types/database'
 
 export default function ContractsPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    router.replace('/dashboard')
+  }, [router])
+
   const supabase = createClient()
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set())
@@ -109,31 +111,27 @@ export default function ContractsPage() {
       </div>
 
       {/* Search Bar */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex-1 min-w-[200px] max-w-[400px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search by project or phase..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={expandAll}>
-                Expand All
-              </Button>
-              <Button variant="outline" size="sm" onClick={collapseAll}>
-                Collapse All
-              </Button>
-            </div>
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex-1 min-w-[200px] max-w-[400px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by project or phase..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
           </div>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={expandAll}>
+            Expand All
+          </Button>
+          <Button variant="outline" size="sm" onClick={collapseAll}>
+            Collapse All
+          </Button>
+        </div>
+      </div>
 
       {/* Results count */}
       <div className="text-sm text-muted-foreground">
@@ -144,87 +142,104 @@ export default function ContractsPage() {
       {isLoading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-64 w-full" />
+            <Skeleton key={i} className="h-20 w-full" />
           ))}
         </div>
       ) : (
-        filteredProjects.map((project) => {
-          const isExpanded = expandedProjects.has(project.project_number)
-          
-          return (
-            <Collapsible
-              key={project.project_number}
-              open={isExpanded}
-              onOpenChange={() => toggleProject(project.project_number)}
-            >
-              <Card>
-                <CollapsibleTrigger asChild>
-                  <CardHeader className="pb-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        {project.project_number} {project.project_name}
-                      </CardTitle>
-                      <Badge variant="secondary">
-                        {project.phases.length} phase{project.phases.length !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[100px]">Phase</TableHead>
-                          <TableHead>Phase Name</TableHead>
-                          <TableHead className="w-[60px]">Type</TableHead>
-                          <TableHead className="text-right">Total Fee</TableHead>
-                          <TableHead className="text-right">%</TableHead>
-                          <TableHead className="text-right">Billed</TableHead>
-                          <TableHead className="text-right">Remaining</TableHead>
-                          <TableHead className="text-right">This Month</TableHead>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Project</TableHead>
+                  <TableHead className="text-right w-[140px]">Phases</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredProjects.map((project) => {
+                  const isExpanded = expandedProjects.has(project.project_number)
+
+                  return (
+                    <Fragment key={project.project_number}>
+                      <TableRow
+                        key={project.project_number}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggleProject(project.project_number)}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            <span className="font-mono text-sm">{project.project_number}</span>
+                            <span>{project.project_name}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Badge variant="secondary">
+                            {project.phases.length} phase{project.phases.length !== 1 ? 's' : ''}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && (
+                        <TableRow key={`${project.project_number}-details`}>
+                          <TableCell colSpan={2} className="p-0">
+                            <div className="bg-muted/20 p-4">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead className="w-[100px]">Phase</TableHead>
+                                    <TableHead>Phase Name</TableHead>
+                                    <TableHead className="w-[60px]">Type</TableHead>
+                                    <TableHead className="text-right">Total Fee</TableHead>
+                                    <TableHead className="text-right">%</TableHead>
+                                    <TableHead className="text-right">Billed</TableHead>
+                                    <TableHead className="text-right">Remaining</TableHead>
+                                    <TableHead className="text-right">This Month</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {project.phases.map((phase) => (
+                                    <TableRow key={phase.id}>
+                                      <TableCell className="font-mono">{phase.phase_code}</TableCell>
+                                      <TableCell>{phase.phase_name}</TableCell>
+                                      <TableCell>
+                                        <Badge variant={phase.billing_type === 'H' ? 'outline' : 'secondary'}>
+                                          {phase.billing_type === 'H' ? 'Hourly' : 'Lump Sum'}
+                                        </Badge>
+                                      </TableCell>
+                                      <TableCell className="text-right font-mono">
+                                        {formatCurrency(phase.total_fee)}
+                                      </TableCell>
+                                      <TableCell className="text-right">
+                                        {formatPercent(phase.pct_complete)}
+                                      </TableCell>
+                                      <TableCell className="text-right font-mono">
+                                        {formatCurrency(phase.billed_to_date)}
+                                      </TableCell>
+                                      <TableCell className="text-right font-mono">
+                                        {formatCurrency(phase.remaining)}
+                                      </TableCell>
+                                      <TableCell className="text-right font-mono">
+                                        {phase.bill_this_month > 0 ? formatCurrency(phase.bill_this_month) : '—'}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {project.phases.map((phase) => (
-                          <TableRow key={phase.id}>
-                            <TableCell className="font-mono">{phase.phase_code}</TableCell>
-                            <TableCell>{phase.phase_name}</TableCell>
-                            <TableCell>
-                              <Badge variant={phase.billing_type === 'H' ? 'outline' : 'secondary'}>
-                                {phase.billing_type === 'H' ? 'Hourly' : 'Lump Sum'}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(phase.total_fee)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatPercent(phase.pct_complete)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(phase.billed_to_date)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {formatCurrency(phase.remaining)}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {phase.bill_this_month > 0 ? formatCurrency(phase.bill_this_month) : '—'}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </CollapsibleContent>
-              </Card>
-            </Collapsible>
-          )
-        })
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {!isLoading && filteredProjects.length === 0 && (

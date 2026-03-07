@@ -25,22 +25,35 @@ export async function GET() {
     }
   )
 
-  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  try {
+    const timeoutResult = {
+      data: { user: null },
+      error: new Error('Supabase auth timeout'),
+    }
 
-  console.log('[/api/auth/me] User result:', user ? user.email : 'null', 'Error:', userError?.message || 'none')
+    const { data: { user }, error: userError } = (await Promise.race([
+      supabase.auth.getUser(),
+      new Promise(resolve => setTimeout(() => resolve(timeoutResult), 3000)),
+    ])) as { data: { user: { id: string; email?: string } | null }, error: Error | null }
 
-  if (userError || !user) {
-    console.log('[/api/auth/me] Returning 401 - no user')
+    console.log('[/api/auth/me] User result:', user ? user.email : 'null', 'Error:', userError?.message || 'none')
+
+    if (userError || !user) {
+      console.log('[/api/auth/me] Returning 401 - no user')
+      return NextResponse.json({ user: null, profile: null }, { status: 401 })
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    console.log('[/api/auth/me] Profile result:', profile?.full_name || 'null', 'Error:', profileError?.message || 'none')
+
+    return NextResponse.json({ user, profile })
+  } catch (error) {
+    console.log('[/api/auth/me] Error during auth check:', error)
     return NextResponse.json({ user: null, profile: null }, { status: 401 })
   }
-
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single()
-
-  console.log('[/api/auth/me] Profile result:', profile?.full_name || 'null', 'Error:', profileError?.message || 'none')
-
-  return NextResponse.json({ user, profile })
 }

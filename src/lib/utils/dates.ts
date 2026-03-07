@@ -1,5 +1,19 @@
 import { format, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns'
 
+const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+function parseDateInput(date: Date | string): Date {
+  if (typeof date !== 'string') return date
+
+  // Parse YYYY-MM-DD as a local calendar date to avoid timezone day-shift.
+  if (DATE_ONLY_PATTERN.test(date)) {
+    const [year, month, day] = date.split('-').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  return new Date(date)
+}
+
 /**
  * Get the first day of last month
  */
@@ -35,15 +49,23 @@ export function getBudgetDate(invoiceDate: Date): Date {
  * Format date for display
  */
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = parseDateInput(date)
   return format(d, 'M/d/yyyy')
+}
+
+/**
+ * Format date/time for display
+ */
+export function formatDateTime(date: Date | string): string {
+  const d = parseDateInput(date)
+  return format(d, 'M/d/yyyy h:mm a')
 }
 
 /**
  * Format date for invoice display (e.g., "January 15, 2026")
  */
 export function formatInvoiceDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = parseDateInput(date)
   return format(d, 'MMMM d, yyyy')
 }
 

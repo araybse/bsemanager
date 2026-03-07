@@ -1,0 +1,106 @@
+[
+  {
+    "agency_code": "JEA",
+    "permit_name": "AVAILABILITY REQUEST",
+    "row_number": 2,
+    "item_name": "Phase 1",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "JEA",
+    "permit_name": "FLOW TEST REQUEST",
+    "row_number": 2,
+    "item_name": "Phase 1",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "JEA",
+    "permit_name": "PLAN SUBMITTAL",
+    "row_number": 2,
+    "item_name": "Phase 2",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "JEA",
+    "permit_name": "PLAN SUBMITTAL",
+    "row_number": 3,
+    "item_name": "PLAN SUBMITTAL",
+    "flag_type": "repeated_header",
+    "proposed_action": "ignore"
+  },
+  {
+    "agency_code": "JEA",
+    "permit_name": "PLAN SUBMITTAL",
+    "row_number": 15,
+    "item_name": "If Applicable:",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "JEA",
+    "permit_name": "FINAL ACCEPTANCE",
+    "row_number": 2,
+    "item_name": "Phase 5",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "JEA",
+    "permit_name": "CLEARANCE",
+    "row_number": 2,
+    "item_name": "Phase 4",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "FDOT",
+    "permit_name": "DRAINAGE PERMIT",
+    "row_number": 3,
+    "item_name": "Item",
+    "flag_type": "special_marker",
+    "proposed_action": "ignore"
+  },
+  {
+    "agency_code": "FDOT",
+    "permit_name": "DRAINAGE PERMIT",
+    "row_number": 4,
+    "item_name": "Required Uploads:",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "FDOT",
+    "permit_name": "DRAINAGE PERMIT",
+    "row_number": 16,
+    "item_name": "Total Documents:",
+    "flag_type": "special_marker",
+    "proposed_action": "ignore"
+  },
+  {
+    "agency_code": "FDOT",
+    "permit_name": "ACCESS/DRIVEWAY PERMIT",
+    "row_number": 4,
+    "item_name": "Required Uploads:",
+    "flag_type": "special_marker",
+    "proposed_action": "note"
+  },
+  {
+    "agency_code": "FDOT",
+    "permit_name": "ACCESS/DRIVEWAY PERMIT",
+    "row_number": 12,
+    "item_name": "Total Documents:",
+    "flag_type": "special_marker",
+    "proposed_action": "ignore"
+  },
+  {
+    "agency_code": "FDOT",
+    "permit_name": "UTILITY PERMIT",
+    "row_number": 12,
+    "item_name": "Total Documents:",
+    "flag_type": "special_marker",
+    "proposed_action": "ignore"
+  }
+]

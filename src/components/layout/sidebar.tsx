@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Tables } from '@/lib/types/database'
@@ -9,18 +9,15 @@ import { useState } from 'react'
 import {
   LayoutDashboard,
   FolderKanban,
-  FileText,
   Receipt,
   Clock,
   DollarSign,
-  Building2,
   FileSpreadsheet,
   Settings,
   CreditCard,
   Briefcase,
   TrendingUp,
   Hammer,
-  CalendarDays,
   LogOut,
   Menu,
   X,
@@ -39,18 +36,14 @@ interface NavItem {
 const navItems: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Projects', href: '/projects', icon: FolderKanban },
-  { title: 'Contracts', href: '/contracts', icon: FileText },
   { title: 'Invoices', href: '/invoices', icon: Receipt },
-  { title: 'Unbilled Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
+  { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
   { title: 'Time Entries', href: '/time-entries', icon: Clock },
   { title: 'Reimbursables', href: '/reimbursables', icon: CreditCard, roles: ['admin', 'project_manager'] },
-  { title: 'Rates Matrix', href: '/rates', icon: DollarSign, roles: ['admin'] },
-  { title: 'Clients', href: '/clients', icon: Building2, roles: ['admin'] },
   { title: 'Proposals', href: '/proposals', icon: Briefcase },
   { title: 'Cash Flow', href: '/cash-flow', icon: TrendingUp, roles: ['admin'] },
   { title: 'Income', href: '/income', icon: DollarSign, roles: ['admin', 'project_manager'] },
   { title: 'Contract Labor', href: '/contract-labor', icon: Hammer, roles: ['admin'] },
-  { title: 'Memberships', href: '/memberships', icon: CalendarDays, roles: ['admin'] },
   { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ]
 
@@ -60,6 +53,7 @@ interface SidebarProps {
 
 export function Sidebar({ initialProfile }: SidebarProps) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
   const [isOpen, setIsOpen] = useState(true)
@@ -113,11 +107,20 @@ export function Sidebar({ initialProfile }: SidebarProps) {
 
       <ScrollArea className="flex-1 px-2 py-4">
         <nav className="flex flex-col gap-1">
-          {filteredNavItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+          {filteredNavItems.map((item, index) => {
+            let isActive = false
+            if (item.href.includes('?tab=')) {
+              const [itemPath, queryString] = item.href.split('?')
+              const tab = new URLSearchParams(queryString).get('tab')
+              isActive = pathname === itemPath && searchParams.get('tab') === tab
+            } else if (item.href === '/settings') {
+              isActive = pathname === '/settings' && !searchParams.get('tab')
+            } else {
+              isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+            }
             return (
               <Link
-                key={item.href}
+                key={`${item.href}-${item.title}-${index}`}
                 href={item.href}
                 title={!isOpen ? item.title : ''}
                 className={cn(
@@ -149,7 +152,9 @@ export function Sidebar({ initialProfile }: SidebarProps) {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm font-medium truncate">{initialProfile?.full_name || 'User'}</span>
-                <span className="text-xs text-muted-foreground capitalize truncate">{role || 'User'}</span>
+                <span className="text-xs text-muted-foreground truncate">
+                  {initialProfile?.title || role || 'User'}
+                </span>
               </div>
             </div>
             <Button

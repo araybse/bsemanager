@@ -48,13 +48,22 @@ export default function TimeEntriesPage() {
   const { data: timeEntries, isLoading } = useQuery({
     queryKey: ['time-entries'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('time_entries')
-        .select('*')
-        .order('entry_date', { ascending: false })
-        .limit(1000)
-      if (error) throw error
-      return data as Tables<'time_entries'>[]
+      const all: Tables<'time_entries'>[] = []
+      const pageSize = 1000
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
+          .from('time_entries')
+          .select('*')
+          .order('entry_date', { ascending: false })
+          .range(from, from + pageSize - 1)
+        if (error) throw error
+        const batch = (data as Tables<'time_entries'>[]) || []
+        all.push(...batch)
+        if (batch.length < pageSize) break
+        from += pageSize
+      }
+      return all
     },
   })
 
@@ -167,78 +176,74 @@ export default function TimeEntriesPage() {
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-wrap gap-4 items-end">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Date From</label>
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[150px]"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Date To</label>
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-[150px]"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Employee</label>
-              <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Employees" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Employees</SelectItem>
-                  {filterOptions.employees.map(emp => (
-                    <SelectItem key={emp} value={emp}>{emp}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Project</label>
-              <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="All Projects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  {filterOptions.projects.map(proj => (
-                    <SelectItem key={proj} value={proj}>{proj}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium">Phase</label>
-              <Select value={phaseFilter} onValueChange={setPhaseFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="All Phases" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Phases</SelectItem>
-                  {filterOptions.phases.map(phase => (
-                    <SelectItem key={phase} value={phase}>{phase}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <X className="mr-1 h-4 w-4" />
-                Clear
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-wrap gap-4 items-end">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Date From</label>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="w-[150px]"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Date To</label>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="w-[150px]"
+          />
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Employee</label>
+          <Select value={employeeFilter} onValueChange={setEmployeeFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Employees" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Employees</SelectItem>
+              {filterOptions.employees.map(emp => (
+                <SelectItem key={emp} value={emp}>{emp}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Project</label>
+          <Select value={projectFilter} onValueChange={setProjectFilter}>
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All Projects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {filterOptions.projects.map(proj => (
+                <SelectItem key={proj} value={proj}>{proj}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Phase</label>
+          <Select value={phaseFilter} onValueChange={setPhaseFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All Phases" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Phases</SelectItem>
+              {filterOptions.phases.map(phase => (
+                <SelectItem key={phase} value={phase}>{phase}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        {hasActiveFilters && (
+          <Button variant="ghost" size="sm" onClick={clearFilters}>
+            <X className="mr-1 h-4 w-4" />
+            Clear
+          </Button>
+        )}
+      </div>
 
       {/* Summary */}
       <div className="flex gap-4 text-sm text-muted-foreground">

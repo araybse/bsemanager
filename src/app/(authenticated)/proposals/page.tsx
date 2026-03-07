@@ -771,7 +771,24 @@ export default function ProposalsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0">
           <CardContent className="p-4">
-            <ResponsiveContainer width="100%" height={220}>
+            <div className="relative mb-2 flex min-h-8 items-center justify-end">
+              <div className="pointer-events-none absolute inset-x-0 text-center text-lg font-semibold">
+                Total Proposed
+              </div>
+              <div>
+                <Select value={proposedGranularity} onValueChange={(value) => setProposedGranularity(value as 'year' | 'quarter' | 'month')}>
+                  <SelectTrigger className="h-7 w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="year">Year</SelectItem>
+                    <SelectItem value="quarter">Quarter</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={330}>
               <BarChart
                 data={proposedSeries.length ? proposedSeries : [{ label: 'Q1', total: 0 }]}
                 margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
@@ -784,24 +801,28 @@ export default function ProposalsPage() {
                 <Line type="natural" dataKey="trend" stroke="#111111" strokeWidth={2} dot={false} strokeDasharray="6 4" />
               </BarChart>
             </ResponsiveContainer>
-            <div className="flex items-center justify-between mt-2">
-              <div className="text-sm font-medium">Total Proposed</div>
-              <Select value={proposedGranularity} onValueChange={(value) => setProposedGranularity(value as 'year' | 'quarter' | 'month')}>
-                <SelectTrigger className="h-7 w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="year">Year</SelectItem>
-                  <SelectItem value="quarter">Quarter</SelectItem>
-                  <SelectItem value="month">Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
         </Card>
         <Card className="min-w-0">
           <CardContent className="p-4">
-            <ResponsiveContainer width="100%" height={220}>
+            <div className="relative mb-2 flex min-h-8 items-center justify-end">
+              <div className="pointer-events-none absolute inset-x-0 text-center text-lg font-semibold">
+                Total Executed
+              </div>
+              <div>
+                <Select value={executedGranularity} onValueChange={(value) => setExecutedGranularity(value as 'year' | 'quarter' | 'month')}>
+                  <SelectTrigger className="h-7 w-[120px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="year">Year</SelectItem>
+                    <SelectItem value="quarter">Quarter</SelectItem>
+                    <SelectItem value="month">Month</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={330}>
               <BarChart
                 data={executedSeries.length ? executedSeries : [{ label: 'Q1', total: 0 }]}
                 margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
@@ -814,19 +835,6 @@ export default function ProposalsPage() {
                 <Line type="natural" dataKey="trend" stroke="#111111" strokeWidth={2} dot={false} strokeDasharray="6 4" />
               </BarChart>
             </ResponsiveContainer>
-            <div className="flex items-center justify-between mt-2">
-              <div className="text-sm font-medium">Total Executed</div>
-              <Select value={executedGranularity} onValueChange={(value) => setExecutedGranularity(value as 'year' | 'quarter' | 'month')}>
-                <SelectTrigger className="h-7 w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="year">Year</SelectItem>
-                  <SelectItem value="quarter">Quarter</SelectItem>
-                  <SelectItem value="month">Month</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
         </Card>
       </div>
