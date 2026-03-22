@@ -1,0 +1,65 @@
+BSE Manager: Big Picture and Vision
+===================================
+
+What we are building
+--------------------
+BSE Manager is becoming a single operating system for the business, not just a dashboard.
+The goal is simple but ambitious: one place where operations, accounting, forecasting, cash management,
+contracts, and invoicing all tie together with auditability and decision-ready visibility.
+
+Core outcome we are driving
+---------------------------
+We are replacing disconnected spreadsheets and ad hoc reconciliations with an integrated financial
+control tower that answers these questions in real time:
+
+1) What has happened? (actuals from QuickBooks and validated snapshots)
+2) What is happening now? (hybrid current-month model with known invoices + manual budget controls)
+3) What is likely to happen next? (project/phase revenue forecasts + contract/expense projections)
+4) What does that mean for bank cash? (starting/ending balance rollforwards and reconciliation visibility)
+
+The product direction in one sentence
+-------------------------------------
+From "recording transactions" to "running the business with confidence."
+
+How this changes decision-making
+--------------------------------
+- Monthly close becomes more reliable because data quality checks and reconciliation are built in.
+- Cash planning improves because bank rollforwards are explicit and linked to known drivers.
+- Revenue planning improves because services projections happen at project and phase level.
+- Expense control improves because contract labor and reimbursables are no longer mixed or opaque.
+- Team communication improves because every number can be traced back to a source of truth.
+
+What makes this system different
+--------------------------------
+- It uses QuickBooks as source data, but does not stop at bookkeeping views.
+- It layers planning models on top of accounting reality.
+- It separates historical truth from forward-looking assumptions cleanly.
+- It keeps user-entered forecasts persistent and structured.
+- It surfaces non-P&L cash movement so reconciliation is honest and explainable.
+
+Strategic operating model
+-------------------------
+Historical months:
+- Trust QBO snapshots and synced transactions.
+- No retroactive guesswork.
+
+Current month:
+- Income uses practical hybrid assumptions (including near-term collections behavior).
+- Expenses can be actively budgeted via manual line-item controls where needed.
+- Bank ending balance can project from starting balance plus net income logic.
+
+Future months:
+- Services forecast at project/phase granularity.
+- Contract labor projects from contract terms.
+- Other expense lines use explicit budget entries, not hidden averages.
+
+Why this matters now
+--------------------
+The company is at the stage where growth decisions need tighter control:
+- Project mix and timing affect cash.
+- Contract structures affect margin.
+- Reimbursable capture affects realized profitability.
+- Forecast quality directly impacts risk.
+
+BSE Manager is being built to make that complexity manageable, visible, and actionable.
+

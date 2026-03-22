@@ -13,8 +13,33 @@ function normalizeProjectNumber(customerName: string): string {
   return value.split(' ')[0] || value
 }
 
+const INTERNAL_NON_PROJECT_CODES = new Set([
+  'general',
+  'business',
+  'proposals',
+  'go',
+  'paid',
+  'sonoc',
+  'holiday',
+  'training',
+  'westland',
+  'evrdev',
+  'kcs',
+  'san',
+])
+
+function isInternalNonProjectCode(projectNumber: string | null | undefined): boolean {
+  return INTERNAL_NON_PROJECT_CODES.has(normalizeText(projectNumber))
+}
+
 function toDateString(value: Date): string {
   return value.toISOString().split('T')[0]
+}
+
+function monthStart(value: string | null | undefined): string | null {
+  const text = String(value || '').trim()
+  if (!text || text.length < 7) return null
+  return `${text.slice(0, 7)}-01`
 }
 
 function getCalendarYearWindows(startDate: Date, endDate: Date): Array<{ year: number; start: string; end: string }> {
@@ -102,16 +127,34 @@ type QbTimeActivity = {
 export async function syncTimeEntries(
   supabase: ReturnType<typeof createAdminClient>,
   settings: QBSettings,
-  syncYear?: number
+  syncYear?: number,
+  syncMonth?: number
 ) {
   const now = new Date()
   const requestedYear = Number.isInteger(syncYear) ? Number(syncYear) : now.getFullYear()
-  const startDate = new Date(requestedYear, 0, 1)
-  const endDate = requestedYear === now.getFullYear() ? now : new Date(requestedYear, 11, 31)
+  const requestedMonth =
+    Number.isInteger(syncMonth) && Number(syncMonth) >= 1 && Number(syncMonth) <= 12
+      ? Number(syncMonth)
+      : null
+
+  const startDate = requestedMonth
+    ? new Date(requestedYear, requestedMonth - 1, 1)
+    : new Date(requestedYear, 0, 1)
+  const monthEnd = requestedMonth
+    ? new Date(requestedYear, requestedMonth, 0)
+    : new Date(requestedYear, 11, 31)
+  const endDate =
+    requestedYear === now.getFullYear() && requestedMonth === now.getMonth() + 1
+      ? now
+      : requestedYear === now.getFullYear() && requestedMonth === null
+        ? now
+        : monthEnd
 
   const startDateStr = toDateString(startDate)
   const endDateStr = toDateString(endDate)
-  const yearWindows = getCalendarYearWindows(startDate, endDate)
+  const yearWindows = requestedMonth
+    ? [{ year: requestedYear, start: startDateStr, end: endDateStr }]
+    : getCalendarYearWindows(startDate, endDate)
 
   const fetchedQbIds = new Set<string>()
   const qboHoursByProject = new Map<string, number>()
@@ -337,6 +380,7 @@ export async function syncTimeEntries(
         const safeHoursPart = Number.isFinite(hoursPart) ? hoursPart : 0
         const safeMinutesPart = Number.isFinite(minutesPart) ? minutesPart : 0
         const hours = safeHoursPart + safeMinutesPart / 60
+        const isBillable = timeActivity.BillableStatus === 'Billable'
         const projectKey = normalizeText(projectNumber)
         const employeeKey = normalizeText(employeeName)
         qboHoursByProject.set(projectKey, (qboHoursByProject.get(projectKey) || 0) + hours)
@@ -350,6 +394,8 @@ export async function syncTimeEntries(
           .select('id')
           .eq('project_number' as never, projectNumber as never)
           .maybeSingle()
+        const projectRow = (project as { id: number } | null) || null
+        const projectId = projectRow?.id || null
 
         const profileMatch = profileByName.get(normalizeText(employeeName))
         const employeeId = profileMatch?.id || null
@@ -359,12 +405,13 @@ export async function syncTimeEntries(
           employee_id: employeeId,
           employee_name: employeeName,
           entry_date: timeActivity.TxnDate,
+          billing_period: monthStart(timeActivity.TxnDate),
           project_number: projectNumber,
-          project_id: (project as { id: number } | null)?.id || null,
+          project_id: projectId,
           phase_name: phaseName,
           hours,
           notes: timeActivity.Description || null,
-          is_billable: timeActivity.BillableStatus === 'Billable',
+          is_billable: isBillable,
           is_billed: timeActivity.BillableStatus === 'HasBeenBilled',
           labor_cost: laborCost,
         } as never
@@ -425,8 +472,8 @@ export async function syncTimeEntries(
         }
 
         const scheduleId =
-          (project?.id ? scheduleByProjectId.get((project as { id: number }).id) : undefined) ||
-          (project?.id ? proposalDefaultScheduleByProjectId.get((project as { id: number }).id) : undefined) ||
+          (projectId ? scheduleByProjectId.get(projectId) : undefined) ||
+          (projectId ? proposalDefaultScheduleByProjectId.get(projectId) : undefined) ||
           null
 
         let resolvedHourlyRate: number | null = null
@@ -434,8 +481,8 @@ export async function syncTimeEntries(
         let rateSourceId: number | null = null
         let effectiveFromUsed: string | null = null
 
-        if (project?.id && resolvedPositionId) {
-          const overrideKey = `${(project as { id: number }).id}::${resolvedPositionId}`
+        if (projectId && resolvedPositionId) {
+          const overrideKey = `${projectId}::${resolvedPositionId}`
           const matchingOverride = (overridesByProjectAndPosition.get(overrideKey) || [])
             .filter((row) => withinDateWindow(timeActivity.TxnDate || '', row.effective_from, row.effective_to))
             .sort((a, b) => ((a.effective_from || '') > (b.effective_from || '') ? -1 : 1))[0]
@@ -458,7 +505,10 @@ export async function syncTimeEntries(
 
         if (resolvedHourlyRate === null) {
           resolvedHourlyRate = 0
-          rateSource = 'unresolved'
+          rateSource =
+            !projectId && !isBillable && isInternalNonProjectCode(projectNumber)
+              ? 'non_project_internal'
+              : 'unresolved'
         }
 
         const resolvedTitleFinal =
@@ -478,6 +528,10 @@ export async function syncTimeEntries(
               rate_source: rateSource,
               rate_source_id: rateSourceId,
               effective_from_used: effectiveFromUsed,
+              resolved_labor_hourly_rate: hours > 0 ? Number((laborCost / hours).toFixed(2)) : 0,
+              labor_rate_source: costRate > 0 ? 'qbo_cost_rate' : 'qbo_derived_zero',
+              labor_rate_source_id: null,
+              labor_effective_from_used: timeActivity.TxnDate || null,
               resolved_at: new Date().toISOString(),
             } as never,
             { onConflict: 'time_entry_id' }
@@ -589,6 +643,7 @@ export async function syncTimeEntries(
     comparison: {
       window: { startDate: startDateStr, endDate: endDateStr },
       syncYear: requestedYear,
+      syncMonth: requestedMonth,
       qboEntryCount: fetchedQbIds.size,
       localEntryCount,
       entryCountDelta: localEntryCount - fetchedQbIds.size,

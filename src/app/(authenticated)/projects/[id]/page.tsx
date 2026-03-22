@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect, Fragment, useRef, useCallback } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { endOfMonth, format as formatMonthLabel, subMonths } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +31,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { formatCurrency, formatPercent, formatHours } from '@/lib/utils/format'
 import { formatDate, formatDateTime } from '@/lib/utils/dates'
 import { isInvoiceAdjustmentLabel } from '@/lib/finance/invoice-line-classification'
+import {
+  isExpenseInvoicedStatus,
+  legacyStatusFromBillingStatus,
+  normalizeExpenseBillingStatus,
+  type ExpenseBillingStatus,
+} from '@/lib/finance/expense-billing-status'
 import {
   ArrowLeft,
   Pencil,
@@ -69,6 +76,56 @@ import {
 
 type ProjectWithRelations = Tables<'projects'> & {
   clients: { name: string; address_line_1: string | null; address_line_2: string | null } | null
+}
+
+type ProjectExpenseRow = {
+  id: number
+  vendor_name: string | null
+  source_entity_type: string
+  source_entity_id: string | null
+  qb_vendor_name: string | null
+  expense_date: string
+  description: string | null
+  fee_amount: number
+  markup_pct: number
+  amount_to_charge: number
+  is_reimbursable: boolean
+  status: string
+  billing_status: string | null
+  invoice_number: string | null
+  project_number: string | null
+  subcontract_contract_id: number | null
+  source_active: boolean
+}
+
+type SubcontractContractRow = {
+  id: number
+  project_id: number | null
+  project_number: string | null
+  vendor_name: string
+  description: string | null
+  original_amount: number
+  start_date: string | null
+  end_date: string | null
+  status: 'active' | 'closed' | 'cancelled'
+  created_at: string
+  updated_at: string
+}
+
+type ProjectBillablesEntry = {
+  id: number
+  employee_id: string | null
+  employee_name: string
+  entry_date: string
+  project_number: string
+  project_id: number | null
+  phase_name: string
+  hours: number
+  notes: string | null
+  hourly_rate: number
+  amount: number
+  project_name: string
+  is_rate_unresolved: boolean
 }
 
 type ProjectInfoRow = {
@@ -491,7 +548,20 @@ export default function ProjectDetailPage() {
   })
   const [updatingExpenseId, setUpdatingExpenseId] = useState<number | null>(null)
   const [updatingExpenseChargeId, setUpdatingExpenseChargeId] = useState<number | null>(null)
+  const [updatingExpenseContractId, setUpdatingExpenseContractId] = useState<number | null>(null)
   const [expenseChargeDrafts, setExpenseChargeDrafts] = useState<Record<number, string>>({})
+  const [isContractDialogOpen, setIsContractDialogOpen] = useState(false)
+  const [isSavingContract, setIsSavingContract] = useState(false)
+  const [isDeletingContract, setIsDeletingContract] = useState(false)
+  const [editingSubcontractContract, setEditingSubcontractContract] = useState<SubcontractContractRow | null>(null)
+  const [contractForm, setContractForm] = useState({
+    vendor_name: '',
+    description: '',
+    original_amount: '',
+    status: 'active' as 'active' | 'closed' | 'cancelled',
+    start_date: '',
+    end_date: '',
+  })
   const [timeDistributionView, setTimeDistributionView] = useState<'employee' | 'phase'>('employee')
   const [projectInfoFormInitialized, setProjectInfoFormInitialized] = useState(false)
   const [projectInfoDynamicInitialized, setProjectInfoDynamicInitialized] = useState(false)
@@ -513,6 +583,10 @@ export default function ProjectDetailPage() {
     fieldId: number
     index: number
   } | null>(null)
+  const [selectedBillablesMonth, setSelectedBillablesMonth] = useState(() =>
+    formatMonthLabel(subMonths(new Date(), 1), 'yyyy-MM')
+  )
+  const [collapsedBillablePhases, setCollapsedBillablePhases] = useState<Record<string, boolean>>({})
   const toggleProjectInfoSection = useCallback((sectionKey: string) => {
     setExpandedProjectInfoSections((prev) => ({
       ...prev,
@@ -614,6 +688,31 @@ export default function ProjectDetailPage() {
     () => (project?.project_number || '').trim(),
     [project?.project_number]
   )
+
+  const billablesMonthOptions = useMemo(() => {
+    const today = new Date()
+    return Array.from({ length: 24 }, (_, index) => {
+      const monthDate = subMonths(today, index)
+      return {
+        value: formatMonthLabel(monthDate, 'yyyy-MM'),
+        label: formatMonthLabel(monthDate, 'MMMM yyyy'),
+      }
+    })
+  }, [])
+
+  const selectedBillablesMonthLabel =
+    billablesMonthOptions.find((option) => option.value === selectedBillablesMonth)?.label ||
+    selectedBillablesMonth
+
+  const { billablesMonthStart, billablesMonthEnd } = useMemo(() => {
+    const [year, month] = selectedBillablesMonth.split('-').map(Number)
+    const start = new Date(year, month - 1, 1)
+    const end = endOfMonth(start)
+    return {
+      billablesMonthStart: formatMonthLabel(start, 'yyyy-MM-dd'),
+      billablesMonthEnd: formatMonthLabel(end, 'yyyy-MM-dd'),
+    }
+  }, [selectedBillablesMonth])
 
   const { data: canonicalMultiplier } = useQuery({
     queryKey: ['project-multiplier', normalizedProjectNumber],
@@ -839,13 +938,13 @@ export default function ProjectDetailPage() {
       const payload = {
         project_id: projectId,
         project_number:
-          toUpperTrimmedOrNull(project.project_number || '') ??
+          toUpperTrimmedOrNull(project?.project_number || '') ??
           toUpperTrimmedOrNull(projectInfo?.project_number || ''),
         project_name:
-          toUpperTrimmedOrNull(project.name || '') ??
+          toUpperTrimmedOrNull(project?.name || '') ??
           toUpperTrimmedOrNull(projectInfo?.project_name || ''),
         client_name:
-          toUpperTrimmedOrNull(project.clients?.name || '') ??
+          toUpperTrimmedOrNull(project?.clients?.name || '') ??
           toUpperTrimmedOrNull(projectInfo?.client_name || ''),
         client_address_line_1:
           preferNewTextOrExisting(
@@ -872,7 +971,7 @@ export default function ProjectDetailPage() {
             projectInfoForm.availabilityNumber,
             current?.availability_number ?? projectInfo?.availability_number
           ) ??
-          toUpperTrimmedOrNull(project.permit_reference || ''),
+          toUpperTrimmedOrNull(project?.permit_reference || ''),
         project_manager:
           preferNewTextOrExisting(
             projectInfoForm.projectManager,
@@ -888,7 +987,7 @@ export default function ProjectDetailPage() {
             projectInfoForm.cityCounty,
             current?.city_county ?? projectInfo?.city_county
           ) ??
-          toUpperTrimmedOrNull(project.municipality || ''),
+          toUpperTrimmedOrNull(project?.municipality || ''),
         ...extraPayload,
       }
       const { error } = await supabase
@@ -950,12 +1049,12 @@ export default function ProjectDetailPage() {
       const payload = {
         project_id: projectId,
         project_number:
-          toUpperTrimmedOrNull(project.project_number || '') ??
+          toUpperTrimmedOrNull(project?.project_number || '') ??
           toUpperTrimmedOrNull(projectInfoForm.projectNumber),
         project_name:
-          toUpperTrimmedOrNull(project.name || '') ?? toUpperTrimmedOrNull(projectInfoForm.projectName),
+          toUpperTrimmedOrNull(project?.name || '') ?? toUpperTrimmedOrNull(projectInfoForm.projectName),
         client_name:
-          toUpperTrimmedOrNull(project.clients?.name || '') ??
+          toUpperTrimmedOrNull(project?.clients?.name || '') ??
           toUpperTrimmedOrNull(projectInfoForm.client),
         client_address_line_1: toUpperTrimmedOrNull(projectInfoForm.clientAddressLine1),
         client_address_line_2: toUpperTrimmedOrNull(projectInfoForm.clientAddressLine2),
@@ -1746,99 +1845,398 @@ export default function ProjectDetailPage() {
     enabled: !!normalizedProjectNumber,
   })
 
+  const { data: projectBillables, isLoading: loadingProjectBillables } = useQuery({
+    queryKey: ['project-billables', normalizedProjectNumber, projectId, selectedBillablesMonth],
+    queryFn: async () => {
+      const projectNumber = normalizedProjectNumber
+      if (!projectNumber) {
+        return {
+          phases: {} as Record<
+            string,
+            {
+              phase_name: string
+              employees: Record<
+                string,
+                { employee_name: string; entries: ProjectBillablesEntry[]; total: number }
+              >
+              total: number
+            }
+          >,
+          grandTotal: 0,
+          projectName: '',
+        }
+      }
+
+      const { data: timeEntriesRows, error: timeError } = await supabase
+        .from('time_entries')
+        .select(
+          `
+          id,
+          employee_id,
+          employee_name,
+          entry_date,
+          project_number,
+          project_id,
+          phase_name,
+          hours,
+          notes,
+          projects (name)
+        `
+        )
+        .eq('project_number', projectNumber)
+        .gte('entry_date', billablesMonthStart)
+        .lte('entry_date', billablesMonthEnd)
+        .order('phase_name')
+        .order('employee_name')
+        .order('entry_date')
+
+      if (timeError) throw timeError
+
+      const typedEntries = ((timeEntriesRows || []) as Array<
+        Tables<'time_entries'> & { projects: { name: string } | null }
+      >).filter((entry) => Boolean((entry.project_number || '').trim()))
+
+      if (typedEntries.length === 0) {
+        return {
+          phases: {} as Record<
+            string,
+            {
+              phase_name: string
+              employees: Record<
+                string,
+                { employee_name: string; entries: ProjectBillablesEntry[]; total: number }
+              >
+              total: number
+            }
+          >,
+          grandTotal: 0,
+          projectName: project?.name || '',
+        }
+      }
+
+      const entryIds = typedEntries.map((entry) => entry.id)
+      const projectIds = Array.from(
+        new Set(typedEntries.map((entry) => entry.project_id).filter((value): value is number => Boolean(value)))
+      )
+      const employeeIds = Array.from(
+        new Set(
+          typedEntries
+            .map((entry) => entry.employee_id)
+            .filter((value): value is string => Boolean(value))
+        )
+      )
+
+      const { data: snapRates } = entryIds.length
+        ? await supabase
+            .from('time_entry_bill_rates')
+            .select('time_entry_id, resolved_hourly_rate')
+            .in('time_entry_id' as never, entryIds as never)
+        : { data: [] as Array<{ time_entry_id: number; resolved_hourly_rate: number }> }
+
+      const { data: projectScheduleAssignments } = projectIds.length
+        ? await supabase
+            .from('project_rate_schedule_assignments')
+            .select('project_id, schedule_id')
+            .in('project_id' as never, projectIds as never)
+        : { data: [] as Array<{ project_id: number; schedule_id: number }> }
+
+      const { data: projectsForRates } = projectIds.length
+        ? await supabase
+            .from('projects')
+            .select('id, proposal_id, proposals(date_submitted)')
+            .in('id' as never, projectIds as never)
+        : {
+            data: [] as Array<{
+              id: number
+              proposal_id: number | null
+              proposals: { date_submitted: string | null } | null
+            }>,
+          }
+
+      const { data: schedules } = await supabase.from('rate_schedules').select('id, year_label')
+      const { data: scheduleItems } = await supabase
+        .from('rate_schedule_items')
+        .select('schedule_id, position_id, hourly_rate')
+
+      const { data: projectOverrides } = projectIds.length
+        ? await supabase
+            .from('project_rate_position_overrides')
+            .select('project_id, position_id, hourly_rate, effective_from, effective_to')
+            .in('project_id' as never, projectIds as never)
+        : {
+            data: [] as Array<{
+              project_id: number
+              position_id: number
+              hourly_rate: number
+              effective_from: string | null
+              effective_to: string | null
+            }>,
+          }
+
+      const { data: profilePositions } = employeeIds.length
+        ? await supabase
+            .from('profiles')
+            .select('id, rate_position_id')
+            .in('id' as never, employeeIds as never)
+        : { data: [] as Array<{ id: string; rate_position_id: number | null }> }
+
+      const { data: timelineRows } = employeeIds.length
+        ? await supabase
+            .from('employee_title_history')
+            .select('employee_id, rate_position_id, effective_from, effective_to')
+            .in('employee_id' as never, employeeIds as never)
+        : {
+            data: [] as Array<{
+              employee_id: string
+              rate_position_id: number | null
+              effective_from: string
+              effective_to: string | null
+            }>,
+          }
+
+      const snapRateByEntryId = new Map<number, number>()
+      ;((snapRates as Array<{ time_entry_id: number; resolved_hourly_rate: number }> | null) || []).forEach(
+        (row) => {
+          snapRateByEntryId.set(row.time_entry_id, Number(row.resolved_hourly_rate) || 0)
+        }
+      )
+
+      const scheduleIdByProjectId = new Map<number, number>()
+      ;((projectScheduleAssignments as Array<{ project_id: number; schedule_id: number }> | null) || []).forEach(
+        (row) => {
+          scheduleIdByProjectId.set(row.project_id, row.schedule_id)
+        }
+      )
+
+      const scheduleIdByYear = new Map<number, number>()
+      ;((schedules as Array<{ id: number; year_label: number }> | null) || []).forEach((row) => {
+        scheduleIdByYear.set(Number(row.year_label), row.id)
+      })
+
+      ;(
+        (projectsForRates as
+          | Array<{ id: number; proposal_id: number | null; proposals: { date_submitted: string | null } | null }>
+          | null) || []
+      ).forEach((projectRow) => {
+        if (scheduleIdByProjectId.has(projectRow.id)) return
+        const submittedDate = projectRow.proposals?.date_submitted
+        if (!submittedDate) return
+        const year = Number(submittedDate.slice(0, 4))
+        const scheduleId = scheduleIdByYear.get(year)
+        if (scheduleId) scheduleIdByProjectId.set(projectRow.id, scheduleId)
+      })
+
+      const scheduleRateByScheduleAndPosition = new Map<string, number>()
+      ;((scheduleItems as Array<{ schedule_id: number; position_id: number; hourly_rate: number }> | null) || [])
+        .forEach((row) => {
+          scheduleRateByScheduleAndPosition.set(
+            `${row.schedule_id}::${row.position_id}`,
+            Number(row.hourly_rate) || 0
+          )
+        })
+
+      const overridesByProjectAndPosition = new Map<
+        string,
+        Array<{
+          project_id: number
+          position_id: number
+          hourly_rate: number
+          effective_from: string | null
+          effective_to: string | null
+        }>
+      >()
+      ;(
+        (projectOverrides as
+          | Array<{
+              project_id: number
+              position_id: number
+              hourly_rate: number
+              effective_from: string | null
+              effective_to: string | null
+            }>
+          | null) || []
+      ).forEach((row) => {
+        const key = `${row.project_id}::${row.position_id}`
+        const current = overridesByProjectAndPosition.get(key) || []
+        current.push(row)
+        overridesByProjectAndPosition.set(key, current)
+      })
+
+      const profilePositionByEmployeeId = new Map<string, number | null>()
+      ;((profilePositions as Array<{ id: string; rate_position_id: number | null }> | null) || []).forEach(
+        (row) => {
+          profilePositionByEmployeeId.set(row.id, row.rate_position_id)
+        }
+      )
+
+      const timelineByEmployeeId = new Map<
+        string,
+        Array<{
+          employee_id: string
+          rate_position_id: number | null
+          effective_from: string
+          effective_to: string | null
+        }>
+      >()
+      ;(
+        (timelineRows as
+          | Array<{
+              employee_id: string
+              rate_position_id: number | null
+              effective_from: string
+              effective_to: string | null
+            }>
+          | null) || []
+      ).forEach((row) => {
+        const current = timelineByEmployeeId.get(row.employee_id) || []
+        current.push(row)
+        timelineByEmployeeId.set(row.employee_id, current)
+      })
+
+      const entriesWithRates: ProjectBillablesEntry[] = []
+      for (const entry of typedEntries) {
+        const snapshotRate = snapRateByEntryId.get(entry.id)
+        const employeeTimelineRows = entry.employee_id ? timelineByEmployeeId.get(entry.employee_id) || [] : []
+        const timelineMatch = employeeTimelineRows
+          .filter(
+            (row) =>
+              (!row.effective_from || row.effective_from <= entry.entry_date) &&
+              (!row.effective_to || row.effective_to >= entry.entry_date)
+          )
+          .sort((a, b) => (a.effective_from > b.effective_from ? -1 : 1))[0]
+        const positionId =
+          timelineMatch?.rate_position_id ??
+          (entry.employee_id ? profilePositionByEmployeeId.get(entry.employee_id) ?? null : null)
+
+        const scheduleId = entry.project_id ? scheduleIdByProjectId.get(entry.project_id) || null : null
+        let resolvedRate: number | null = null
+
+        if (entry.project_id && positionId) {
+          const overrideKey = `${entry.project_id}::${positionId}`
+          const override = (overridesByProjectAndPosition.get(overrideKey) || [])
+            .filter(
+              (row) =>
+                (!row.effective_from || row.effective_from <= entry.entry_date) &&
+                (!row.effective_to || row.effective_to >= entry.entry_date)
+            )
+            .sort((a, b) => ((a.effective_from || '') > (b.effective_from || '') ? -1 : 1))[0]
+          if (override) {
+            resolvedRate = Number(override.hourly_rate) || 0
+          }
+        }
+
+        if (resolvedRate === null && scheduleId && positionId) {
+          const scheduleRate = scheduleRateByScheduleAndPosition.get(`${scheduleId}::${positionId}`)
+          if (typeof scheduleRate === 'number') {
+            resolvedRate = scheduleRate
+          }
+        }
+
+        const hourlyRate = snapshotRate ?? resolvedRate ?? 0
+
+        entriesWithRates.push({
+          id: entry.id,
+          employee_id: entry.employee_id || null,
+          employee_name: entry.employee_name,
+          entry_date: entry.entry_date,
+          project_number: entry.project_number,
+          project_id: entry.project_id,
+          phase_name: entry.phase_name,
+          hours: Number(entry.hours) || 0,
+          notes: entry.notes || null,
+          hourly_rate: hourlyRate,
+          amount: (Number(entry.hours) || 0) * hourlyRate,
+          project_name: entry.projects?.name || '',
+          is_rate_unresolved: snapshotRate === undefined && resolvedRate === null,
+        })
+      }
+
+      const phases = entriesWithRates.reduce(
+        (acc, entry) => {
+          const phaseKey = entry.phase_name
+          if (!acc[phaseKey]) {
+            acc[phaseKey] = {
+              phase_name: entry.phase_name,
+              employees: {} as Record<
+                string,
+                { employee_name: string; entries: ProjectBillablesEntry[]; total: number }
+              >,
+              total: 0,
+            }
+          }
+
+          const empKey = entry.employee_name
+          if (!acc[phaseKey].employees[empKey]) {
+            acc[phaseKey].employees[empKey] = {
+              employee_name: entry.employee_name,
+              entries: [],
+              total: 0,
+            }
+          }
+
+          acc[phaseKey].employees[empKey].entries.push(entry)
+          acc[phaseKey].employees[empKey].total += entry.amount
+          acc[phaseKey].total += entry.amount
+          return acc
+        },
+        {} as Record<
+          string,
+          {
+            phase_name: string
+            employees: Record<
+              string,
+              { employee_name: string; entries: ProjectBillablesEntry[]; total: number }
+            >
+            total: number
+          }
+        >
+      )
+
+      const grandTotal = Object.values(phases).reduce((sum, phase) => sum + phase.total, 0)
+
+      return {
+        phases,
+        grandTotal,
+        projectName: entriesWithRates[0]?.project_name || project?.name || '',
+      }
+    },
+    enabled: !!normalizedProjectNumber,
+  })
+
   const { data: expenses, isLoading: loadingExpenses } = useQuery({
     queryKey: ['project-expenses', normalizedProjectNumber, projectId],
     queryFn: async () => {
       const projectNumber = normalizedProjectNumber
       if (!projectNumber) {
-        return [] as Array<{
-          id: number
-          vendor_name: string | null
-          source_entity_type: string
-          source_entity_id: string | null
-          qb_vendor_name: string | null
-          expense_date: string
-          description: string | null
-          fee_amount: number
-          markup_pct: number
-          amount_to_charge: number
-          is_reimbursable: boolean
-          status: string
-          invoice_number: string | null
-          project_number: string | null
-        }>
+        return [] as ProjectExpenseRow[]
       }
 
       const [byNumber, byProjectId] = await Promise.all([
         supabase
           .from('project_expenses')
           .select(
-            'id, source_entity_type, source_entity_id, vendor_name, expense_date, description, fee_amount, markup_pct, amount_to_charge, is_reimbursable, status, invoice_number, project_number'
+            'id, source_entity_type, source_entity_id, vendor_name, expense_date, description, fee_amount, markup_pct, amount_to_charge, is_reimbursable, status, billing_status, invoice_number, project_number, subcontract_contract_id, source_active'
           )
           .eq('project_number', projectNumber)
+          .neq('source_active', false)
           .order('expense_date', { ascending: false }),
         supabase
           .from('project_expenses')
           .select(
-            'id, source_entity_type, source_entity_id, vendor_name, expense_date, description, fee_amount, markup_pct, amount_to_charge, is_reimbursable, status, invoice_number, project_number'
+            'id, source_entity_type, source_entity_id, vendor_name, expense_date, description, fee_amount, markup_pct, amount_to_charge, is_reimbursable, status, billing_status, invoice_number, project_number, subcontract_contract_id, source_active'
           )
           .eq('project_id', projectId as never)
+          .neq('source_active', false)
           .order('expense_date', { ascending: false }),
       ])
 
       if (byNumber.error) throw byNumber.error
       if (byProjectId.error) throw byProjectId.error
 
-      const merged = new Map<
-        number,
-        {
-          id: number
-          vendor_name: string | null
-          source_entity_type: string
-          source_entity_id: string | null
-          qb_vendor_name: string | null
-          expense_date: string
-          description: string | null
-          fee_amount: number
-          markup_pct: number
-          amount_to_charge: number
-          is_reimbursable: boolean
-          status: string
-          invoice_number: string | null
-          project_number: string | null
-        }
-      >()
+      const merged = new Map<number, ProjectExpenseRow>()
       ;[
-        ...((byNumber.data as Array<{
-          id: number
-          vendor_name: string | null
-          source_entity_type: string
-          source_entity_id: string | null
-          expense_date: string
-          description: string | null
-          fee_amount: number
-          markup_pct: number
-          amount_to_charge: number
-          is_reimbursable: boolean
-          status: string
-          invoice_number: string | null
-          project_number: string | null
-        }> | null) || []),
-        ...((byProjectId.data as Array<{
-          id: number
-          vendor_name: string | null
-          source_entity_type: string
-          source_entity_id: string | null
-          expense_date: string
-          description: string | null
-          fee_amount: number
-          markup_pct: number
-          amount_to_charge: number
-          is_reimbursable: boolean
-          status: string
-          invoice_number: string | null
-          project_number: string | null
-        }> | null) || []),
+        ...((byNumber.data as ProjectExpenseRow[] | null) || []),
+        ...((byProjectId.data as ProjectExpenseRow[] | null) || []),
       ].forEach((row) => {
         merged.set(row.id, { ...row, qb_vendor_name: null })
       })
@@ -1872,6 +2270,71 @@ export default function ProjectDetailPage() {
     },
     enabled: !!normalizedProjectNumber,
   })
+
+  const { data: subcontractContracts, isLoading: loadingSubcontractContracts } = useQuery({
+    queryKey: ['subcontract-contracts', normalizedProjectNumber, projectId],
+    queryFn: async () => {
+      const projectNumber = normalizedProjectNumber
+      if (!projectNumber) return [] as SubcontractContractRow[]
+
+      const [byNumber, byProjectId] = await Promise.all([
+        supabase
+          .from('subcontract_contracts' as never)
+          .select('*')
+          .eq('project_number' as never, projectNumber as never)
+          .order('created_at' as never, { ascending: false }),
+        supabase
+          .from('subcontract_contracts' as never)
+          .select('*')
+          .eq('project_id' as never, projectId as never)
+          .order('created_at' as never, { ascending: false }),
+      ])
+      if (byNumber.error) throw byNumber.error
+      if (byProjectId.error) throw byProjectId.error
+
+      const merged = new Map<number, SubcontractContractRow>()
+      ;[
+        ...((byNumber.data as SubcontractContractRow[] | null) || []),
+        ...((byProjectId.data as SubcontractContractRow[] | null) || []),
+      ].forEach((row) => merged.set(row.id, row))
+      return Array.from(merged.values()).sort(
+        (a, b) => (b.created_at || '').localeCompare(a.created_at || '')
+      )
+    },
+    enabled: !!normalizedProjectNumber,
+  })
+
+  const contractSummaries = useMemo(() => {
+    const paidByContractId = new Map<number, number>()
+    ;(expenses || []).forEach((expense) => {
+      if (!expense.subcontract_contract_id) return
+      if (expense.is_reimbursable) return
+      const next = (paidByContractId.get(expense.subcontract_contract_id) || 0) + (Number(expense.fee_amount) || 0)
+      paidByContractId.set(expense.subcontract_contract_id, next)
+    })
+
+    return (subcontractContracts || []).map((contract) => {
+      const paidToDate = Number((paidByContractId.get(contract.id) || 0).toFixed(2))
+      const originalAmount = Number(contract.original_amount) || 0
+      const outstandingAmount = Number((originalAmount - paidToDate).toFixed(2))
+      return {
+        ...contract,
+        paid_to_date: paidToDate,
+        outstanding_amount: outstandingAmount,
+      }
+    })
+  }, [expenses, subcontractContracts])
+
+  const getBillablePhaseCollapseKey = (phaseName: string) =>
+    `${normalizedProjectNumber}::${selectedBillablesMonth}::${phaseName}`
+
+  const toggleBillablePhaseCollapsed = (phaseName: string) => {
+    const phaseKey = getBillablePhaseCollapseKey(phaseName)
+    setCollapsedBillablePhases((prev) => ({
+      ...prev,
+      [phaseKey]: !(prev[phaseKey] ?? false),
+    }))
+  }
 
   // Fetch permits
   const { data: permits, isLoading: loadingPermits } = useQuery({
@@ -2165,12 +2628,13 @@ export default function ProjectDetailPage() {
   const handleToggleExpenseReimbursable = async (expenseId: number, checked: boolean) => {
     setUpdatingExpenseId(expenseId)
     try {
-      const nextStatus = checked ? 'to_be_invoiced' : 'not_reimbursable'
+      const nextBillingStatus: ExpenseBillingStatus = checked ? 'approved' : 'ignored'
       const { error } = await supabase
         .from('project_expenses')
         .update({
           is_reimbursable: checked,
-          status: nextStatus,
+          billing_status: nextBillingStatus,
+          status: legacyStatusFromBillingStatus(nextBillingStatus),
           updated_at: new Date().toISOString(),
         } as never)
         .eq('id', expenseId as never)
@@ -2184,6 +2648,135 @@ export default function ProjectDetailPage() {
       toast.error((error as Error).message || 'Failed to update expense')
     } finally {
       setUpdatingExpenseId(null)
+    }
+  }
+
+  const openCreateContractDialog = () => {
+    setEditingSubcontractContract(null)
+    setContractForm({
+      vendor_name: '',
+      description: '',
+      original_amount: '',
+      status: 'active',
+      start_date: '',
+      end_date: '',
+    })
+    setIsContractDialogOpen(true)
+  }
+
+  const openEditContractDialog = (contract: SubcontractContractRow) => {
+    setEditingSubcontractContract(contract)
+    setContractForm({
+      vendor_name: contract.vendor_name || '',
+      description: contract.description || '',
+      original_amount: String(Number(contract.original_amount) || 0),
+      status: contract.status || 'active',
+      start_date: contract.start_date || '',
+      end_date: contract.end_date || '',
+    })
+    setIsContractDialogOpen(true)
+  }
+
+  const closeContractDialog = () => {
+    setIsContractDialogOpen(false)
+    setEditingSubcontractContract(null)
+    setIsDeletingContract(false)
+    setIsSavingContract(false)
+  }
+
+  const saveContract = async () => {
+    const vendorName = contractForm.vendor_name.trim()
+    const originalAmount = Number(contractForm.original_amount)
+    if (!vendorName) {
+      toast.error('Vendor is required')
+      return
+    }
+    if (!Number.isFinite(originalAmount) || originalAmount < 0) {
+      toast.error('Original amount must be zero or greater')
+      return
+    }
+
+    setIsSavingContract(true)
+    try {
+      const payload = {
+        project_id: projectId,
+        project_number: normalizedProjectNumber,
+        vendor_name: vendorName,
+        description: contractForm.description.trim() || null,
+        original_amount: Number(originalAmount.toFixed(2)),
+        status: contractForm.status,
+        start_date: contractForm.start_date || null,
+        end_date: contractForm.end_date || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (editingSubcontractContract) {
+        const { error } = await supabase
+          .from('subcontract_contracts' as never)
+          .update(payload as never)
+          .eq('id' as never, editingSubcontractContract.id as never)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('subcontract_contracts' as never).insert(payload as never)
+        if (error) throw error
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ['subcontract-contracts', normalizedProjectNumber, projectId],
+      })
+      toast.success(editingSubcontractContract ? 'Contract updated' : 'Contract created')
+      closeContractDialog()
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to save contract')
+    } finally {
+      setIsSavingContract(false)
+    }
+  }
+
+  const deleteContract = async () => {
+    if (!editingSubcontractContract) return
+    setIsDeletingContract(true)
+    try {
+      const { error } = await supabase
+        .from('subcontract_contracts' as never)
+        .delete()
+        .eq('id' as never, editingSubcontractContract.id as never)
+      if (error) throw error
+      queryClient.invalidateQueries({
+        queryKey: ['subcontract-contracts', normalizedProjectNumber, projectId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['project-expenses', normalizedProjectNumber, projectId],
+      })
+      toast.success('Contract deleted')
+      closeContractDialog()
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to delete contract')
+    } finally {
+      setIsDeletingContract(false)
+    }
+  }
+
+  const linkExpenseToContract = async (expenseId: number, contractId: number | null) => {
+    setUpdatingExpenseContractId(expenseId)
+    try {
+      const { error } = await supabase
+        .from('project_expenses')
+        .update({
+          subcontract_contract_id: contractId,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq('id', expenseId as never)
+      if (error) throw error
+
+      queryClient.invalidateQueries({
+        queryKey: ['project-expenses', normalizedProjectNumber, projectId],
+      })
+      toast.success('Expense contract link updated')
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to link expense to contract')
+    } finally {
+      setUpdatingExpenseContractId(null)
     }
   }
 
@@ -2822,8 +3415,8 @@ export default function ProjectDetailPage() {
   const totalReimbursableChargesInvoiced = useMemo(
     () =>
       reimbursableExpenses.reduce((sum, item) => {
-        const status = (item.status || '').toLowerCase()
-        const isInvoiced = Boolean(item.invoice_number) || status === 'invoiced'
+        const billingStatus = normalizeExpenseBillingStatus(item)
+        const isInvoiced = Boolean(item.invoice_number) || isExpenseInvoicedStatus(billingStatus)
         return sum + (isInvoiced ? Number(item.amount_to_charge) || 0 : 0)
       }, 0),
     [reimbursableExpenses]
@@ -3162,9 +3755,11 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="agencies-permits">Agencies & Permits</TabsTrigger>
           <TabsTrigger value="applications">Applications</TabsTrigger>
           <TabsTrigger value="phases">Phases</TabsTrigger>
+          <TabsTrigger value="billables">Billables</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="time">Labor</TabsTrigger>
           <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          <TabsTrigger value="contracts">Contracts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -4041,6 +4636,161 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="billables" className="mt-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Billables — {selectedBillablesMonthLabel}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Monthly billable detail for this project
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Select value={selectedBillablesMonth} onValueChange={setSelectedBillablesMonth}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {billablesMonthOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Card className="px-4 py-2">
+                  <div className="text-sm text-muted-foreground">Project Total</div>
+                  <div className="text-xl font-bold">
+                    {formatCurrency(projectBillables?.grandTotal || 0)}
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            {loadingProjectBillables ? (
+              <Card>
+                <CardContent className="p-4">
+                  <Skeleton className="h-64 w-full" />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  {(Object.keys(projectBillables?.phases || {}).length || 0) === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      No time entries found for the selected month
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Project</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">
+                            {normalizedProjectNumber} {projectBillables?.projectName || project?.name || ''}
+                          </TableCell>
+                          <TableCell className="text-right font-bold font-mono">
+                            {formatCurrency(projectBillables?.grandTotal || 0)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={2} className="bg-muted/20">
+                            <div className="space-y-4 py-2 pl-6">
+                              {Object.values(projectBillables?.phases || {}).map((phase) => {
+                                const phaseCollapseKey = getBillablePhaseCollapseKey(phase.phase_name)
+                                const isPhaseCollapsed = collapsedBillablePhases[phaseCollapseKey] ?? false
+
+                                return (
+                                  <div key={phase.phase_name} className="space-y-2">
+                                    <div className="flex items-center justify-between border-b pb-1">
+                                      <button
+                                        type="button"
+                                        className="flex items-center text-left font-medium text-sm"
+                                        onClick={() => toggleBillablePhaseCollapsed(phase.phase_name)}
+                                      >
+                                        {isPhaseCollapsed ? (
+                                          <ChevronRight className="mr-1 h-4 w-4" />
+                                        ) : (
+                                          <ChevronDown className="mr-1 h-4 w-4" />
+                                        )}
+                                        {phase.phase_name}
+                                      </button>
+                                      <span className="font-medium text-sm">{formatCurrency(phase.total)}</span>
+                                    </div>
+                                    {isPhaseCollapsed ? null : (
+                                      <div className="pl-6">
+                                        <Table className="w-full table-fixed">
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="w-[220px]">Employee</TableHead>
+                                              <TableHead className="w-[120px]">Date</TableHead>
+                                              <TableHead className="w-[100px] text-right">Hours</TableHead>
+                                              <TableHead className="w-[120px] text-right">Rate</TableHead>
+                                              <TableHead className="w-[120px] text-right">Amount</TableHead>
+                                              <TableHead>Notes</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {Object.values(phase.employees).map((emp) => (
+                                              <Fragment key={emp.employee_name}>
+                                                {emp.entries.map((entry) => (
+                                                  <TableRow key={entry.id}>
+                                                    <TableCell className="w-[220px]">
+                                                      {entry.employee_name}
+                                                    </TableCell>
+                                                    <TableCell className="w-[120px]">
+                                                      {formatDate(entry.entry_date)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[100px] text-right font-mono">
+                                                      {formatHours(entry.hours)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[120px] text-right font-mono">
+                                                      {entry.is_rate_unresolved
+                                                        ? 'Unresolved'
+                                                        : formatCurrency(entry.hourly_rate)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[120px] text-right font-mono">
+                                                      {formatCurrency(entry.amount)}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm max-w-[300px] truncate">
+                                                      {entry.notes || '—'}
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ))}
+                                                <TableRow className="bg-muted/50">
+                                                  <TableCell colSpan={4} className="text-right font-medium">
+                                                    Total {emp.employee_name}
+                                                  </TableCell>
+                                                  <TableCell className="text-right font-bold font-mono">
+                                                    {formatCurrency(emp.total)}
+                                                  </TableCell>
+                                                  <TableCell />
+                                                </TableRow>
+                                              </Fragment>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
         <TabsContent value="invoices" className="mt-4">
           <Card>
             <CardContent className="p-4">
@@ -4301,15 +5051,16 @@ export default function ProjectDetailPage() {
                       <TableHead>Description</TableHead>
                       <TableHead className="text-right">Amount</TableHead>
                       <TableHead className="text-center">Reimbursable</TableHead>
+                      <TableHead>Contract</TableHead>
                       <TableHead className="text-right">Amount to Charge</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {expenses?.map((expense) => {
+                      const billingStatus = normalizeExpenseBillingStatus(expense)
                       const isInvoiced =
-                        Boolean(expense.invoice_number) ||
-                        (expense.status || '').toLowerCase() === 'invoiced'
+                        Boolean(expense.invoice_number) || isExpenseInvoicedStatus(billingStatus)
                       const statusLabel = expense.is_reimbursable
                         ? isInvoiced
                           ? 'Invoiced'
@@ -4336,6 +5087,35 @@ export default function ProjectDetailPage() {
                                 void handleToggleExpenseReimbursable(expense.id, Boolean(checked))
                               }
                             />
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={
+                                expense.subcontract_contract_id
+                                  ? String(expense.subcontract_contract_id)
+                                  : 'unassigned'
+                              }
+                              disabled={updatingExpenseContractId === expense.id}
+                              onValueChange={(value) =>
+                                void linkExpenseToContract(
+                                  expense.id,
+                                  value === 'unassigned' ? null : Number(value)
+                                )
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Unassigned" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {(subcontractContracts || []).map((contract) => (
+                                  <SelectItem key={contract.id} value={String(contract.id)}>
+                                    {contract.vendor_name}
+                                    {contract.description ? ` - ${contract.description}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell className="text-right font-mono">
                             {expense.is_reimbursable ? (
@@ -4423,6 +5203,7 @@ export default function ProjectDetailPage() {
                           )}
                         </TableCell>
                         <TableCell />
+                        <TableCell />
                         <TableCell className="text-right font-mono">
                           {formatCurrency(
                             expenses.reduce(
@@ -4438,7 +5219,7 @@ export default function ProjectDetailPage() {
                     )}
                     {expenses?.length === 0 && (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           No expenses
                         </TableCell>
                       </TableRow>
@@ -4450,7 +5231,190 @@ export default function ProjectDetailPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="contracts" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Subcontract Contracts</CardTitle>
+                <CardDescription>
+                  Track original amount, paid-to-date, and outstanding by contract.
+                </CardDescription>
+              </div>
+              <Button onClick={openCreateContractDialog}>Add Contract</Button>
+            </CardHeader>
+            <CardContent className="p-4">
+              {loadingSubcontractContracts || loadingExpenses ? (
+                <Skeleton className="h-48 w-full" />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Original Amount</TableHead>
+                      <TableHead className="text-right">Paid To Date</TableHead>
+                      <TableHead className="text-right">Outstanding</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contractSummaries.map((contract) => (
+                      <TableRow key={contract.id}>
+                        <TableCell>{contract.vendor_name}</TableCell>
+                        <TableCell>{contract.description || '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
+                            {contract.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(Number(contract.original_amount) || 0)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(contract.paid_to_date)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(contract.outstanding_amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditContractDialog(contract)}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {contractSummaries.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                          No contracts
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
+
+      <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingSubcontractContract ? 'Edit Contract' : 'Add Contract'}</DialogTitle>
+            <DialogDescription>
+              Contracts are unlimited per project/vendor. Link expenses from the Expenses tab.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Vendor</label>
+              <Input
+                value={contractForm.vendor_name}
+                onChange={(event) =>
+                  setContractForm((prev) => ({ ...prev, vendor_name: event.target.value }))
+                }
+                placeholder="Vendor name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Description</label>
+              <Input
+                value={contractForm.description}
+                onChange={(event) =>
+                  setContractForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+                placeholder="Optional contract description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Original Amount</label>
+                <Input
+                  value={contractForm.original_amount}
+                  onChange={(event) =>
+                    setContractForm((prev) => ({ ...prev, original_amount: event.target.value }))
+                  }
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  value={contractForm.status}
+                  onValueChange={(value: 'active' | 'closed' | 'cancelled') =>
+                    setContractForm((prev) => ({ ...prev, status: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">active</SelectItem>
+                    <SelectItem value="closed">closed</SelectItem>
+                    <SelectItem value="cancelled">cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input
+                  type="date"
+                  value={contractForm.start_date}
+                  onChange={(event) =>
+                    setContractForm((prev) => ({ ...prev, start_date: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input
+                  type="date"
+                  value={contractForm.end_date}
+                  onChange={(event) =>
+                    setContractForm((prev) => ({ ...prev, end_date: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between gap-2">
+            <div>
+              {editingSubcontractContract && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => void deleteContract()}
+                  disabled={isSavingContract || isDeletingContract}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" onClick={closeContractDialog}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void saveContract()}
+                disabled={isSavingContract || isDeletingContract}
+              >
+                {isSavingContract ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )

@@ -1,0 +1,104 @@
+BSE Manager: Technical Architecture, Data Flows, and Trust Model
+=================================================================
+
+System stack
+------------
+- Frontend: Next.js App Router + React
+- UI: shadcn components + Recharts
+- Data layer: Supabase Postgres
+- Integrations: QuickBooks Online APIs + webhooks
+- Validation: Vitest data-integrity tests
+
+Primary source systems and roles
+--------------------------------
+1) QuickBooks Online
+   - External source of accounting transaction truth.
+   - Feeds invoices, payments, purchases/bills, reports.
+
+2) Supabase
+   - Persistent app data and modeling layer.
+   - Stores snapshots, links, user forecasts, visibility state, and contract registry.
+
+3) BSE Manager application logic
+   - Transforms synced raw data into planning datasets.
+   - Applies hybrid rules for current/future behavior.
+
+Core data entities (high-level)
+-------------------------------
+- accounting_snapshots, accounting_snapshot_lines
+  Historical P&L / Balance Sheet snapshots.
+
+- invoices, invoice_line_items
+  Invoice headers + detailed line composition.
+
+- qbo_payments, qbo_payment_allocations
+  Payment events and allocations back to invoice line context.
+
+- subcontract_contracts
+  Contract labor registry and terms.
+
+- project_expenses
+  Unified job-coded expense ledger with:
+  - source metadata
+  - contract links
+  - reimbursable controls
+  - invoicing links
+  - paid date and status attributes
+
+- cash_flow_phase_forecasts
+  Manual income forecasting at phase level.
+
+- cash_flow_expense_line_forecasts
+  Manual expense forecasting at line-item level.
+
+- cash_flow_project_visibility
+  Per-project visibility controls for planning UX.
+
+Trust model (how to read numbers)
+---------------------------------
+Historical period:
+- Prefer snapshot and synced transaction truth.
+- No hidden interpolation.
+
+Current period:
+- Mixes actuals + near-term assumptions + manual budget controls.
+- Must be clearly labeled as actual/projected components.
+
+Future period:
+- Pure model space:
+  - project/phase services forecasts
+  - contract-term-driven labor projections
+  - manual expense budgets
+
+Data quality and reconciliation principles
+------------------------------------------
+- Every displayed aggregate should be traceable to:
+  1) a raw source record or
+  2) a documented forecast rule.
+
+- Cross-view consistency is required:
+  - table totals and chart totals use the same model.
+
+- Bank balance explanation is explicit:
+  - show non-P&L movement where rollforward deltas exist.
+
+Linkage strategy for expenses
+-----------------------------
+Contract linkage:
+- Contract labor rows are linked to contracts deterministically by project/vendor/date/rule set.
+
+Invoice linkage for non-contract expenses:
+- Deterministic backfills are performed using strongest available matches:
+  - exact reimbursable line matches
+  - project/month rollups to expected billing month
+  - unique invoice candidates where unambiguous
+
+- Ambiguous or no-candidate rows remain pending/unlinked intentionally to avoid false links.
+
+Why this architecture is strong
+-------------------------------
+- It preserves source truth while enabling planning behavior.
+- It separates operational edits from imported accounting records.
+- It improves reliability through deterministic matching and explicit fallbacks.
+- It enables phased automation without sacrificing auditability.
+

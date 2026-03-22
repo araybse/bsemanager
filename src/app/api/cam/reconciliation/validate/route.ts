@@ -43,6 +43,7 @@ export async function POST(request: NextRequest) {
       summary.staleFieldCount > 0 || summary.unresolvedCrossingsCount > 0 || summary.pendingPublishCount > 0
         ? 'warning'
         : 'success'
+    const syncEventStatus = status === 'warning' ? 'partial_success' : 'success'
 
     await supabase.from('cam_reconciliation_runs').insert({
       project_id: projectId,
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       targetSystem: 'supabase',
       entityTable: 'cam_reconciliation_runs',
       eventType: 'validation',
-      status,
+      status: syncEventStatus,
       requestPayload: { project_id: projectId || 'all' },
       responsePayload: summary as unknown as Record<string, unknown>,
     })

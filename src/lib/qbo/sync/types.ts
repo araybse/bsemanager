@@ -7,6 +7,16 @@ export type QBSettings = {
   connected_at: string
   updated_at: string
   last_contract_labor_sync_at?: string | null
+  last_expense_sync_at?: string | null
+  last_payment_sync_at?: string | null
 }
 
-export type SyncType = 'all' | 'time' | 'customers' | 'projects' | 'invoices' | 'contract_labor'
+export type SyncType =
+  | 'all'
+  | 'time'
+  | 'customers'
+  | 'projects'
+  | 'invoices'
+  | 'contract_labor'
+  | 'expenses'
+  | 'payments'

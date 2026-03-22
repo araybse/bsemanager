@@ -158,6 +158,7 @@ export async function PATCH(request: NextRequest) {
   if (existingError || !existing) {
     return NextResponse.json({ error: existingError?.message || 'Field not found' }, { status: 404 })
   }
+  const existingField = existing as { id: number; column_name: string; value_mode?: string | null }
 
   const patch: Record<string, unknown> = {}
   if (Number.isFinite(Number(body.section_id))) patch.section_id = Number(body.section_id)
@@ -189,7 +190,7 @@ export async function PATCH(request: NextRequest) {
   }
   if (typeof body.column_name === 'string' && body.column_name.trim()) {
     const proposed = toColumn(body.column_name)
-    if (proposed !== existing.column_name) {
+    if (proposed !== existingField.column_name) {
       return NextResponse.json(
         { error: 'column_name is immutable after field creation' },
         { status: 400 }
@@ -201,11 +202,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'No changes submitted' }, { status: 400 })
   }
 
-  const currentValueMode = String(
-    (existing as { value_mode?: string | null }).value_mode || 'scalar'
-  ).toLowerCase()
+  const currentValueMode = String(existingField.value_mode || 'scalar').toLowerCase()
   if (nextValueMode === 'multi' && currentValueMode !== 'multi') {
-    const columnName = (existing as { column_name: string }).column_name
+    const columnName = existingField.column_name
     const { data: projectRows, error: projectRowsError } = await supabase
       .from('project_info' as never)
       .select(`project_id,${columnName}`)

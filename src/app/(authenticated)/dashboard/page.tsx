@@ -1,19 +1,11 @@
 'use client'
 
-import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { formatCurrency } from '@/lib/utils/format'
 import { FileText, ArrowRight, DollarSign, Clock, Receipt } from 'lucide-react'
 import Link from 'next/link'
@@ -34,12 +26,7 @@ import {
   ComposedChart,
   Bar,
   Line,
-  PieChart,
-  Pie,
-  Cell,
 } from 'recharts'
-
-const PIE_COLORS = ['#111827', '#374151', '#6B7280', '#9CA3AF', '#D1D5DB']
 
 function formatMonthLabel(monthKey: string): string {
   const [yearStr, monthStr] = monthKey.split('-')
@@ -53,7 +40,6 @@ function formatMonthLabel(monthKey: string): string {
 
 export default function DashboardPage() {
   const supabase = createClient()
-  const [laborWindow, setLaborWindow] = useState<'month' | 'quarter'>('quarter')
 
   // Fetch billing candidates
   const { data: billingCandidates, isLoading: loadingCandidates } = useQuery({
@@ -108,23 +94,60 @@ export default function DashboardPage() {
         return monthKey(monthDate)
       })
 
-      const [invoiceResp, timeResp] = await Promise.all([
-        supabase
+      const invoiceRows: Array<{ date_issued: string; amount: number | null }> = []
+      const timeRows: Array<{
+        id: number
+        employee_id: string | null
+        employee_name: string
+        entry_date: string
+        project_number: string
+        project_id: number | null
+        hours: number
+      }> = []
+      const pageSize = 1000
+
+      let from = 0
+      while (true) {
+        const { data, error } = await supabase
           .from('invoices')
           .select('date_issued, amount')
           .gte('date_issued' as never, sinceDate as never)
-          .lt('date_issued' as never, currentMonthStartDate as never),
-        supabase
+          .lt('date_issued' as never, currentMonthStartDate as never)
+          .order('date_issued', { ascending: true })
+          .range(from, from + pageSize - 1)
+        if (error) throw error
+        const batch = ((data || []) as Array<{ date_issued: string; amount: number | null }>)
+        invoiceRows.push(...batch)
+        if (batch.length < pageSize) break
+        from += pageSize
+      }
+
+      from = 0
+      while (true) {
+        const { data, error } = await supabase
           .from('time_entries')
           .select('id, employee_id, employee_name, entry_date, project_number, project_id, hours')
           .gte('entry_date' as never, sinceDate as never)
-          .lt('entry_date' as never, currentMonthStartDate as never),
-      ])
-      if (invoiceResp.error) throw invoiceResp.error
-      if (timeResp.error) throw timeResp.error
+          .lt('entry_date' as never, currentMonthStartDate as never)
+          .order('entry_date', { ascending: true })
+          .range(from, from + pageSize - 1)
+        if (error) throw error
+        const batch = ((data || []) as Array<{
+          id: number
+          employee_id: string | null
+          employee_name: string
+          entry_date: string
+          project_number: string
+          project_id: number | null
+          hours: number
+        }>)
+        timeRows.push(...batch)
+        if (batch.length < pageSize) break
+        from += pageSize
+      }
 
       const typedEntries =
-        ((timeResp.data as
+        ((timeRows as
           | Array<{
               id: number
               employee_id: string | null
@@ -152,7 +175,7 @@ export default function DashboardPage() {
             .select('time_entry_id, resolved_hourly_rate')
             .in('time_entry_id' as never, chunk as never)
           if (error) throw error
-          snapRates.push(...(((data || []) as Array<{ time_entry_id: number; resolved_hourly_rate: number }>))
+          snapRates.push(...((data || []) as Array<{ time_entry_id: number; resolved_hourly_rate: number }>))
         }
       }
 
@@ -310,8 +333,12 @@ export default function DashboardPage() {
       const invoiceBuckets = new Map<string, number>()
       const billableBuckets = new Map<string, number>()
 
-      ;((invoiceResp.data as Array<{ date_issued: string; amount: number | null }> | null) || []).forEach((row) => {
-        const key = (row.date_issued || '').slice(0, 7)
+      ;(invoiceRows || []).forEach((row) => {
+        const issuedDate = row.date_issued ? new Date(`${row.date_issued}T00:00:00`) : null
+        if (!issuedDate || Number.isNaN(issuedDate.getTime())) return
+        // Invoice month represents prior-month work.
+        const serviceMonth = new Date(issuedDate.getFullYear(), issuedDate.getMonth() - 1, 1)
+        const key = monthKey(serviceMonth)
         if (!key) return
         invoiceBuckets.set(key, (invoiceBuckets.get(key) || 0) + (Number(row.amount) || 0))
       })
@@ -369,47 +396,73 @@ export default function DashboardPage() {
     },
   })
 
-  const { data: laborRoleData, isLoading: loadingLaborRole } = useQuery({
-    queryKey: ['dashboard-labor-role', laborWindow],
+  const { data: grossProfitVsExpenses, isLoading: loadingGrossProfitVsExpenses } = useQuery({
+    queryKey: ['dashboard-gross-profit-vs-expenses-cash'],
     queryFn: async () => {
-      const since = new Date()
-      if (laborWindow === 'month') {
-        since.setDate(1)
-      } else {
-        since.setMonth(since.getMonth() - 2)
+      const currentMonthStart = new Date()
+      currentMonthStart.setDate(1)
+      const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
+      const sinceDate = firstMonth.toISOString().slice(0, 10)
+      const currentMonthStartDate = currentMonthStart.toISOString().slice(0, 10)
+      const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const months = Array.from({ length: 12 }, (_, index) => {
+        const monthDate = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1)
+        return monthKey(monthDate)
+      })
+
+      const { data: snapshotRows, error: snapshotError } = await supabase
+        .from('accounting_snapshots' as never)
+        .select('id, period_start, period_end, fetched_at')
+        .eq('report_type' as never, 'profit_and_loss' as never)
+        .eq('basis' as never, 'cash' as never)
+        .gte('period_start' as never, sinceDate as never)
+        .lt('period_end' as never, currentMonthStartDate as never)
+        .order('fetched_at' as never, { ascending: false })
+      if (snapshotError) throw snapshotError
+
+      const monthlySnapshotByMonth = new Map<string, { id: number }>()
+      ;((snapshotRows as Array<{ id: number; period_start: string; period_end: string; fetched_at: string }> | null) || [])
+        .forEach((row) => {
+          const startMonth = (row.period_start || '').slice(0, 7)
+          const endMonth = (row.period_end || '').slice(0, 7)
+          if (!startMonth || startMonth !== endMonth) return
+          if (!monthlySnapshotByMonth.has(startMonth)) {
+            monthlySnapshotByMonth.set(startMonth, { id: row.id })
+          }
+        })
+
+      const snapshotIds = Array.from(monthlySnapshotByMonth.values()).map((row) => row.id)
+      const lines: Array<{ snapshot_id: number; account_name: string; amount: number | null }> = []
+      if (snapshotIds.length > 0) {
+        const chunkSize = 100
+        for (let i = 0; i < snapshotIds.length; i += chunkSize) {
+          const chunk = snapshotIds.slice(i, i + chunkSize)
+          const { data, error } = await supabase
+            .from('accounting_snapshot_lines' as never)
+            .select('snapshot_id, account_name, amount')
+            .in('snapshot_id' as never, chunk as never)
+          if (error) throw error
+          lines.push(...((data || []) as Array<{ snapshot_id: number; account_name: string; amount: number | null }>))
+        }
       }
 
-      const [timeResp, profileResp] = await Promise.all([
-        supabase
-          .from('time_entries')
-          .select('employee_name, labor_cost')
-          .gte('entry_date' as never, since.toISOString().slice(0, 10) as never),
-        supabase.from('profiles').select('full_name, role'),
-      ])
-
-      if (timeResp.error) throw timeResp.error
-      if (profileResp.error) throw profileResp.error
-
-      const roleByName = new Map<string, string>()
-      ;(
-        (profileResp.data as Array<{ full_name: string | null; role: string | null }> | null) || []
-      ).forEach((profile) => {
-        const key = (profile.full_name || '').trim().toLowerCase()
-        if (key) roleByName.set(key, profile.role || 'employee')
+      const grossBySnapshot = new Map<number, number>()
+      const expensesBySnapshot = new Map<number, number>()
+      lines.forEach((line) => {
+        const name = (line.account_name || '').trim().toLowerCase()
+        if (name === 'gross profit') grossBySnapshot.set(line.snapshot_id, Number(line.amount) || 0)
+        if (name === 'total expenses') expensesBySnapshot.set(line.snapshot_id, Number(line.amount) || 0)
       })
 
-      const totals = new Map<string, number>()
-      ;(
-        (timeResp.data as Array<{ employee_name: string | null; labor_cost: number | null }> | null) || []
-      ).forEach((entry) => {
-        const key = (entry.employee_name || '').trim().toLowerCase()
-        const role = roleByName.get(key) || 'unmapped'
-        totals.set(role, (totals.get(role) || 0) + (Number(entry.labor_cost) || 0))
+      return months.map((month) => {
+        const snapshotId = monthlySnapshotByMonth.get(month)?.id
+        return {
+          month,
+          monthLabel: formatMonthLabel(month),
+          grossProfit: snapshotId ? grossBySnapshot.get(snapshotId) || 0 : 0,
+          totalExpenses: snapshotId ? expensesBySnapshot.get(snapshotId) || 0 : 0,
+        }
       })
-
-      return Array.from(totals.entries())
-        .map(([role, amount]) => ({ role, amount }))
-        .sort((a, b) => b.amount - a.amount)
     },
   })
 
@@ -585,56 +638,36 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <CardTitle>Labor Cost by Role</CardTitle>
-                <CardDescription>
-                  {laborWindow === 'month' ? 'Current month' : 'Last 90 days'}
-                </CardDescription>
-              </div>
-              <Select
-                value={laborWindow}
-                onValueChange={(value) => setLaborWindow(value as 'month' | 'quarter')}
-              >
-                <SelectTrigger className="w-[170px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="month">Current Month</SelectItem>
-                  <SelectItem value="quarter">Last 90 Days</SelectItem>
-                </SelectContent>
-              </Select>
+            <CardTitle>Cash Basis: Gross Profit vs Expenses</CardTitle>
+            <CardDescription>Monthly snapshots from QuickBooks (last 12 months, excluding current)</CardDescription>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-sm bg-[#111827]" />
+                Gross Profit
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-sm bg-[#6B7280]" />
+                Expenses
+              </span>
             </div>
           </CardHeader>
           <CardContent className="h-[280px]">
-            {loadingLaborRole ? (
+            {loadingGrossProfitVsExpenses ? (
               <Skeleton className="h-full w-full" />
-            ) : (laborRoleData?.length || 0) === 0 ? (
+            ) : (grossProfitVsExpenses?.length || 0) === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                No labor cost data found for the selected window.
+                No cash-basis P&amp;L snapshot data found in the last 12 months.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={laborRoleData || []}
-                    dataKey="amount"
-                    nameKey="role"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={(entry) => {
-                      const labelName = String(entry.name || '')
-                      const pct = Number(entry.percent || 0) * 100
-                      return `${labelName} ${pct.toFixed(0)}%`
-                    }}
-                  >
-                    {(laborRoleData || []).map((entry, index) => (
-                      <Cell key={entry.role} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
+                <ComposedChart data={grossProfitVsExpenses || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="monthLabel" />
+                  <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
-                </PieChart>
+                  <Bar dataKey="grossProfit" fill="#111827" radius={[4, 4, 0, 0]} name="Gross Profit" />
+                  <Bar dataKey="totalExpenses" fill="#6B7280" radius={[4, 4, 0, 0]} name="Expenses" />
+                </ComposedChart>
               </ResponsiveContainer>
             )}
           </CardContent>

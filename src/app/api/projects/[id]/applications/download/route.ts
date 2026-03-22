@@ -88,10 +88,10 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
 
   const filledPdfBytes = await pdfDoc.save()
   const templateCode = (template as { code?: string } | null)?.code || 'APPLICATION'
-  const projectNumber = project?.project_number || 'PROJECT'
+  const projectNumber = (project as { project_number?: string } | null)?.project_number || 'PROJECT'
   const fileName = `${projectNumber}_${templateCode}_RUN_${runId}.pdf`
 
-  return new NextResponse(filledPdfBytes, {
+  return new NextResponse(Buffer.from(filledPdfBytes), {
     status: 200,
     headers: {
       'Content-Type': 'application/pdf',

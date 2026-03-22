@@ -15,6 +15,12 @@ type QboInvoiceLine = {
   }
 }
 
+function monthStart(value: string | null | undefined): string | null {
+  const text = String(value || '').trim()
+  if (!text || text.length < 7) return null
+  return `${text.slice(0, 7)}-01`
+}
+
 export async function syncInvoices(
   supabase: ReturnType<typeof createAdminClient>,
   settings: QBSettings
@@ -70,6 +76,7 @@ export async function syncInvoices(
           project_number: projectNumber,
           project_name: customerName || null,
           date_issued: invoice.TxnDate || null,
+          billing_period: monthStart(invoice.TxnDate),
           budget_date: invoice.DueDate || null,
           date_paid: isPaid ? (lastUpdatedDate || invoice.TxnDate || null) : null,
           amount: totalAmt,
@@ -150,10 +157,13 @@ export async function syncInvoices(
                     project_number: safeProjectNumber,
                     invoice_number: docNumber,
                     invoice_date: safeInvoiceDate,
+                    billing_period: monthStart(safeInvoiceDate),
                     phase_name: itemName || 'Line Item',
                     amount: line.Amount,
                     line_type: lineType,
                     qb_line_id: line.Id || null,
+                    source_table: 'qbo',
+                    source_row_id: line.Id || null,
                   }
                 })
               if (lineRows.length) await supabase.from('invoice_line_items').insert(lineRows as never)

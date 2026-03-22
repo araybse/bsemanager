@@ -13,6 +13,8 @@ import { syncProjects } from '@/lib/qbo/sync/domains/projects'
 import { syncInvoices } from '@/lib/qbo/sync/domains/invoices'
 import { syncTimeEntries } from '@/lib/qbo/sync/domains/time-entries'
 import { syncContractLabor } from '@/lib/qbo/sync/domains/contract-labor'
+import { syncProjectExpenses } from '@/lib/qbo/sync/domains/project-expenses'
+import { syncPayments } from '@/lib/qbo/sync/domains/payments'
 import type { SyncType } from '@/lib/qbo/sync/types'
 import { requireApiRoles } from '@/lib/auth/api-authorization'
 
@@ -27,6 +29,8 @@ async function runDomainSync(options: {
     | 'last_invoice_sync_at'
     | 'last_time_sync_at'
     | 'last_contract_labor_sync_at'
+    | 'last_expense_sync_at'
+    | 'last_payment_sync_at'
   run: () => Promise<Record<string, unknown>>
   supabase: ReturnType<typeof createAdminClient>
   results: Record<string, unknown>
@@ -114,13 +118,19 @@ export async function POST(request: NextRequest) {
 
     let syncType: SyncType = 'all'
     let syncYear: number | undefined
+    let syncMonth: number | undefined
     const queryType = request.nextUrl?.searchParams?.get('type')
     const queryYear = request.nextUrl?.searchParams?.get('year')
+    const queryMonth = request.nextUrl?.searchParams?.get('month')
     if (queryType) {
       syncType = queryType as SyncType
       if (queryYear) {
         const parsed = Number(queryYear)
         if (Number.isInteger(parsed)) syncYear = parsed
+      }
+      if (queryMonth) {
+        const parsed = Number(queryMonth)
+        if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 12) syncMonth = parsed
       }
     } else {
       try {
@@ -128,6 +138,10 @@ export async function POST(request: NextRequest) {
         syncType = body.type || 'all'
         const parsed = Number(body.year)
         if (Number.isInteger(parsed)) syncYear = parsed
+        const parsedMonth = Number(body.month)
+        if (Number.isInteger(parsedMonth) && parsedMonth >= 1 && parsedMonth <= 12) {
+          syncMonth = parsedMonth
+        }
       } catch {
         // Leave default value.
       }
@@ -251,6 +265,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (syncType === 'all' || syncType === 'payments') {
+      const outcome = await runDomainSync({
+        domain: 'payments',
+        resultsKey: 'payments',
+        syncType,
+        settingsId: settings.id,
+        qbSettingsColumn: 'last_payment_sync_at',
+        run: () => syncPayments(supabase, settings),
+        supabase,
+        results,
+        syncTimestamp,
+        triggerMode,
+      })
+      if (!outcome.ok) {
+        runFailures.push({
+          domain: 'payments',
+          category: outcome.error.category,
+          message: outcome.error.message,
+        })
+      }
+    }
+
     if (syncType === 'all' || syncType === 'time') {
       const outcome = await runDomainSync({
         domain: 'time_entries',
@@ -258,7 +294,7 @@ export async function POST(request: NextRequest) {
         syncType,
         settingsId: settings.id,
         qbSettingsColumn: 'last_time_sync_at',
-        run: () => syncTimeEntries(supabase, settings, syncYear),
+        run: () => syncTimeEntries(supabase, settings, syncYear, syncMonth),
         supabase,
         results,
         syncTimestamp,
@@ -289,6 +325,28 @@ export async function POST(request: NextRequest) {
       if (!outcome.ok) {
         runFailures.push({
           domain: 'project_expenses',
+          category: outcome.error.category,
+          message: outcome.error.message,
+        })
+      }
+    }
+
+    if (syncType === 'all' || syncType === 'expenses') {
+      const outcome = await runDomainSync({
+        domain: 'project_expenses_general',
+        resultsKey: 'expenses',
+        syncType,
+        settingsId: settings.id,
+        qbSettingsColumn: 'last_expense_sync_at',
+        run: () => syncProjectExpenses(supabase, settings),
+        supabase,
+        results,
+        syncTimestamp,
+        triggerMode,
+      })
+      if (!outcome.ok) {
+        runFailures.push({
+          domain: 'project_expenses_general',
           category: outcome.error.category,
           message: outcome.error.message,
         })

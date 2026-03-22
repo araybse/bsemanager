@@ -36,7 +36,15 @@ export async function POST(request: NextRequest) {
       { status: 404 }
     )
   }
-  if (requiredItem.item_type !== 'application') {
+  const requiredItemRow = requiredItem as {
+    id: number
+    permit_id: number
+    code: string
+    name: string
+    item_type: string
+    application_template_id: number | null
+  }
+  if (requiredItemRow.item_type !== 'application') {
     return NextResponse.json(
       { error: 'Templates can only be uploaded for application-type permit documents' },
       { status: 400 }
@@ -46,18 +54,19 @@ export async function POST(request: NextRequest) {
   const { data: permit, error: permitError } = await supabase
     .from('permit_catalog' as never)
     .select('id, agency_id')
-    .eq('id' as never, requiredItem.permit_id as never)
+    .eq('id' as never, requiredItemRow.permit_id as never)
     .maybeSingle()
   if (permitError || !permit) {
     return NextResponse.json({ error: permitError?.message || 'Permit not found' }, { status: 404 })
   }
+  const permitRow = permit as { id: number; agency_id: number }
 
   const bytes = new Uint8Array(await file.arrayBuffer())
   const bucket = 'application-templates'
   const fileName = file.name.toLowerCase().endsWith('.pdf') ? file.name : `${file.name}.pdf`
-  const storagePath = `required-item-${requiredItem.id}/${Date.now()}-${fileName}`
+  const storagePath = `required-item-${requiredItemRow.id}/${Date.now()}-${fileName}`
 
-  const existingTemplateId = Number(requiredItem.application_template_id) || null
+  const existingTemplateId = Number(requiredItemRow.application_template_id) || null
   if (existingTemplateId) {
     const { data: existingTemplate } = await supabase
       .from('application_template_catalog' as never)
@@ -86,9 +95,9 @@ export async function POST(request: NextRequest) {
       .from('application_template_catalog' as never)
       .update(
         {
-          agency_id: permit.agency_id,
-          permit_id: permit.id,
-          name: `${requiredItem.name}`,
+          agency_id: permitRow.agency_id,
+          permit_id: permitRow.id,
+          name: `${requiredItemRow.name}`,
           storage_bucket: bucket,
           storage_path: storagePath,
           updated_at: new Date().toISOString(),
@@ -104,10 +113,10 @@ export async function POST(request: NextRequest) {
       .from('application_template_catalog' as never)
       .insert(
         {
-          agency_id: permit.agency_id,
-          permit_id: permit.id,
-          code: `PRI_${requiredItem.id}`,
-          name: `${requiredItem.name}`,
+          agency_id: permitRow.agency_id,
+          permit_id: permitRow.id,
+          code: `PRI_${requiredItemRow.id}`,
+          name: `${requiredItemRow.name}`,
           storage_bucket: bucket,
           storage_path: storagePath,
           output_mime_type: 'application/pdf',

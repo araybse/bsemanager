@@ -8,7 +8,7 @@ function isValidSignature(payload: string, signature: string | null) {
   return hmac === signature
 }
 
-function shouldSyncContractLabor(body: unknown) {
+function shouldSyncExpenses(body: unknown) {
   const notifications = (body as { eventNotifications?: Array<Record<string, unknown>> })
     ?.eventNotifications
   if (!Array.isArray(notifications)) return false
@@ -48,13 +48,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  if (!shouldSyncContractLabor(payload)) {
+  if (!shouldSyncExpenses(payload)) {
     return NextResponse.json({ ok: true })
   }
 
   const baseUrl = getBaseUrl(request)
   const internalSyncToken = process.env.INTERNAL_SYNC_TOKEN
   await fetch(`${baseUrl}/api/qb-time/sync?type=contract_labor`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(internalSyncToken ? { 'x-internal-sync-token': internalSyncToken } : {}),
+    },
+  })
+
+  await fetch(`${baseUrl}/api/qb-time/sync?type=expenses`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

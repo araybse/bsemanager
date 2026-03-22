@@ -16,7 +16,13 @@ export async function POST(request: NextRequest) {
 
     await persistCrossingResolution(supabase, payload, outputs, payload.editedBy || auth.user.email || auth.user.id)
 
-    const editPayload = {
+    const editPayload: {
+      crossing_id: number
+      project_id: number | null
+      edit_payload: never
+      reason: string
+      created_by: string
+    } = {
       crossing_id: payload.crossingId,
       project_id: null,
       edit_payload: payload as never,

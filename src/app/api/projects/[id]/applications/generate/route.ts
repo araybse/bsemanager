@@ -40,6 +40,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (projectError || !project) {
     return NextResponse.json({ error: projectError?.message || 'Project not found' }, { status: 404 })
   }
+  const projectRow = project as { id: number; project_number: string | null; name: string | null }
 
   const { data: projectInfo } = await supabase
     .from('project_info' as never)
@@ -110,12 +111,18 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     )
   }
 
+  const requiredItemRow = requiredItem as {
+    id: number
+    project_permit_selection_id: number | null
+    required_item_catalog_id: number | null
+  }
+
   let templateId = body.templateId || null
-  if (!templateId && requiredItem.required_item_catalog_id) {
+  if (!templateId && requiredItemRow.required_item_catalog_id) {
     const { data: requiredCatalog } = await supabase
       .from('permit_required_item_catalog' as never)
       .select('application_template_id')
-      .eq('id' as never, requiredItem.required_item_catalog_id as never)
+      .eq('id' as never, requiredItemRow.required_item_catalog_id as never)
       .maybeSingle()
     templateId = Number((requiredCatalog as { application_template_id: number | null } | null)?.application_template_id) || null
   }
@@ -135,6 +142,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   if (templateError || !template) {
     return NextResponse.json({ error: templateError?.message || 'Template not found' }, { status: 404 })
   }
+  const templateRow = template as { id: number; code: string | null; name: string | null }
 
   const { data: mappings, error: mappingsError } = await supabase
     .from('application_field_map' as never)
@@ -172,8 +180,8 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     .insert(
       {
         project_id: projectId,
-        project_permit_selection_id: requiredItem.project_permit_selection_id,
-        required_item_id: requiredItem.id,
+        project_permit_selection_id: requiredItemRow.project_permit_selection_id,
+        required_item_id: requiredItemRow.id,
         template_id: templateId,
         status: 'completed',
         resolved_fields: resolvedFields,
@@ -187,32 +195,33 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: insertRunError?.message || 'Failed to create run' }, { status: 500 })
   }
 
-  const downloadUrl = `/api/projects/${projectId}/applications/download?run_id=${insertedRun.id}`
+  const insertedRunRow = insertedRun as { id: number }
+  const downloadUrl = `/api/projects/${projectId}/applications/download?run_id=${insertedRunRow.id}`
 
   const { error: updateRunError } = await supabase
     .from('project_application_runs' as never)
     .update(
       {
         generated_file_url: downloadUrl,
-        generated_file_path: `virtual/${insertedRun.id}.pdf`,
+        generated_file_path: `virtual/${insertedRunRow.id}.pdf`,
         updated_at: new Date().toISOString(),
       } as never
     )
-    .eq('id' as never, insertedRun.id as never)
+    .eq('id' as never, insertedRunRow.id as never)
 
   if (updateRunError) {
     return NextResponse.json({ error: updateRunError.message }, { status: 500 })
   }
 
-  const generatedFileName = `${(project.project_number || 'PROJECT').toString()}_${(template.code || 'APPLICATION').toString()}_RUN_${insertedRun.id}.pdf`
+  const generatedFileName = `${(projectRow.project_number || 'PROJECT').toString()}_${(templateRow.code || 'APPLICATION').toString()}_RUN_${insertedRunRow.id}.pdf`
 
   await supabase.from('generated_application_files' as never).insert({
     project_id: projectId,
-    run_id: insertedRun.id,
+    run_id: insertedRunRow.id,
     template_id: templateId,
     file_name: generatedFileName,
     storage_bucket: 'virtual-generated',
-    storage_path: `virtual/${insertedRun.id}.pdf`,
+    storage_path: `virtual/${insertedRunRow.id}.pdf`,
     public_url: downloadUrl,
     mime_type: 'application/pdf',
   } as never)
@@ -220,10 +229,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   await supabase
     .from('project_required_items' as never)
     .update({ status: 'generated', output_file_url: downloadUrl, updated_at: new Date().toISOString() } as never)
-    .eq('id' as never, requiredItem.id as never)
+    .eq('id' as never, requiredItemRow.id as never)
 
   return NextResponse.json({
-    runId: insertedRun.id,
+    runId: insertedRunRow.id,
     downloadUrl,
     fileName: generatedFileName,
     resolvedFieldCount: Object.keys(resolvedFields).length,

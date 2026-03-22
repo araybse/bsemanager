@@ -41,7 +41,7 @@ export async function updateSession(request: NextRequest) {
   ])) as { data: { user: { id: string } | null }, error: Error | null }
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/income', '/contract-labor', '/settings']
+  const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/contract-labor', '/settings']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   if (!user && isProtectedPath) {

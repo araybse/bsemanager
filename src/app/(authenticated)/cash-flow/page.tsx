@@ -1,35 +1,2363 @@
 'use client'
 
+import { Fragment, useMemo, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip as UiTooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { formatCurrency } from '@/lib/utils/format'
+import { ChevronDown, ChevronRight } from 'lucide-react'
+import { CartesianGrid, XAxis, YAxis, Tooltip, Legend, ComposedChart, Bar, LineChart, Line, ReferenceLine, ResponsiveContainer } from 'recharts'
+import { toast } from 'sonner'
+
+type SnapshotRow = {
+  id: number
+  period_start: string
+  period_end: string
+  fetched_at: string
+  basis?: string
+}
+
+type SnapshotLineRow = {
+  snapshot_id: number
+  section: string | null
+  account_name: string
+  amount: number | null
+  sort_order: number
+  is_total: boolean | null
+  parent_key: string | null
+  row_key: string | null
+}
+
+type PaymentAllocationRow = {
+  payment_date: string
+  applied_amount: number | null
+  applied_services_amount: number | null
+  invoice_id: number | null
+  project_number: string | null
+  project_name: string | null
+  invoice_number: string | null
+  qb_invoice_id: string | null
+}
+
+type ServicePhaseRow = {
+  phaseKey: string
+  phaseName: string
+  phaseOrder: number
+  contractFee: number
+  billedToDate: number
+  receivedToDate: number
+  outstandingAr: number
+  unbilledRemaining: number
+  monthlyTotals: Record<string, number>
+  manualByMonth: Record<string, number>
+}
+
+type ServiceProjectRow = {
+  projectNumber: string
+  projectName: string | null
+  hidden: boolean
+  phases: ServicePhaseRow[]
+}
+
+type ExpenseSubsectionRow = {
+  key: string
+  titleAccountName: string
+  totalAccountName: string | null
+  childAccountNames: string[]
+}
+
+type PhaseForecastRow = {
+  project_number: string
+  phase_key: string
+  phase_name: string
+  forecast_month: string
+  amount: number | null
+}
+
+type PhaseCellContribution = {
+  invoiceId: number | null
+  invoiceNumber: string
+  source: 'actual' | 'carry' | 'manual'
+  amount: number
+}
+
+type HiddenProjectRow = {
+  project_number: string
+  is_hidden: boolean | null
+}
+
+type ExpenseLineForecastRow = {
+  account_key: string
+  account_name: string
+  forecast_month: string
+  amount: number | null
+}
+
+type TableColumn = {
+  key: string
+  label: string
+  isFuture: boolean
+  isProjected: boolean
+}
+
+const COMPANY_START_YEAR = 2023
+const COMPANY_START_MONTH_INDEX = 4 // May
+
+function monthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+}
+
+function formatMonthLabel(month: string): string {
+  const [yearStr, monthStr] = month.split('-')
+  const year = Number(yearStr)
+  const monthNumber = Number(monthStr)
+  if (!Number.isInteger(year) || !Number.isInteger(monthNumber)) return month
+  const date = new Date(year, monthNumber - 1, 1)
+  const shortMonth = date.toLocaleString('en-US', { month: 'short' })
+  return `${shortMonth} '${String(year).slice(-2)}`
+}
+
+function getQuarterLabel(month: string): string {
+  const [yearStr, monthStr] = month.split('-')
+  const year = Number(yearStr)
+  const monthNumber = Number(monthStr)
+  if (!Number.isInteger(year) || !Number.isInteger(monthNumber)) return month
+  const quarter = Math.floor((monthNumber - 1) / 3) + 1
+  return `${year} Q${quarter}`
+}
+
+function getYearLabel(month: string): string {
+  return month.slice(0, 4)
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
 
 export default function CashFlowPage() {
+  const supabase = createClient()
+  const queryClient = useQueryClient()
+  const [tableGranularity, setTableGranularity] = useState<'month' | 'current' | 'year'>('current')
+  const [tableYearFilter, setTableYearFilter] = useState<string>('all')
+  const [chartGranularity, setChartGranularity] = useState<'month' | 'quarter' | 'year'>('month')
+  const [incomeCollapsed, setIncomeCollapsed] = useState(false)
+  const [expenseCollapsed, setExpenseCollapsed] = useState(false)
+  const [servicesCollapsed, setServicesCollapsed] = useState(true)
+  const [collapsedServiceProjects, setCollapsedServiceProjects] = useState<Record<string, boolean>>({})
+  const [collapsedServiceYears, setCollapsedServiceYears] = useState<Record<string, boolean>>({})
+  const [collapsedExpenseSubsections, setCollapsedExpenseSubsections] = useState<Record<string, boolean>>({})
+  const [manualEdits, setManualEdits] = useState<Record<string, string>>({})
+  const [savingManualByKey, setSavingManualByKey] = useState<Record<string, boolean>>({})
+  const [savingProjectVisibility, setSavingProjectVisibility] = useState<Record<string, boolean>>({})
+  const [manualExpenseLineEdits, setManualExpenseLineEdits] = useState<Record<string, string>>({})
+  const [savingExpenseLineByKey, setSavingExpenseLineByKey] = useState<Record<string, boolean>>({})
+  const [showHiddenProjects, setShowHiddenProjects] = useState(false)
+
+  const {
+    data: cashFlowData,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['cash-flow-table'],
+    queryFn: async () => {
+      const now = new Date()
+      const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const currentMonthKey = monthKey(currentMonth)
+      const projectionCount = 12
+      const startMonth = new Date(COMPANY_START_YEAR, COMPANY_START_MONTH_INDEX, 1)
+
+      const months: string[] = []
+      let cursor = new Date(startMonth)
+      const endMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + projectionCount, 1)
+      while (cursor <= endMonth) {
+        months.push(monthKey(cursor))
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)
+      }
+
+      const { data: snapshotRows, error: snapshotError } = await supabase
+        .from('accounting_snapshots' as never)
+        .select('id, period_start, period_end, fetched_at')
+        .eq('report_type' as never, 'profit_and_loss' as never)
+        .eq('basis' as never, 'cash' as never)
+        .gte('period_start' as never, `${COMPANY_START_YEAR}-05-01` as never)
+        .order('fetched_at' as never, { ascending: false })
+      if (snapshotError) throw snapshotError
+
+      const snapshotByMonth = new Map<string, SnapshotRow>()
+      ;((snapshotRows as SnapshotRow[] | null) || []).forEach((row) => {
+        const start = (row.period_start || '').slice(0, 7)
+        const end = (row.period_end || '').slice(0, 7)
+        if (!start || start !== end) return
+        if (!snapshotByMonth.has(start)) {
+          snapshotByMonth.set(start, row)
+        }
+      })
+
+      const snapshotIds = Array.from(new Set(Array.from(snapshotByMonth.values()).map((row) => row.id)))
+      const allLines: SnapshotLineRow[] = []
+      if (snapshotIds.length > 0) {
+        const chunkSize = 100
+        for (let i = 0; i < snapshotIds.length; i += chunkSize) {
+          const chunk = snapshotIds.slice(i, i + chunkSize)
+          const { data, error: lineError } = await supabase
+            .from('accounting_snapshot_lines' as never)
+            .select('snapshot_id, section, account_name, amount, sort_order, is_total, parent_key, row_key')
+            .in('snapshot_id' as never, chunk as never)
+          if (lineError) throw lineError
+          allLines.push(...((data as SnapshotLineRow[] | null) || []))
+        }
+      }
+
+      const monthValueByAccount = new Map<string, number>()
+      months.forEach((month) => {
+        const snapshotId = snapshotByMonth.get(month)?.id
+        if (!snapshotId) return
+        const linesForMonth = allLines
+          .filter((line) => line.snapshot_id === snapshotId)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        linesForMonth.forEach((line) => {
+          const accountKey = (line.account_name || '').trim().toLowerCase()
+          if (!accountKey) return
+          const composite = `${month}::${accountKey}`
+          // Keep the latest value for duplicate account rows instead of summing.
+          // This matches Accounting page behavior and avoids inflated totals.
+          monthValueByAccount.set(composite, Number(line.amount) || 0)
+        })
+      })
+
+      const normalize = (value: string | null | undefined) => (value || '').trim().toLowerCase()
+
+      const startPrevMonthDate = new Date(COMPANY_START_YEAR, COMPANY_START_MONTH_INDEX - 1, 1)
+      const startPrevMonthKey = monthKey(startPrevMonthDate)
+
+      const { data: balanceSnapshotRows, error: balanceSnapshotError } = await supabase
+        .from('accounting_snapshots' as never)
+        .select('id, period_start, period_end, fetched_at, basis')
+        .eq('report_type' as never, 'balance_sheet' as never)
+        .in('basis' as never, ['accrual', 'cash'] as never)
+        .gte('period_end' as never, `${COMPANY_START_YEAR}-04-01` as never)
+        .order('fetched_at' as never, { ascending: false })
+      if (balanceSnapshotError) throw balanceSnapshotError
+
+      const balanceSnapshotByMonth = new Map<string, SnapshotRow>()
+      ;((balanceSnapshotRows as SnapshotRow[] | null) || []).forEach((row) => {
+        const month = (row.period_end || '').slice(0, 7)
+        if (!month) return
+        const existing = balanceSnapshotByMonth.get(month)
+        if (!existing) {
+          balanceSnapshotByMonth.set(month, row)
+          return
+        }
+        const existingBasis = (existing.basis || '').toLowerCase()
+        const incomingBasis = (row.basis || '').toLowerCase()
+        if (existingBasis === 'cash' && incomingBasis === 'accrual') {
+          balanceSnapshotByMonth.set(month, row)
+          return
+        }
+        if (existingBasis === incomingBasis && (row.fetched_at || '') > (existing.fetched_at || '')) {
+          balanceSnapshotByMonth.set(month, row)
+        }
+      })
+
+      const balanceSnapshotIds = Array.from(new Set(Array.from(balanceSnapshotByMonth.values()).map((row) => row.id)))
+      const allBalanceLines: SnapshotLineRow[] = []
+      if (balanceSnapshotIds.length > 0) {
+        const chunkSize = 100
+        for (let i = 0; i < balanceSnapshotIds.length; i += chunkSize) {
+          const chunk = balanceSnapshotIds.slice(i, i + chunkSize)
+          const { data, error: lineError } = await supabase
+            .from('accounting_snapshot_lines' as never)
+            .select('snapshot_id, section, account_name, amount, sort_order, is_total, parent_key, row_key')
+            .in('snapshot_id' as never, chunk as never)
+          if (lineError) throw lineError
+          allBalanceLines.push(...((data as SnapshotLineRow[] | null) || []))
+        }
+      }
+
+      const isBankBalanceLine = (line: SnapshotLineRow) => {
+        const accountName = normalize(line.account_name)
+        const section = normalize(line.section)
+        const parentKey = normalize(line.parent_key)
+        if (!accountName || section !== 'assets') return false
+        if (Boolean(line.is_total) || accountName.startsWith('total ')) return false
+        if (parentKey.includes('accounts receivable')) return false
+        if (parentKey.includes('bank') || parentKey.includes('cash')) return true
+        return /(checking|savings|money market|operating|bank|cash)/.test(accountName)
+      }
+
+      const rawEndingBankBalanceByMonth = new Map<string, number>()
+      const bankAccountNameSet = new Set<string>()
+      const balanceMonthsToBuild = Array.from(new Set([startPrevMonthKey, ...months]))
+      balanceMonthsToBuild.forEach((month) => {
+        const snapshotId = balanceSnapshotByMonth.get(month)?.id
+        if (!snapshotId) return
+        const linesForMonth = allBalanceLines.filter((line) => line.snapshot_id === snapshotId)
+        let sum = 0
+        linesForMonth.forEach((line) => {
+          if (!isBankBalanceLine(line)) return
+          sum += Number(line.amount) || 0
+          bankAccountNameSet.add((line.account_name || '').trim())
+        })
+        rawEndingBankBalanceByMonth.set(month, sum)
+      })
+
+      const lineSortByAccount = new Map<string, number>()
+      allLines.forEach((line) => {
+        const key = normalize(line.account_name)
+        if (!key) return
+        const currentSort = lineSortByAccount.get(key)
+        if (typeof currentSort !== 'number' || line.sort_order < currentSort) {
+          lineSortByAccount.set(key, line.sort_order)
+        }
+      })
+
+      const incomeCategoryNames = allLines
+        .filter((line) => {
+          const name = normalize(line.account_name)
+          const section = normalize(line.section)
+          const parentKey = normalize(line.parent_key)
+          const looksLikeIncomeSection = section.includes('income') || parentKey === 'income'
+          return looksLikeIncomeSection && name.length > 0 && name !== 'total income'
+        })
+        .map((line) => normalize(line.account_name))
+      const dedupedIncomeCategoryNames = Array.from(new Set(incomeCategoryNames))
+
+      const expenseCategoryNames = allLines
+        .filter((line) => {
+          const name = normalize(line.account_name)
+          const section = normalize(line.section)
+          const parentKey = normalize(line.parent_key)
+          const looksLikeExpenseSection = section.includes('expense') || parentKey === 'expenses'
+          return looksLikeExpenseSection && name.length > 0 && name !== 'total expenses'
+        })
+        .map((line) => normalize(line.account_name))
+      const dedupedExpenseCategoryNames = Array.from(new Set(expenseCategoryNames))
+
+      const expenseLines = allLines.filter((line) => {
+        const name = normalize(line.account_name)
+        const section = normalize(line.section)
+        const parentKey = normalize(line.parent_key)
+        const looksLikeExpenseSection = section.includes('expense') || parentKey === 'expenses'
+        return looksLikeExpenseSection && name.length > 0 && name !== 'total expenses'
+      })
+
+      const groupedByExpenseParent = new Map<string, SnapshotLineRow[]>()
+      expenseLines.forEach((line) => {
+        const parent = normalize(line.parent_key)
+        if (!parent || parent === 'expenses') return
+        if (!groupedByExpenseParent.has(parent)) groupedByExpenseParent.set(parent, [])
+        groupedByExpenseParent.get(parent)!.push(line)
+      })
+
+      const consumedExpenseAccounts = new Set<string>()
+      const expenseSubsections: ExpenseSubsectionRow[] = Array.from(groupedByExpenseParent.entries())
+        .map(([parentKey, lines]) => {
+          const sorted = [...lines].sort((a, b) => a.sort_order - b.sort_order)
+          const totalLine =
+            sorted.find((line) => Boolean(line.is_total) && normalize(line.account_name).startsWith('total ')) || null
+          const totalAccountName = totalLine ? normalize(totalLine.account_name) : null
+          const childAccountNames = Array.from(
+            new Set(
+              sorted
+                .map((line) => normalize(line.account_name))
+                .filter((name) => name.length > 0 && name !== totalAccountName)
+            )
+          ).sort((a, b) => (lineSortByAccount.get(a) || 9999) - (lineSortByAccount.get(b) || 9999))
+
+          if (totalAccountName) consumedExpenseAccounts.add(totalAccountName)
+          childAccountNames.forEach((name) => consumedExpenseAccounts.add(name))
+
+          return {
+            key: `expense::${parentKey}`,
+            titleAccountName: totalAccountName || parentKey,
+            totalAccountName,
+            childAccountNames,
+          }
+        })
+        .sort((a, b) => {
+          const aOrder = lineSortByAccount.get(a.totalAccountName || a.titleAccountName) || 9999
+          const bOrder = lineSortByAccount.get(b.totalAccountName || b.titleAccountName) || 9999
+          return aOrder - bOrder
+        })
+
+      const standaloneExpenseCategoryNames = dedupedExpenseCategoryNames
+        .filter((name) => !consumedExpenseAccounts.has(name))
+        .sort((a, b) => (lineSortByAccount.get(a) || 9999) - (lineSortByAccount.get(b) || 9999))
+
+      const { data: activeContracts, error: contractError } = await supabase
+        .from('active_contracts_view' as never)
+        .select('remaining')
+      if (contractError) throw contractError
+
+      const { data: paymentAllocations, error: paymentAllocationsError } = await supabase
+        .from('qbo_payment_allocations' as never)
+        .select('payment_date, applied_amount, applied_services_amount, invoice_id, project_number, project_name, invoice_number, qb_invoice_id')
+        .gte('payment_date' as never, `${COMPANY_START_YEAR}-05-01` as never)
+      if (paymentAllocationsError) throw paymentAllocationsError
+
+      const { data: invoiceRows, error: invoiceRowsError } = await supabase
+        .from('invoices' as never)
+        .select('id, invoice_number, project_number, project_name, date_issued, date_paid')
+        .gte('date_issued' as never, `${COMPANY_START_YEAR}-05-01` as never)
+      if (invoiceRowsError) throw invoiceRowsError
+
+      const invoiceIds = (((invoiceRows as Array<{ id: number }> | null) || []).map((row) => row.id))
+      const invoiceLines: Array<{
+        invoice_id: number
+        phase_name: string
+        amount: number | null
+        line_type: string | null
+      }> = []
+      if (invoiceIds.length > 0) {
+        const chunkSize = 250
+        for (let i = 0; i < invoiceIds.length; i += chunkSize) {
+          const chunk = invoiceIds.slice(i, i + chunkSize)
+          const { data: lineChunk, error: lineChunkError } = await supabase
+            .from('invoice_line_items' as never)
+            .select('invoice_id, phase_name, amount, line_type')
+            .in('invoice_id' as never, chunk as never)
+          if (lineChunkError) throw lineChunkError
+          invoiceLines.push(
+            ...(
+              (lineChunk as
+                | Array<{
+                    invoice_id: number
+                    phase_name: string
+                    amount: number | null
+                    line_type: string | null
+                  }>
+                | null) || []
+            )
+          )
+        }
+      }
+
+      const { data: contractPhaseRows, error: contractPhaseError } = await supabase
+        .from('active_contracts_view' as never)
+        .select('project_number, project_name, phase_code, phase_name, total_fee, billed_to_date, remaining')
+        .order('project_number' as never, { ascending: true })
+        .order('phase_code' as never, { ascending: true })
+      if (contractPhaseError) throw contractPhaseError
+
+      const { data: manualForecastRows, error: manualForecastError } = await supabase
+        .from('cash_flow_phase_forecasts' as never)
+        .select('project_number, phase_key, phase_name, forecast_month, amount')
+        .gte('forecast_month' as never, `${COMPANY_START_YEAR}-05` as never)
+      if (manualForecastError) throw manualForecastError
+
+      const { data: hiddenProjectsRows, error: hiddenProjectsError } = await supabase
+        .from('cash_flow_project_visibility' as never)
+        .select('project_number, is_hidden')
+        .eq('is_hidden' as never, true as never)
+      if (hiddenProjectsError) throw hiddenProjectsError
+
+      const { data: expenseLineForecastRows, error: expenseLineForecastError } = await supabase
+        .from('cash_flow_expense_line_forecasts' as never)
+        .select('account_key, account_name, forecast_month, amount')
+        .gte('forecast_month' as never, `${COMPANY_START_YEAR}-05` as never)
+      if (expenseLineForecastError) throw expenseLineForecastError
+
+      const { data: contractLaborExpenseRows, error: contractLaborExpenseError } = await supabase
+        .from('project_expenses' as never)
+        .select('expense_date, fee_amount, subcontract_contract_id, project_number, vendor_name')
+        .eq('source_entity_type' as never, 'contract_labor' as never)
+        .eq('is_reimbursable' as never, false as never)
+        .neq('source_active' as never, false as never)
+        .gte('expense_date' as never, `${COMPANY_START_YEAR}-05-01` as never)
+      if (contractLaborExpenseError) throw contractLaborExpenseError
+
+      const { data: contractLaborContractsRows, error: contractLaborContractsError } = await supabase
+        .from('subcontract_contracts' as never)
+        .select(
+          'id, project_number, vendor_name, contract_type, original_amount, monthly_amount, hourly_cost_rate, planned_monthly_hours, start_date, end_date, status'
+        )
+        .in('status' as never, ['draft', 'active', 'on_hold'] as never)
+      if (contractLaborContractsError) throw contractLaborContractsError
+
+      const remainingBacklog = ((activeContracts as Array<{ remaining: number }> | null) || []).reduce(
+        (sum, row) => sum + Math.max(0, Number(row.remaining) || 0),
+        0
+      )
+      const monthlyIncomeProjection = projectionCount > 0 ? remainingBacklog / projectionCount : 0
+
+      const historicalMonths = months.filter((m) => m <= monthKey(currentMonth))
+      const futureMonths = months.filter((m) => m > monthKey(currentMonth))
+
+      const trailingHistoryMonths = historicalMonths.slice(-6)
+      const avgForAccount = (accountName: string) => {
+        const values = trailingHistoryMonths.map((month) => monthValueByAccount.get(`${month}::${accountName}`) || 0)
+        if (!values.length) return 0
+        return values.reduce((sum, value) => sum + value, 0) / values.length
+      }
+
+      const trailingIncomeAvg = avgForAccount('total income')
+      const trailingGrossAvg = avgForAccount('gross profit')
+
+      const incomeShares = new Map<string, number>()
+      dedupedIncomeCategoryNames.forEach((name) => {
+        const avg = avgForAccount(name)
+        incomeShares.set(name, trailingIncomeAvg > 0 ? avg / trailingIncomeAvg : 0)
+      })
+
+      const grossMargin = trailingIncomeAvg > 0 ? Math.max(0, Math.min(1, trailingGrossAvg / trailingIncomeAvg)) : 1
+      const manualExpenseLineByMonthAndAccount = new Map<string, number>()
+      ;((expenseLineForecastRows as ExpenseLineForecastRow[] | null) || []).forEach((row) => {
+        const month = (row.forecast_month || '').slice(0, 7)
+        const accountKey = normalize(row.account_key || row.account_name || '')
+        if (!month || !accountKey) return
+        manualExpenseLineByMonthAndAccount.set(`${month}::${accountKey}`, Number(row.amount) || 0)
+      })
+
+      const contractLaborScheduleByMonth = new Map<string, number>()
+      const paidByContractId = new Map<number, number>()
+      const normalizeMonth = (dateValue: string | null | undefined) => (dateValue || '').slice(0, 7)
+      const monthInRange = (month: string, startMonth: string | null, endMonth: string | null) => {
+        if (startMonth && month < startMonth) return false
+        if (endMonth && month > endMonth) return false
+        return true
+      }
+
+      const contractLaborExpenses =
+        ((contractLaborExpenseRows as Array<{
+          expense_date: string | null
+          fee_amount: number | null
+          subcontract_contract_id: number | null
+          project_number: string | null
+          vendor_name: string | null
+        }> | null) || [])
+
+      const contractLaborContracts =
+        ((contractLaborContractsRows as Array<{
+          id: number
+          project_number: string | null
+          vendor_name: string
+          contract_type: 'fixed_monthly' | 'fixed_total' | 'hourly'
+          original_amount: number | null
+          monthly_amount: number | null
+          hourly_cost_rate: number | null
+          planned_monthly_hours: number | null
+          start_date: string | null
+          end_date: string | null
+          status: string
+        }> | null) || [])
+
+      contractLaborExpenses.forEach((row) => {
+        const amount = Number(row.fee_amount) || 0
+        if (!row.subcontract_contract_id || amount <= 0) return
+        paidByContractId.set(
+          row.subcontract_contract_id,
+          (paidByContractId.get(row.subcontract_contract_id) || 0) + amount
+        )
+      })
+
+      // Fallback linkage for older rows without explicit contract id.
+      contractLaborContracts.forEach((contract) => {
+        const startMonth = normalizeMonth(contract.start_date)
+        const endMonth = normalizeMonth(contract.end_date)
+        contractLaborExpenses
+          .filter((row) => !row.subcontract_contract_id)
+          .forEach((row) => {
+            const month = normalizeMonth(row.expense_date)
+            if (!month) return
+            const projectMatches = (row.project_number || '').trim() === (contract.project_number || '').trim()
+            const vendorMatches = (row.vendor_name || '').trim().toLowerCase() === (contract.vendor_name || '').trim().toLowerCase()
+            if (!projectMatches || !vendorMatches) return
+            if (!monthInRange(month, startMonth || null, endMonth || null)) return
+            const amount = Number(row.fee_amount) || 0
+            if (amount <= 0) return
+            paidByContractId.set(contract.id, (paidByContractId.get(contract.id) || 0) + amount)
+          })
+      })
+
+      const currentAndFutureMonths = months.filter((month) => month >= currentMonthKey)
+      contractLaborContracts.forEach((contract) => {
+        const startMonth = normalizeMonth(contract.start_date)
+        const endMonth = normalizeMonth(contract.end_date)
+        const activeMonths = currentAndFutureMonths.filter((month) =>
+          monthInRange(month, startMonth || null, endMonth || null)
+        )
+        if (!activeMonths.length) return
+
+        if (contract.contract_type === 'fixed_monthly') {
+          const monthly = Number(contract.monthly_amount) || 0
+          activeMonths.forEach((month) => {
+            contractLaborScheduleByMonth.set(month, (contractLaborScheduleByMonth.get(month) || 0) + monthly)
+          })
+          return
+        }
+
+        if (contract.contract_type === 'hourly') {
+          const rate = Number(contract.hourly_cost_rate) || 0
+          const hours = Number(contract.planned_monthly_hours) || 0
+          const projected = rate * hours
+          activeMonths.forEach((month) => {
+            contractLaborScheduleByMonth.set(month, (contractLaborScheduleByMonth.get(month) || 0) + projected)
+          })
+          return
+        }
+
+        const paidToDate = paidByContractId.get(contract.id) || 0
+        const remaining = Math.max(0, (Number(contract.original_amount) || 0) - paidToDate)
+        const perMonth = activeMonths.length ? remaining / activeMonths.length : 0
+        activeMonths.forEach((month) => {
+          contractLaborScheduleByMonth.set(month, (contractLaborScheduleByMonth.get(month) || 0) + perMonth)
+        })
+      })
+
+      futureMonths.forEach((month) => {
+        monthValueByAccount.set(`${month}::total income`, monthlyIncomeProjection)
+        monthValueByAccount.set(`${month}::gross profit`, monthlyIncomeProjection * grossMargin)
+        monthValueByAccount.set(`${month}::total expenses`, 0)
+        monthValueByAccount.set(`${month}::net income`, monthlyIncomeProjection)
+        dedupedIncomeCategoryNames.forEach((name) => {
+          if (name === 'uncategorized income') {
+            monthValueByAccount.set(`${month}::${name}`, 0)
+            return
+          }
+          const share = incomeShares.get(name) || 0
+          monthValueByAccount.set(`${month}::${name}`, monthlyIncomeProjection * share)
+        })
+        dedupedExpenseCategoryNames.forEach((name) => {
+          monthValueByAccount.set(`${month}::${name}`, 0)
+        })
+      })
+
+      const toDisplayLabel = (key: string) =>
+        key
+          .split(' ')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' ')
+
+      const accountOrderSort = (a: string, b: string) => (lineSortByAccount.get(a) || 9999) - (lineSortByAccount.get(b) || 9999)
+
+      const normalizePhaseName = (value: string | null | undefined) => (value || '').trim().toLowerCase()
+      const invoiceMetaById = new Map<
+        number,
+        {
+          invoiceNumber: string
+          projectNumber: string
+          projectName: string | null
+          dateIssued: string | null
+          datePaid: string | null
+        }
+      >()
+      ;(
+        (invoiceRows as
+          | Array<{
+              id: number
+              invoice_number: string
+              project_number: string
+              project_name: string | null
+              date_issued: string | null
+              date_paid: string | null
+            }>
+          | null) || []
+      ).forEach((row) => {
+        const projectNumber = (row.project_number || '').trim()
+        if (!projectNumber) return
+        invoiceMetaById.set(row.id, {
+          invoiceNumber: row.invoice_number || `Invoice ${row.id}`,
+          projectNumber,
+          projectName: row.project_name || null,
+          dateIssued: row.date_issued || null,
+          datePaid: row.date_paid || null,
+        })
+      })
+
+      const phaseCellContributions = new Map<string, PhaseCellContribution[]>()
+      const appendContribution = (
+        projectNumber: string,
+        phaseKey: string,
+        month: string,
+        contribution: PhaseCellContribution
+      ) => {
+        const key = `${projectNumber}::${phaseKey}::${month}`
+        if (!phaseCellContributions.has(key)) phaseCellContributions.set(key, [])
+        phaseCellContributions.get(key)!.push(contribution)
+      }
+
+      const phaseLinesByInvoiceId = new Map<number, Array<{ phaseName: string; phaseKey: string; amount: number }>>()
+      invoiceLines.forEach((line) => {
+        const amount = Number(line.amount) || 0
+        if (amount <= 0) return
+        const lineType = (line.line_type || '').trim().toLowerCase()
+        if (lineType === 'adjustment') return
+        const phaseNameRaw = (line.phase_name || '').trim()
+        if (!phaseNameRaw) return
+        const phaseName = phaseNameRaw
+        const phaseKey = normalizePhaseName(phaseNameRaw)
+        if (!phaseKey) return
+        if (!phaseLinesByInvoiceId.has(line.invoice_id)) phaseLinesByInvoiceId.set(line.invoice_id, [])
+        phaseLinesByInvoiceId.get(line.invoice_id)!.push({ phaseName, phaseKey, amount })
+      })
+
+      const contractByPhase = new Map<
+        string,
+        {
+          contractFee: number
+          remaining: number
+          phaseOrder: number
+        }
+      >()
+      let contractPhaseOrdinal = 0
+      ;(
+        (contractPhaseRows as
+          | Array<{
+              project_number: string
+              project_name: string
+              phase_code: string
+              phase_name: string
+              total_fee: number
+              billed_to_date: number
+              remaining: number
+            }>
+          | null) || []
+      ).forEach((row) => {
+        const projectNumber = (row.project_number || '').trim()
+        const phaseKey = normalizePhaseName(row.phase_name)
+        if (!projectNumber || !phaseKey) return
+        const composite = `${projectNumber}::${phaseKey}`
+        contractPhaseOrdinal += 1
+        contractByPhase.set(composite, {
+          contractFee: Number(row.total_fee) || 0,
+          remaining: Number(row.remaining) || 0,
+          phaseOrder: contractPhaseOrdinal,
+        })
+      })
+
+      const hiddenProjectSet = new Set(
+        (((hiddenProjectsRows as HiddenProjectRow[] | null) || [])
+          .filter((row) => Boolean(row.is_hidden))
+          .map((row) => (row.project_number || '').trim())
+          .filter((value) => value.length > 0))
+      )
+
+      const phaseAccumulator = new Map<
+        string,
+        {
+          projectNumber: string
+          projectName: string | null
+          phaseKey: string
+          phaseName: string
+          phaseOrder: number
+          contractFee: number
+          billedToDate: number
+          receivedToDate: number
+          outstandingAr: number
+          unbilledRemaining: number
+          monthlyTotals: Record<string, number>
+          manualByMonth: Record<string, number>
+        }
+      >()
+
+      const ensurePhase = (input: {
+        projectNumber: string
+        projectName: string | null
+        phaseKey: string
+        phaseName: string
+      }) => {
+        const composite = `${input.projectNumber}::${input.phaseKey}`
+        if (!phaseAccumulator.has(composite)) {
+          const contract = contractByPhase.get(composite)
+          phaseAccumulator.set(composite, {
+            projectNumber: input.projectNumber,
+            projectName: input.projectName,
+            phaseKey: input.phaseKey,
+            phaseName: input.phaseName,
+            phaseOrder: contract?.phaseOrder || Number.MAX_SAFE_INTEGER,
+            contractFee: contract?.contractFee || 0,
+            // Billed is derived from invoice line accrual below.
+            // Using contract view billed_to_date here would double count.
+            billedToDate: 0,
+            receivedToDate: 0,
+            outstandingAr: 0,
+            unbilledRemaining: contract?.remaining || 0,
+            monthlyTotals: {},
+            manualByMonth: {},
+          })
+        }
+        return phaseAccumulator.get(composite)!
+      }
+
+      const monthAfterCurrent = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)
+      const monthAfterCurrentKey = monthKey(monthAfterCurrent)
+
+      ;(
+        (contractPhaseRows as
+          | Array<{
+              project_number: string
+              project_name: string
+              phase_name: string
+              total_fee: number
+              billed_to_date: number
+              remaining: number
+            }>
+          | null) || []
+      ).forEach((row) => {
+        const projectNumber = (row.project_number || '').trim()
+        const phaseName = (row.phase_name || '').trim()
+        const phaseKey = normalizePhaseName(phaseName)
+        if (!projectNumber || !phaseName || !phaseKey) return
+        ensurePhase({
+          projectNumber,
+          projectName: row.project_name || null,
+          phaseKey,
+          phaseName,
+        })
+      })
+
+      const receivedByInvoicePhase = new Map<string, number>()
+      ;((paymentAllocations as PaymentAllocationRow[] | null) || []).forEach((allocation) => {
+        const paymentMonth = (allocation.payment_date || '').slice(0, 7)
+        if (!paymentMonth || !months.includes(paymentMonth)) return
+        const amount = Number(allocation.applied_services_amount ?? allocation.applied_amount) || 0
+        if (amount === 0) return
+
+        const invoiceId = allocation.invoice_id
+        if (!invoiceId) return
+        const invoiceMeta = invoiceMetaById.get(invoiceId)
+        if (!invoiceMeta) return
+        const phaseLines = phaseLinesByInvoiceId.get(invoiceId) || []
+        if (phaseLines.length === 0) return
+        const totalPhaseAmount = phaseLines.reduce((sum, line) => sum + line.amount, 0)
+        if (totalPhaseAmount <= 0) return
+
+        phaseLines.forEach((line) => {
+          const allocated = amount * (line.amount / totalPhaseAmount)
+          const phase = ensurePhase({
+            projectNumber: invoiceMeta.projectNumber,
+            projectName: invoiceMeta.projectName,
+            phaseKey: line.phaseKey,
+            phaseName: line.phaseName,
+          })
+          phase.monthlyTotals[paymentMonth] = (phase.monthlyTotals[paymentMonth] || 0) + allocated
+          appendContribution(invoiceMeta.projectNumber, line.phaseKey, paymentMonth, {
+            invoiceId,
+            invoiceNumber: invoiceMeta.invoiceNumber,
+            source: 'actual',
+            amount: allocated,
+          })
+          if (paymentMonth <= monthKey(currentMonth)) phase.receivedToDate += allocated
+          const invoicePhaseKey = `${invoiceId}::${line.phaseKey}`
+          receivedByInvoicePhase.set(invoicePhaseKey, (receivedByInvoicePhase.get(invoicePhaseKey) || 0) + allocated)
+        })
+      })
+
+      Array.from(invoiceMetaById.entries()).forEach(([invoiceId, invoiceMeta]) => {
+        const phaseLines = phaseLinesByInvoiceId.get(invoiceId) || []
+        if (phaseLines.length === 0) return
+        const issuedMonth = (invoiceMeta.dateIssued || '').slice(0, 7)
+        if (!issuedMonth) return
+        const targetForecastMonth =
+          issuedMonth < monthKey(currentMonth)
+            ? monthKey(currentMonth)
+            : issuedMonth === monthKey(currentMonth)
+              ? monthAfterCurrentKey
+              : issuedMonth
+        phaseLines.forEach((line) => {
+          const phase = ensurePhase({
+            projectNumber: invoiceMeta.projectNumber,
+            projectName: invoiceMeta.projectName,
+            phaseKey: line.phaseKey,
+            phaseName: line.phaseName,
+          })
+          phase.billedToDate += line.amount
+          const alreadyReceived = receivedByInvoicePhase.get(`${invoiceId}::${line.phaseKey}`) || 0
+          const outstanding = Math.max(0, line.amount - alreadyReceived)
+          phase.outstandingAr += outstanding
+          if (!invoiceMeta.datePaid && outstanding > 0 && months.includes(targetForecastMonth)) {
+            phase.monthlyTotals[targetForecastMonth] = (phase.monthlyTotals[targetForecastMonth] || 0) + outstanding
+            appendContribution(invoiceMeta.projectNumber, line.phaseKey, targetForecastMonth, {
+              invoiceId,
+              invoiceNumber: invoiceMeta.invoiceNumber,
+              source: 'carry',
+              amount: outstanding,
+            })
+          }
+        })
+      })
+
+      ;((manualForecastRows as PhaseForecastRow[] | null) || []).forEach((manualRow) => {
+        const projectNumber = (manualRow.project_number || '').trim()
+        const phaseKey = normalizePhaseName(manualRow.phase_key || manualRow.phase_name || '')
+        const phaseName = (manualRow.phase_name || manualRow.phase_key || '').trim()
+        const forecastMonth = (manualRow.forecast_month || '').slice(0, 7)
+        const amount = Number(manualRow.amount) || 0
+        if (!projectNumber || !phaseKey || !phaseName || !forecastMonth || !months.includes(forecastMonth)) return
+        const phase = ensurePhase({
+          projectNumber,
+          projectName: null,
+          phaseKey,
+          phaseName,
+        })
+        phase.manualByMonth[forecastMonth] = amount
+        phase.monthlyTotals[forecastMonth] = (phase.monthlyTotals[forecastMonth] || 0) + amount
+        appendContribution(projectNumber, phaseKey, forecastMonth, {
+          invoiceId: null,
+          invoiceNumber: 'Manual forecast',
+          source: 'manual',
+          amount,
+        })
+      })
+
+      phaseAccumulator.forEach((phase) => {
+        phase.billedToDate = Math.max(phase.billedToDate, 0)
+        phase.receivedToDate = Math.max(phase.receivedToDate, 0)
+        phase.outstandingAr = Math.max(phase.outstandingAr, 0)
+        phase.unbilledRemaining = Math.max(phase.contractFee - phase.billedToDate, 0)
+      })
+
+      const serviceProjects: ServiceProjectRow[] = Array.from(
+        phaseAccumulator.values().reduce((acc, phase) => {
+          if (!acc.has(phase.projectNumber)) {
+            acc.set(phase.projectNumber, {
+              projectNumber: phase.projectNumber,
+              projectName: phase.projectName,
+              hidden: hiddenProjectSet.has(phase.projectNumber),
+              phases: [],
+            })
+          }
+          acc.get(phase.projectNumber)!.phases.push({
+            phaseKey: phase.phaseKey,
+            phaseName: phase.phaseName,
+            phaseOrder: phase.phaseOrder,
+            contractFee: phase.contractFee,
+            billedToDate: phase.billedToDate,
+            receivedToDate: phase.receivedToDate,
+            outstandingAr: phase.outstandingAr,
+            unbilledRemaining: phase.unbilledRemaining,
+            monthlyTotals: phase.monthlyTotals,
+            manualByMonth: phase.manualByMonth,
+          })
+          return acc
+        }, new Map<string, ServiceProjectRow>())
+      .values())
+        .map((project) => {
+          project.phases.sort((a, b) => {
+            if (a.phaseOrder !== b.phaseOrder) return a.phaseOrder - b.phaseOrder
+            return a.phaseName.localeCompare(b.phaseName)
+          })
+          return project
+        })
+        .sort((a, b) => a.projectNumber.localeCompare(b.projectNumber))
+
+      const servicesByMonth = new Map<string, number>()
+      serviceProjects.forEach((project) => {
+        project.phases.forEach((phase) => {
+          Object.entries(phase.monthlyTotals).forEach(([month, amount]) => {
+            servicesByMonth.set(month, (servicesByMonth.get(month) || 0) + (Number(amount) || 0))
+          })
+        })
+      })
+
+      const expenseLeafCategoryNames = Array.from(
+        new Set([
+          ...expenseSubsections.flatMap((subsection) => subsection.childAccountNames),
+          ...standaloneExpenseCategoryNames,
+        ])
+      )
+
+      const getHybridIncomeForMonth = (month: string, accountName: string) => {
+        if (accountName === 'services') {
+          return month < monthKey(currentMonth)
+            ? monthValueByAccount.get(`${month}::services`) || 0
+            : servicesByMonth.get(month) || 0
+        }
+        return monthValueByAccount.get(`${month}::${accountName}`) || 0
+      }
+
+      const getHybridExpenseForMonth = (month: string, accountName: string) => {
+        if (accountName === 'contract labor' && month >= currentMonthKey) {
+          return contractLaborScheduleByMonth.get(month) || 0
+        }
+        if (month >= monthKey(currentMonth)) {
+          return manualExpenseLineByMonthAndAccount.get(`${month}::${accountName}`) || 0
+        }
+        return monthValueByAccount.get(`${month}::${accountName}`) || 0
+      }
+
+      const hybridNetByMonth = new Map<string, number>()
+      months.forEach((month) => {
+        const totalIncome = dedupedIncomeCategoryNames.reduce(
+          (sum, accountName) => sum + getHybridIncomeForMonth(month, accountName),
+          0
+        )
+        const totalExpenses = expenseLeafCategoryNames.reduce(
+          (sum, accountName) => sum + getHybridExpenseForMonth(month, accountName),
+          0
+        )
+        hybridNetByMonth.set(month, totalIncome - totalExpenses)
+      })
+
+      const endingBankBalanceByMonth = new Map<string, number>()
+      const startingBankBalanceByMonth = new Map<string, number>()
+      const bankNonPnlMovementByMonth = new Map<string, number>()
+      let previousEnding =
+        rawEndingBankBalanceByMonth.get(startPrevMonthKey) ??
+        (rawEndingBankBalanceByMonth.has(months[0])
+          ? (rawEndingBankBalanceByMonth.get(months[0]) || 0) - (hybridNetByMonth.get(months[0]) || 0)
+          : 0)
+
+      months.forEach((month) => {
+        const starting = previousEnding
+        const netIncome = hybridNetByMonth.get(month) || 0
+        const isCompletedMonth = month < currentMonthKey
+        const hasActualEnding = rawEndingBankBalanceByMonth.has(month)
+        const actualEnding = hasActualEnding ? (rawEndingBankBalanceByMonth.get(month) || 0) : null
+        const ending = isCompletedMonth && hasActualEnding ? actualEnding! : starting + netIncome
+        startingBankBalanceByMonth.set(month, starting)
+        endingBankBalanceByMonth.set(month, ending)
+        if (isCompletedMonth && actualEnding !== null) {
+          const actualBankChange = actualEnding - starting
+          bankNonPnlMovementByMonth.set(month, actualBankChange - netIncome)
+        } else {
+          bankNonPnlMovementByMonth.set(month, 0)
+        }
+        previousEnding = ending
+      })
+
+      const chartSeries = months.map((month) => ({
+        month,
+        totalIncome: monthValueByAccount.get(`${month}::total income`) || 0,
+        totalExpenses: monthValueByAccount.get(`${month}::total expenses`) || 0,
+        grossProfit: monthValueByAccount.get(`${month}::gross profit`) || 0,
+        netIncome: monthValueByAccount.get(`${month}::net income`) || 0,
+      }))
+
+      return {
+        months,
+        currentMonthKey: monthKey(currentMonth),
+        monthValueByAccount,
+        startingBankBalanceByMonth,
+        endingBankBalanceByMonth,
+        bankNonPnlMovementByMonth,
+        bankAccountNames: Array.from(bankAccountNameSet).filter(Boolean).sort((a, b) => a.localeCompare(b)),
+        incomeCategoryNames: [...dedupedIncomeCategoryNames].sort(accountOrderSort),
+        expenseCategoryNames: [...dedupedExpenseCategoryNames].sort(accountOrderSort),
+        expenseSubsections,
+        standaloneExpenseCategoryNames,
+        chartSeries,
+        toDisplayLabel,
+        monthlyIncomeProjection,
+        manualExpenseLineByMonthAndAccount,
+        contractLaborScheduleByMonth,
+        remainingBacklog,
+        serviceProjects,
+        phaseCellContributions,
+      }
+    },
+  })
+
+  const aggregatedChartData = useMemo(() => {
+    const source = (() => {
+      if (!cashFlowData) return [] as Array<{ month: string; grossProfit: number; totalExpenses: number; netIncome: number }>
+
+      const servicesByMonth = new Map<string, number>()
+      ;(cashFlowData.serviceProjects || []).forEach((project) => {
+        project.phases.forEach((phase) => {
+          Object.entries(phase.monthlyTotals).forEach(([month, amount]) => {
+            servicesByMonth.set(month, (servicesByMonth.get(month) || 0) + (Number(amount) || 0))
+          })
+        })
+      })
+
+      const expenseLeafKeys = Array.from(
+        new Set([
+          ...((cashFlowData.expenseSubsections || []).flatMap((subsection) => subsection.childAccountNames) || []),
+          ...(cashFlowData.standaloneExpenseCategoryNames || []),
+        ])
+      )
+
+      const getIncomeForMonth = (accountName: string, month: string) => {
+        if (accountName === 'services') {
+          return month < cashFlowData.currentMonthKey
+            ? cashFlowData.monthValueByAccount?.get(`${month}::services`) || 0
+            : servicesByMonth.get(month) || 0
+        }
+        return cashFlowData.monthValueByAccount?.get(`${month}::${accountName}`) || 0
+      }
+
+      const getExpenseForMonth = (accountName: string, month: string) => {
+        if (accountName === 'contract labor' && month >= cashFlowData.currentMonthKey) {
+          return cashFlowData.contractLaborScheduleByMonth?.get(month) || 0
+        }
+        const isCurrentOrFuture = month >= cashFlowData.currentMonthKey
+        if (isCurrentOrFuture) {
+          const editKey = `${accountName}::${month}`
+          if (Object.prototype.hasOwnProperty.call(manualExpenseLineEdits, editKey)) {
+            const parsed = Number(manualExpenseLineEdits[editKey])
+            return Number.isFinite(parsed) ? parsed : 0
+          }
+          return cashFlowData.manualExpenseLineByMonthAndAccount?.get(`${month}::${accountName}`) || 0
+        }
+        return cashFlowData.monthValueByAccount?.get(`${month}::${accountName}`) || 0
+      }
+
+      return cashFlowData.months.map((month) => {
+        const totalIncome = (cashFlowData.incomeCategoryNames || []).reduce(
+          (sum, accountName) => sum + getIncomeForMonth(accountName, month),
+          0
+        )
+        const totalExpenses = expenseLeafKeys.reduce((sum, accountName) => sum + getExpenseForMonth(accountName, month), 0)
+        const cogs = cashFlowData.monthValueByAccount?.get(`${month}::total cost of goods sold`) || 0
+        const grossProfit = totalIncome - cogs
+        const netIncome = totalIncome - totalExpenses
+        return {
+          month,
+          grossProfit,
+          totalExpenses,
+          netIncome,
+        }
+      })
+    })()
+
+    if (chartGranularity === 'month') {
+      const currentIndex = source.findIndex((row) => row.month === cashFlowData?.currentMonthKey)
+      const resolvedCurrentIndex = currentIndex >= 0 ? currentIndex : Math.max(0, source.length - 1)
+      const start = Math.max(0, resolvedCurrentIndex - 11)
+      const end = Math.min(source.length, resolvedCurrentIndex + 6 + 1)
+      return source.slice(start, end).map((row) => ({
+        label: formatMonthLabel(row.month),
+        grossProfit: row.grossProfit,
+        totalExpenses: row.totalExpenses,
+        netIncome: row.netIncome,
+      }))
+    }
+
+    const grouped = new Map<
+      string,
+      {
+        grossProfit: number
+        totalExpenses: number
+        netIncome: number
+      }
+    >()
+    source.forEach((row) => {
+      const bucket = chartGranularity === 'quarter' ? getQuarterLabel(row.month) : getYearLabel(row.month)
+      if (!grouped.has(bucket)) {
+        grouped.set(bucket, { grossProfit: 0, totalExpenses: 0, netIncome: 0 })
+      }
+      const current = grouped.get(bucket)!
+      current.grossProfit += row.grossProfit
+      current.totalExpenses += row.totalExpenses
+      current.netIncome += row.netIncome
+    })
+
+    return Array.from(grouped.entries()).map(([label, values]) => ({
+      label,
+      ...values,
+    }))
+  }, [cashFlowData, chartGranularity, manualExpenseLineEdits])
+
+  const availableYears = useMemo(() => {
+    if (!cashFlowData) return [] as string[]
+    return Array.from(new Set(cashFlowData.months.map((month) => month.slice(0, 4)))).sort()
+  }, [cashFlowData])
+
+  const filteredMonths = useMemo(() => {
+    if (!cashFlowData) return [] as string[]
+    if (tableGranularity === 'current') {
+      const currentMonthDate = new Date(`${cashFlowData.currentMonthKey}-01T00:00:00`)
+      const startDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 1)
+      const endDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 11, 1)
+      const startKey = monthKey(startDate)
+      const endKey = monthKey(endDate)
+      return cashFlowData.months.filter((month) => month >= startKey && month <= endKey)
+    }
+    if (tableYearFilter === 'all') return cashFlowData.months
+    return cashFlowData.months.filter((month) => month.startsWith(`${tableYearFilter}-`))
+  }, [cashFlowData, tableGranularity, tableYearFilter])
+
+  const tableColumns = useMemo(() => {
+    if (!cashFlowData) return [] as TableColumn[]
+    if (tableGranularity !== 'year') {
+      return filteredMonths.map((month) => ({
+        key: month,
+        label: formatMonthLabel(month),
+        isFuture: month > cashFlowData.currentMonthKey,
+        isProjected: month >= cashFlowData.currentMonthKey,
+      }))
+    }
+
+    const currentYear = Number(cashFlowData.currentMonthKey.slice(0, 4))
+    return Array.from(new Set(filteredMonths.map((month) => month.slice(0, 4)))).map((year) => ({
+      key: year,
+      label: year,
+      isFuture: Number(year) > currentYear,
+      isProjected: Number(year) >= currentYear,
+    }))
+  }, [cashFlowData, filteredMonths, tableGranularity])
+
+  const getTableValue = (columnKey: string, accountName: string) => {
+    if (!cashFlowData) return 0
+    if (tableGranularity !== 'year') {
+      return cashFlowData.monthValueByAccount?.get(`${columnKey}::${accountName}`) || 0
+    }
+    const monthsForYear = filteredMonths.filter((month) => month.startsWith(`${columnKey}-`))
+    return monthsForYear.reduce(
+      (sum, month) => sum + (cashFlowData.monthValueByAccount?.get(`${month}::${accountName}`) || 0),
+      0
+    )
+  }
+
+  const valueClassName = (value: number, isFuture: boolean) =>
+    `${value < 0 ? 'text-red-600' : ''} ${isFuture ? 'text-muted-foreground' : ''} text-right font-mono`
+
+  const currentBoundaryClass = (columnKey: string) => {
+    if (!cashFlowData) return ''
+    if (tableGranularity === 'year') return ''
+    return columnKey === cashFlowData.currentMonthKey ? 'border-l-2 border-primary/60' : ''
+  }
+
+  const getDrilldownValue = (monthlyTotals: Record<string, number>, columnKey: string) => {
+    if (tableGranularity !== 'year') return monthlyTotals[columnKey] || 0
+    return Object.entries(monthlyTotals).reduce((sum, [month, amount]) => {
+      if (month.startsWith(`${columnKey}-`)) return sum + (Number(amount) || 0)
+      return sum
+    }, 0)
+  }
+
+  const hasVisibleValue = (resolver: (columnKey: string) => number) =>
+    tableColumns.some((column) => Math.abs(resolver(column.key)) > 0.004)
+
+  const showCollectionsColumns = false
+  const metricColumnCount = showCollectionsColumns ? 5 : 3
+  const emptyMetricCell = <TableCell className="text-right font-mono text-muted-foreground">-</TableCell>
+  const metricEmptyCells = (
+    <>
+      {emptyMetricCell}
+      {emptyMetricCell}
+      {showCollectionsColumns ? (
+        <>
+          {emptyMetricCell}
+          {emptyMetricCell}
+        </>
+      ) : null}
+      {emptyMetricCell}
+    </>
+  )
+  const manualForecastKey = (projectNumber: string, phaseKey: string, month: string) => `${projectNumber}::${phaseKey}::${month}`
+  const isFutureMonth = (month: string) => Boolean(cashFlowData?.currentMonthKey && month > cashFlowData.currentMonthKey)
+  const isCurrentOrFutureMonth = (month: string) =>
+    Boolean(cashFlowData?.currentMonthKey && month >= cashFlowData.currentMonthKey)
+  const isCurrentOrPastMonth = (month: string) =>
+    Boolean(cashFlowData?.currentMonthKey && month <= cashFlowData.currentMonthKey)
+
+  const getPhaseCellContributions = (projectNumber: string, phaseKey: string, month: string) =>
+    cashFlowData?.phaseCellContributions?.get?.(`${projectNumber}::${phaseKey}::${month}`) || []
+
+  const getManualAmount = (projectNumber: string, phase: ServicePhaseRow, month: string) => {
+    const key = manualForecastKey(projectNumber, phase.phaseKey, month)
+    if (Object.prototype.hasOwnProperty.call(manualEdits, key)) {
+      const value = Number(manualEdits[key])
+      return Number.isFinite(value) ? value : 0
+    }
+    return phase.manualByMonth[month] || 0
+  }
+
+  const phaseManualTotal = (projectNumber: string, phase: ServicePhaseRow) => {
+    if (!cashFlowData) return 0
+    return cashFlowData.months
+      .filter((month) => isFutureMonth(month))
+      .reduce((sum, month) => sum + getManualAmount(projectNumber, phase, month), 0)
+  }
+
+  const saveManualCell = async (projectNumber: string, phase: ServicePhaseRow, month: string) => {
+    if (!isFutureMonth(month)) return
+    const key = manualForecastKey(projectNumber, phase.phaseKey, month)
+    if (!Object.prototype.hasOwnProperty.call(manualEdits, key)) return
+    const raw = manualEdits[key] || ''
+    const parsed = Number(raw)
+    const amount = Number.isFinite(parsed) ? parsed : 0
+
+    setSavingManualByKey((prev) => ({ ...prev, [key]: true }))
+    try {
+      if (Math.abs(amount) <= 0.0001) {
+        const { error: deleteError } = await supabase
+          .from('cash_flow_phase_forecasts' as never)
+          .delete()
+          .eq('project_number' as never, projectNumber as never)
+          .eq('phase_key' as never, phase.phaseKey as never)
+          .eq('forecast_month' as never, month as never)
+        if (deleteError) throw deleteError
+      } else {
+        const payload = {
+          project_number: projectNumber,
+          phase_key: phase.phaseKey,
+          phase_name: phase.phaseName,
+          forecast_month: month,
+          amount,
+        }
+        const { error: upsertError } = await supabase
+          .from('cash_flow_phase_forecasts' as never)
+          .upsert([payload] as never, { onConflict: 'project_number,phase_key,forecast_month' as never })
+        if (upsertError) throw upsertError
+      }
+
+      setManualEdits((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-table'] })
+    } catch (saveError) {
+      toast.error((saveError as Error).message || 'Failed to auto-save forecast value')
+    } finally {
+      setSavingManualByKey((prev) => ({ ...prev, [key]: false }))
+    }
+  }
+
+  const manualExpenseLineKey = (accountName: string, month: string) => `${accountName}::${month}`
+
+  const getExpenseLeafValueForMonth = (accountName: string, month: string) => {
+    if (!cashFlowData) return 0
+    if (accountName === 'contract labor' && isCurrentOrFutureMonth(month)) {
+      return cashFlowData.contractLaborScheduleByMonth?.get(month) || 0
+    }
+    if (isCurrentOrFutureMonth(month)) {
+      const editKey = manualExpenseLineKey(accountName, month)
+      if (Object.prototype.hasOwnProperty.call(manualExpenseLineEdits, editKey)) {
+        const parsed = Number(manualExpenseLineEdits[editKey])
+        return Number.isFinite(parsed) ? parsed : 0
+      }
+      return cashFlowData.manualExpenseLineByMonthAndAccount?.get(`${month}::${accountName}`) || 0
+    }
+    return cashFlowData.monthValueByAccount?.get(`${month}::${accountName}`) || 0
+  }
+
+  const getExpenseLeafValue = (columnKey: string, accountName: string) => {
+    if (!cashFlowData) return 0
+    if (tableGranularity !== 'year') return getExpenseLeafValueForMonth(accountName, columnKey)
+    return filteredMonths
+      .filter((month) => month.startsWith(`${columnKey}-`))
+      .reduce((sum, month) => sum + getExpenseLeafValueForMonth(accountName, month), 0)
+  }
+
+  const isContractLaborExpenseAccount = (accountName: string) => accountName.trim().toLowerCase() === 'contract labor'
+
+  const allExpenseLeafCategoryNames = useMemo(() => {
+    const fromSubsections =
+      (cashFlowData?.expenseSubsections || []).flatMap((subsection) => subsection.childAccountNames) || []
+    const fromStandalone = cashFlowData?.standaloneExpenseCategoryNames || []
+    return Array.from(new Set([...fromSubsections, ...fromStandalone]))
+  }, [cashFlowData?.expenseSubsections, cashFlowData?.standaloneExpenseCategoryNames])
+
+  const getTotalExpensesValue = (columnKey: string) =>
+    allExpenseLeafCategoryNames.reduce((sum, accountName) => sum + getExpenseLeafValue(columnKey, accountName), 0)
+
+  const visibleIncomeCategoryNames = (cashFlowData?.incomeCategoryNames || []).filter((accountName) =>
+    hasVisibleValue((columnKey) => getTableValue(columnKey, accountName))
+  )
+  const visibleExpenseSubsections = (cashFlowData?.expenseSubsections || []).map((subsection) => ({
+    ...subsection,
+    visibleChildren: subsection.childAccountNames,
+  }))
+  const visibleStandaloneExpenseCategoryNames = cashFlowData?.standaloneExpenseCategoryNames || []
+  const visibleServiceProjects = (cashFlowData?.serviceProjects || [])
+    .map((project) => ({ ...project }))
+    .filter((project) => (showHiddenProjects ? true : !project.hidden))
+
+  const visibleServiceProjectGroups = useMemo(() => {
+    const groups = new Map<string, ServiceProjectRow[]>()
+    visibleServiceProjects.forEach((project) => {
+      const prefixMatch = project.projectNumber.match(/^(\d{2})-/)
+      const yearKey = prefixMatch ? `20${prefixMatch[1]}` : 'Other'
+      if (!groups.has(yearKey)) groups.set(yearKey, [])
+      groups.get(yearKey)!.push(project)
+    })
+    return Array.from(groups.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([year, projects]) => ({
+        year,
+        projects: projects.sort((a, b) => a.projectNumber.localeCompare(b.projectNumber)),
+      }))
+  }, [visibleServiceProjects])
+
+  const servicesByMonthFromProjects = useMemo(() => {
+    const monthly = new Map<string, number>()
+    ;(cashFlowData?.serviceProjects || []).forEach((project) => {
+      project.phases.forEach((phase) => {
+        Object.entries(phase.monthlyTotals).forEach(([month, amount]) => {
+          monthly.set(month, (monthly.get(month) || 0) + (Number(amount) || 0))
+        })
+      })
+    })
+    return monthly
+  }, [cashFlowData?.serviceProjects])
+
+  const getIncomeCategoryValueForMonth = (month: string, accountName: string) => {
+    if (!cashFlowData) return 0
+    if (accountName === 'services') {
+      return month < cashFlowData.currentMonthKey
+        ? cashFlowData.monthValueByAccount?.get(`${month}::services`) || 0
+        : servicesByMonthFromProjects.get(month) || 0
+    }
+    return cashFlowData.monthValueByAccount?.get(`${month}::${accountName}`) || 0
+  }
+
+  const getIncomeCategoryValue = (columnKey: string, accountName: string) => {
+    if (!cashFlowData) return 0
+    if (tableGranularity !== 'year') return getIncomeCategoryValueForMonth(columnKey, accountName)
+    return filteredMonths
+      .filter((month) => month.startsWith(`${columnKey}-`))
+      .reduce((sum, month) => sum + getIncomeCategoryValueForMonth(month, accountName), 0)
+  }
+
+  const getTotalIncomeValue = (columnKey: string) => {
+    if (!cashFlowData) return 0
+    return (cashFlowData.incomeCategoryNames || []).reduce(
+      (sum, accountName) => sum + getIncomeCategoryValue(columnKey, accountName),
+      0
+    )
+  }
+
+  const getNetIncomeValue = (columnKey: string) => getTotalIncomeValue(columnKey) - getTotalExpensesValue(columnKey)
+
+  const getStartingBankBalanceValue = (columnKey: string) => {
+    if (!cashFlowData) return 0
+    if (tableGranularity === 'month') return cashFlowData.startingBankBalanceByMonth?.get(columnKey) || 0
+    if (tableGranularity === 'current') return cashFlowData.startingBankBalanceByMonth?.get(columnKey) || 0
+    const monthsForYear = filteredMonths.filter((month) => month.startsWith(`${columnKey}-`))
+    if (!monthsForYear.length) return 0
+    return cashFlowData.startingBankBalanceByMonth?.get(monthsForYear[0]) || 0
+  }
+
+  const getEndingBankBalanceValue = (columnKey: string) => {
+    if (!cashFlowData) return 0
+    if (tableGranularity === 'month') return cashFlowData.endingBankBalanceByMonth?.get(columnKey) || 0
+    if (tableGranularity === 'current') return cashFlowData.endingBankBalanceByMonth?.get(columnKey) || 0
+    const monthsForYear = filteredMonths.filter((month) => month.startsWith(`${columnKey}-`))
+    if (!monthsForYear.length) return 0
+    return cashFlowData.endingBankBalanceByMonth?.get(monthsForYear[monthsForYear.length - 1]) || 0
+  }
+
+  const getBankNonPnlMovementValue = (columnKey: string) => {
+    if (!cashFlowData) return null as number | null
+    if (tableGranularity === 'year') {
+      const monthsForYear = filteredMonths.filter((month) => month.startsWith(`${columnKey}-`))
+      const completedMonths = monthsForYear.filter((month) => month < cashFlowData.currentMonthKey)
+      if (!completedMonths.length) return null
+      return completedMonths.reduce((sum, month) => sum + (cashFlowData.bankNonPnlMovementByMonth?.get(month) || 0), 0)
+    }
+    if (columnKey >= cashFlowData.currentMonthKey) return null
+    return cashFlowData.bankNonPnlMovementByMonth?.get(columnKey) || 0
+  }
+
+  const startingBankBalanceTrendData = useMemo(() => {
+    if (!cashFlowData) return [] as Array<{ label: string; value: number }>
+    const currentMonthDate = new Date(`${cashFlowData.currentMonthKey}-01T00:00:00`)
+    const startDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth(), 1)
+    const endDate = new Date(currentMonthDate.getFullYear(), currentMonthDate.getMonth() + 11, 1)
+    const startKey = monthKey(startDate)
+    const endKey = monthKey(endDate)
+    return cashFlowData.months
+      .filter((month) => month >= startKey && month <= endKey)
+      .map((month) => ({
+      label: formatMonthLabel(month),
+      value: cashFlowData.startingBankBalanceByMonth?.get(month) || 0,
+      }))
+  }, [cashFlowData])
+
+  const handleExpandAll = () => {
+    setIncomeCollapsed(false)
+    setServicesCollapsed(false)
+    setExpenseCollapsed(false)
+    setCollapsedServiceProjects(
+      visibleServiceProjects.reduce<Record<string, boolean>>((acc, project) => {
+        acc[project.projectNumber] = false
+        return acc
+      }, {})
+    )
+    setCollapsedServiceYears(
+      visibleServiceProjectGroups.reduce<Record<string, boolean>>((acc, group) => {
+        acc[group.year] = false
+        return acc
+      }, {})
+    )
+    setCollapsedExpenseSubsections(
+      visibleExpenseSubsections.reduce<Record<string, boolean>>((acc, subsection) => {
+        acc[subsection.key] = false
+        return acc
+      }, {})
+    )
+  }
+
+  const handleCollapseAll = () => {
+    setIncomeCollapsed(true)
+    setServicesCollapsed(true)
+    setExpenseCollapsed(true)
+    setCollapsedServiceProjects(
+      visibleServiceProjects.reduce<Record<string, boolean>>((acc, project) => {
+        acc[project.projectNumber] = true
+        return acc
+      }, {})
+    )
+    setCollapsedServiceYears(
+      visibleServiceProjectGroups.reduce<Record<string, boolean>>((acc, group) => {
+        acc[group.year] = true
+        return acc
+      }, {})
+    )
+    setCollapsedExpenseSubsections(
+      visibleExpenseSubsections.reduce<Record<string, boolean>>((acc, subsection) => {
+        acc[subsection.key] = true
+        return acc
+      }, {})
+    )
+  }
+
+  const toggleProjectHidden = async (projectNumber: string, hidden: boolean) => {
+    setSavingProjectVisibility((prev) => ({ ...prev, [projectNumber]: true }))
+    try {
+      if (hidden) {
+        const { error } = await supabase
+          .from('cash_flow_project_visibility' as never)
+          .delete()
+          .eq('project_number' as never, projectNumber as never)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('cash_flow_project_visibility' as never)
+          .upsert([{ project_number: projectNumber, is_hidden: true }] as never, { onConflict: 'project_number' as never })
+        if (error) throw error
+      }
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-table'] })
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to update project visibility')
+    } finally {
+      setSavingProjectVisibility((prev) => ({ ...prev, [projectNumber]: false }))
+    }
+  }
+
+  const saveExpenseLineMonth = async (accountName: string, month: string) => {
+    if (!isCurrentOrFutureMonth(month)) return
+    const key = manualExpenseLineKey(accountName, month)
+    if (!Object.prototype.hasOwnProperty.call(manualExpenseLineEdits, key)) return
+    const raw = manualExpenseLineEdits[key] || ''
+    const parsed = Number(raw)
+    const amount = Number.isFinite(parsed) ? parsed : 0
+    setSavingExpenseLineByKey((prev) => ({ ...prev, [key]: true }))
+    try {
+      const accountKey = accountName
+      if (Math.abs(amount) <= 0.0001) {
+        const { error } = await supabase
+          .from('cash_flow_expense_line_forecasts' as never)
+          .delete()
+          .eq('account_key' as never, accountKey as never)
+          .eq('forecast_month' as never, month as never)
+        if (error) throw error
+      } else {
+        const { error } = await supabase
+          .from('cash_flow_expense_line_forecasts' as never)
+          .upsert(
+            [{ account_key: accountKey, account_name: accountName, forecast_month: month, amount }] as never,
+            { onConflict: 'account_key,forecast_month' as never }
+          )
+        if (error) throw error
+      }
+      setManualExpenseLineEdits((prev) => {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      })
+      queryClient.invalidateQueries({ queryKey: ['cash-flow-table'] })
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to save expense forecast')
+    } finally {
+      setSavingExpenseLineByKey((prev) => ({ ...prev, [key]: false }))
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-lg font-medium">Cash Flow</h2>
         <p className="text-sm text-muted-foreground">
-          Monthly cash flow projections and actuals
+          Cash-basis monthly matrix (history from QuickBooks, future projected from backlog)
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Coming Soon</CardTitle>
+          <CardTitle>Cash Flow Table</CardTitle>
           <CardDescription>
-            The cash flow spreadsheet view will be implemented here with editable cells for each month.
+            Rows mirror Profit &amp; Loss totals; columns run from May 2023 through projected future months.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">
-            This page will display a spreadsheet-like grid showing:
-          </p>
-          <ul className="list-disc list-inside mt-2 space-y-1 text-muted-foreground">
-            <li>Income categories (Services, Other Income)</li>
-            <li>Expense categories (Payroll, Rent, Insurance, etc.)</li>
-            <li>Monthly columns for the year</li>
-            <li>Projected vs actual amounts</li>
-            <li>Running balance calculations</li>
-          </ul>
+          <div className="mb-4 flex items-center gap-3">
+            <span className="text-sm text-muted-foreground">Table view</span>
+            <Select
+              value={tableGranularity}
+              onValueChange={(value: 'month' | 'current' | 'year') => setTableGranularity(value)}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="month">Monthly</SelectItem>
+                <SelectItem value="current">Current</SelectItem>
+                <SelectItem value="year">Annually</SelectItem>
+              </SelectContent>
+            </Select>
+            {tableGranularity === 'year' ? (
+              <>
+                <span className="ml-2 text-sm text-muted-foreground">Year</span>
+                <Select value={tableYearFilter} onValueChange={setTableYearFilter}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All years</SelectItem>
+                    {availableYears.map((year) => (
+                      <SelectItem key={year} value={year}>
+                        {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </>
+            ) : null}
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowHiddenProjects((prev) => !prev)}>
+                {showHiddenProjects ? 'Hide Hidden Projects' : 'Show Hidden Projects'}
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExpandAll}>
+                Expand All
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleCollapseAll}>
+                Collapse All
+              </Button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : error ? (
+            <div className="py-8 text-center text-destructive">Error loading cash flow: {(error as Error).message}</div>
+          ) : (
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                Projection method (initial): future income uses remaining contract backlog spread across the next 12
+                months; future expense line items are manual inputs.
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Remaining backlog: {formatCurrency(cashFlowData?.remainingBacklog || 0)} | Monthly projected income:{' '}
+                {formatCurrency(cashFlowData?.monthlyIncomeProjection || 0)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Bank accounts tracked from Balance Sheet:{' '}
+                {(cashFlowData?.bankAccountNames || []).length > 0
+                  ? (cashFlowData?.bankAccountNames || []).join(', ')
+                  : 'none detected yet (sync monthly Balance Sheet snapshots)'}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-600 mr-1" />
+                  Actual months: completed months
+                </span>
+                <span>
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1" />
+                  Projected months: current + future
+                </span>
+              </div>
+
+              <div className="overflow-x-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="min-w-[260px] sticky left-0 top-0 bg-background z-40">Category</TableHead>
+                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Contract Fee</TableHead>
+                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Billed</TableHead>
+                      {showCollectionsColumns ? (
+                        <>
+                          <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Received</TableHead>
+                          <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Outstanding</TableHead>
+                        </>
+                      ) : null}
+                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Unbilled</TableHead>
+                      {tableColumns.map((column) => (
+                        <TableHead
+                          key={column.key}
+                          className={`min-w-[120px] text-right sticky top-0 bg-background z-30 ${currentBoundaryClass(column.key)}`}
+                        >
+                          <div>{column.label}</div>
+                          {tableGranularity !== 'year' ? (
+                            <div className="text-[10px] text-muted-foreground">{column.isProjected ? 'Projected' : 'Actual'}</div>
+                          ) : null}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="bg-muted/10">
+                      <TableCell className="sticky left-0 bg-muted/10 font-semibold">
+                        Starting Bank Balance <span className="text-xs font-normal text-muted-foreground">(actual through current month start)</span>
+                      </TableCell>
+                      {metricEmptyCells}
+                      {tableColumns.map((column) => {
+                        const value = getStartingBankBalanceValue(column.key)
+                        return (
+                          <TableCell
+                            key={`starting-bank-balance::${column.key}`}
+                            className={`text-right font-mono ${currentBoundaryClass(column.key)}`}
+                          >
+                            {formatCurrency(value)}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+
+                    <TableRow>
+                      <TableCell className="sticky left-0 bg-background font-semibold">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => setIncomeCollapsed((prev) => !prev)}
+                        >
+                          {incomeCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          Total Income
+                        </button>
+                      </TableCell>
+                      {metricEmptyCells}
+                      {tableColumns.map((column) => {
+                        const value = getTotalIncomeValue(column.key)
+                        return (
+                          <TableCell
+                            key={`total-income::${column.key}`}
+                            className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                          >
+                            {formatCurrency(value)}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                    {incomeCollapsed
+                      ? null
+                      : visibleIncomeCategoryNames.map((accountName) => (
+                          <Fragment key={`income-group::${accountName}`}>
+                            <TableRow key={`income-child::${accountName}`}>
+                              <TableCell className="sticky left-0 bg-background pl-8">
+                                {accountName === 'services' ? (
+                                  <button
+                                    type="button"
+                                    className="inline-flex items-center gap-1"
+                                    onClick={() => setServicesCollapsed((prev) => !prev)}
+                                  >
+                                    {servicesCollapsed ? (
+                                      <ChevronRight className="h-4 w-4" />
+                                    ) : (
+                                      <ChevronDown className="h-4 w-4" />
+                                    )}
+                                    {cashFlowData?.toDisplayLabel(accountName) || accountName}
+                                  </button>
+                                ) : (
+                                  cashFlowData?.toDisplayLabel(accountName) || accountName
+                                )}
+                              </TableCell>
+                              {metricEmptyCells}
+                              {tableColumns.map((column) => {
+                                const value = getIncomeCategoryValue(column.key, accountName)
+                                return (
+                                  <TableCell
+                                    key={`income-${accountName}::${column.key}`}
+                                    className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                                  >
+                                    {formatCurrency(value)}
+                                  </TableCell>
+                                )
+                              })}
+                            </TableRow>
+                            {accountName === 'services'
+                              ? servicesCollapsed
+                                ? null
+                                : visibleServiceProjectGroups.map((group) => {
+                                    const yearCollapsed = collapsedServiceYears[group.year] ?? false
+                                    return (
+                                      <Fragment key={`services-year::${group.year}`}>
+                                        <TableRow>
+                                          <TableCell className="sticky left-0 bg-background pl-10 font-medium">
+                                            <button
+                                              type="button"
+                                              className="inline-flex items-center gap-1"
+                                              onClick={() =>
+                                                setCollapsedServiceYears((prev) => ({
+                                                  ...prev,
+                                                  [group.year]: !yearCollapsed,
+                                                }))
+                                              }
+                                            >
+                                              {yearCollapsed ? (
+                                                <ChevronRight className="h-4 w-4" />
+                                              ) : (
+                                                <ChevronDown className="h-4 w-4" />
+                                              )}
+                                              {group.year}
+                                            </button>
+                                          </TableCell>
+                                          {metricEmptyCells}
+                                          {tableColumns.map((column) => (
+                                            <TableCell key={`services-year-${group.year}::${column.key}`} className="text-right font-mono">
+                                              -
+                                            </TableCell>
+                                          ))}
+                                        </TableRow>
+                                        {yearCollapsed
+                                          ? null
+                                          : group.projects.map((project) => {
+                                              const projectKey = project.projectNumber
+                                              const projectCollapsed = collapsedServiceProjects[projectKey] ?? true
+                                              const normalizedProjectName = (project.projectName || '')
+                                                .replace(new RegExp(`^${escapeRegExp(project.projectNumber)}\\s*-?\\s*`, 'i'), '')
+                                                .trim()
+                                              const projectContractFee = project.phases.reduce((sum, phase) => sum + phase.contractFee, 0)
+                                              const projectBilled = project.phases.reduce((sum, phase) => sum + phase.billedToDate, 0)
+                                              const projectReceived = project.phases.reduce((sum, phase) => sum + phase.receivedToDate, 0)
+                                              const projectOutstanding = project.phases.reduce((sum, phase) => sum + phase.outstandingAr, 0)
+                                              const projectUnbilled = project.phases.reduce((sum, phase) => sum + phase.unbilledRemaining, 0)
+                                              const projectMonthlyTotals = project.phases.reduce((acc, phase) => {
+                                                Object.entries(phase.monthlyTotals).forEach(([month, amount]) => {
+                                                  acc[month] = (acc[month] || 0) + amount
+                                                })
+                                                return acc
+                                              }, {} as Record<string, number>)
+                                              return (
+                                                <Fragment key={`services-group::${projectKey}`}>
+                                                  <TableRow key={`services-project::${projectKey}`}>
+                                                    <TableCell className="sticky left-0 bg-background pl-12">
+                                                      <div className="flex items-center justify-between gap-2">
+                                                        <button
+                                                          type="button"
+                                                          className="inline-flex items-center gap-1"
+                                                          onClick={() =>
+                                                            setCollapsedServiceProjects((prev) => ({
+                                                              ...prev,
+                                                              [projectKey]: !projectCollapsed,
+                                                            }))
+                                                          }
+                                                        >
+                                                          {projectCollapsed ? (
+                                                            <ChevronRight className="h-4 w-4" />
+                                                          ) : (
+                                                            <ChevronDown className="h-4 w-4" />
+                                                          )}
+                                                          {project.projectNumber}
+                                                          {normalizedProjectName ? ` - ${normalizedProjectName}` : ''}
+                                                        </button>
+                                                        <Button
+                                                          variant="ghost"
+                                                          size="sm"
+                                                          disabled={Boolean(savingProjectVisibility[projectKey])}
+                                                          onClick={() => void toggleProjectHidden(projectKey, project.hidden)}
+                                                        >
+                                                          {project.hidden ? 'Show' : 'Hide'}
+                                                        </Button>
+                                                      </div>
+                                                    </TableCell>
+                                                    <TableCell className="text-right font-mono">{formatCurrency(projectContractFee)}</TableCell>
+                                                    <TableCell className="text-right font-mono">{formatCurrency(projectBilled)}</TableCell>
+                                                    {showCollectionsColumns ? (
+                                                      <>
+                                                        <TableCell className="text-right font-mono">{formatCurrency(projectReceived)}</TableCell>
+                                                        <TableCell className="text-right font-mono">{formatCurrency(projectOutstanding)}</TableCell>
+                                                      </>
+                                                    ) : null}
+                                                    <TableCell className="text-right font-mono">{formatCurrency(projectUnbilled)}</TableCell>
+                                                    {tableColumns.map((column) => {
+                                                      const value = getDrilldownValue(projectMonthlyTotals, column.key)
+                                                      return (
+                                                        <TableCell
+                                                          key={`services-project-${projectKey}::${column.key}`}
+                                                          className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                                                        >
+                                                          {formatCurrency(value)}
+                                                        </TableCell>
+                                                      )
+                                                    })}
+                                                  </TableRow>
+                                                  {projectCollapsed
+                                                    ? null
+                                                    : project.phases.map((phase) => (
+                                            <TableRow key={`services-phase::${projectKey}::${phase.phaseKey}`}>
+                                              <TableCell className="sticky left-0 bg-background pl-16 text-muted-foreground">
+                                                {phase.phaseName}
+                                              </TableCell>
+                                              <TableCell className="text-right font-mono">{formatCurrency(phase.contractFee)}</TableCell>
+                                              <TableCell className="text-right font-mono">{formatCurrency(phase.billedToDate)}</TableCell>
+                                              {showCollectionsColumns ? (
+                                                <>
+                                                  <TableCell className="text-right font-mono">{formatCurrency(phase.receivedToDate)}</TableCell>
+                                                  <TableCell className="text-right font-mono">{formatCurrency(phase.outstandingAr)}</TableCell>
+                                                </>
+                                              ) : null}
+                                              <TableCell className="text-right font-mono">{formatCurrency(phase.unbilledRemaining)}</TableCell>
+                                              {tableColumns.map((column) => {
+                                                const value = getDrilldownValue(phase.monthlyTotals, column.key)
+                                                const canEditManual =
+                                                  tableGranularity !== 'year' &&
+                                                  isFutureMonth(column.key) &&
+                                                  visibleServiceProjects.length > 0
+                                                const showTooltip = tableGranularity !== 'year' && isCurrentOrPastMonth(column.key)
+                                                const manualValue = getManualAmount(projectKey, phase, column.key)
+                                                const overBudget = phaseManualTotal(projectKey, phase) > phase.unbilledRemaining + 0.01
+                                                const breakdownRows = getPhaseCellContributions(projectKey, phase.phaseKey, column.key)
+                                                  .filter((row) => Math.abs(row.amount) > 0.004)
+                                                  .sort((a, b) => b.amount - a.amount)
+                                                const cellContent = canEditManual ? (
+                                                  <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className={`h-8 text-right font-mono ${overBudget ? 'border-red-500' : ''}`}
+                                                    value={manualValue ? String(Number(manualValue.toFixed(2))) : ''}
+                                                    onChange={(event) => {
+                                                      const key = manualForecastKey(projectKey, phase.phaseKey, column.key)
+                                                      setManualEdits((prev) => ({ ...prev, [key]: event.target.value }))
+                                                    }}
+                                                    onBlur={() => {
+                                                      void saveManualCell(projectKey, phase, column.key)
+                                                    }}
+                                                    disabled={Boolean(
+                                                      savingManualByKey[manualForecastKey(projectKey, phase.phaseKey, column.key)]
+                                                    )}
+                                                    placeholder="0.00"
+                                                  />
+                                                ) : (
+                                                  formatCurrency(value)
+                                                )
+                                                return (
+                                                  <TableCell
+                                                    key={`services-phase-${projectKey}-${phase.phaseKey}::${column.key}`}
+                                                    className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                                                  >
+                                                    {showTooltip && breakdownRows.length > 0 ? (
+                                                      <UiTooltip>
+                                                        <TooltipTrigger asChild>
+                                                          <span className="inline-block cursor-help">{cellContent}</span>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent side="top" align="end" className="max-w-[360px] space-y-1">
+                                                          <div className="font-semibold">{phase.phaseName}</div>
+                                                          <div className="text-[11px] opacity-80">{formatMonthLabel(column.key)}</div>
+                                                          {breakdownRows.map((row, index) => (
+                                                            <div
+                                                              key={`${row.invoiceNumber}-${row.source}-${index}`}
+                                                              className="flex items-center justify-between gap-3 text-[11px]"
+                                                            >
+                                                              <span>
+                                                                {row.invoiceNumber}
+                                                                {row.source === 'carry'
+                                                                  ? ' (carry)'
+                                                                  : row.source === 'manual'
+                                                                    ? ' (manual)'
+                                                                    : ''}
+                                                              </span>
+                                                              <span className="font-mono">{formatCurrency(row.amount)}</span>
+                                                            </div>
+                                                          ))}
+                                                          <div className="border-t pt-1 text-[11px] font-semibold">
+                                                            Total: {formatCurrency(value)}
+                                                          </div>
+                                                        </TooltipContent>
+                                                      </UiTooltip>
+                                                    ) : (
+                                                      cellContent
+                                                    )}
+                                                  </TableCell>
+                                                )
+                                              })}
+                                            </TableRow>
+                                                    ))}
+                                                </Fragment>
+                                              )
+                                            })}
+                                      </Fragment>
+                                    )
+                                  })
+                              : null}
+                          </Fragment>
+                        ))}
+
+                    <TableRow>
+                      <TableCell className="sticky left-0 bg-background font-semibold">
+                        <button
+                          type="button"
+                          className="inline-flex items-center gap-1"
+                          onClick={() => setExpenseCollapsed((prev) => !prev)}
+                        >
+                          {expenseCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          Total Expenses
+                        </button>
+                      </TableCell>
+                      {metricEmptyCells}
+                      {tableColumns.map((column) => {
+                        const value = getTotalExpensesValue(column.key)
+                        return (
+                          <TableCell
+                            key={`total-expenses::${column.key}`}
+                            className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                          >
+                            {formatCurrency(value)}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+                    {expenseCollapsed
+                      ? null
+                      : (
+                          <>
+                            {visibleExpenseSubsections.map((subsection) => {
+                              const subsectionCollapsed = collapsedExpenseSubsections[subsection.key] ?? true
+                              return (
+                                <Fragment key={subsection.key}>
+                                  <TableRow>
+                                    <TableCell className="sticky left-0 bg-background pl-8 font-medium">
+                                      <button
+                                        type="button"
+                                        className="inline-flex items-center gap-1"
+                                        onClick={() =>
+                                          setCollapsedExpenseSubsections((prev) => ({
+                                            ...prev,
+                                            [subsection.key]: !subsectionCollapsed,
+                                          }))
+                                        }
+                                      >
+                                        {subsectionCollapsed ? (
+                                          <ChevronRight className="h-4 w-4" />
+                                        ) : (
+                                          <ChevronDown className="h-4 w-4" />
+                                        )}
+                                        {cashFlowData?.toDisplayLabel(subsection.titleAccountName) || subsection.titleAccountName}
+                                      </button>
+                                    </TableCell>
+                                    {metricEmptyCells}
+                                    {tableColumns.map((column) => {
+                                      const value = subsection.visibleChildren.reduce(
+                                        (sum, accountName) => sum + getExpenseLeafValue(column.key, accountName),
+                                        0
+                                      )
+                                      return (
+                                        <TableCell
+                                          key={`${subsection.key}::${column.key}`}
+                                          className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                                        >
+                                          {formatCurrency(value)}
+                                        </TableCell>
+                                      )
+                                    })}
+                                  </TableRow>
+                                  {subsectionCollapsed
+                                    ? null
+                                    : subsection.visibleChildren.map((accountName) => (
+                                        <TableRow key={`${subsection.key}::${accountName}`}>
+                                          <TableCell className="sticky left-0 bg-background pl-12">
+                                            {cashFlowData?.toDisplayLabel(accountName) || accountName}
+                                          </TableCell>
+                                          {metricEmptyCells}
+                                          {tableColumns.map((column) => {
+                                            const value = getExpenseLeafValue(column.key, accountName)
+                                            const canEditExpense =
+                                              tableGranularity !== 'year' &&
+                                              isCurrentOrFutureMonth(column.key) &&
+                                              !isContractLaborExpenseAccount(accountName)
+                                            const expenseEditKey = manualExpenseLineKey(accountName, column.key)
+                                            const edited = manualExpenseLineEdits[expenseEditKey]
+                                            const persisted =
+                                              cashFlowData?.manualExpenseLineByMonthAndAccount?.get(`${column.key}::${accountName}`) || 0
+                                            const inputValue =
+                                              typeof edited === 'string'
+                                                ? edited
+                                                : persisted > 0
+                                                  ? String(persisted)
+                                                  : ''
+                                            return (
+                                              <TableCell
+                                                key={`expense-${accountName}::${column.key}`}
+                                                className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                                              >
+                                                {canEditExpense ? (
+                                                  <Input
+                                                    type="number"
+                                                    step="0.01"
+                                                    className="h-8 text-right font-mono"
+                                                    value={inputValue}
+                                                    onChange={(event) =>
+                                                      setManualExpenseLineEdits((prev) => ({
+                                                        ...prev,
+                                                        [expenseEditKey]: event.target.value,
+                                                      }))
+                                                    }
+                                                    onBlur={() => {
+                                                      void saveExpenseLineMonth(accountName, column.key)
+                                                    }}
+                                                    disabled={Boolean(savingExpenseLineByKey[expenseEditKey])}
+                                                    placeholder="0.00"
+                                                  />
+                                                ) : (
+                                                  formatCurrency(value)
+                                                )}
+                                              </TableCell>
+                                            )
+                                          })}
+                                        </TableRow>
+                                      ))}
+                                </Fragment>
+                              )
+                            })}
+
+                            {visibleStandaloneExpenseCategoryNames.map((accountName) => (
+                              <TableRow key={`expense-child::${accountName}`}>
+                                <TableCell className="sticky left-0 bg-background pl-8">
+                                  {cashFlowData?.toDisplayLabel(accountName) || accountName}
+                                </TableCell>
+                                {metricEmptyCells}
+                                {tableColumns.map((column) => {
+                                  const value = getExpenseLeafValue(column.key, accountName)
+                                  const canEditExpense =
+                                    tableGranularity !== 'year' &&
+                                    isCurrentOrFutureMonth(column.key) &&
+                                    !isContractLaborExpenseAccount(accountName)
+                                  const expenseEditKey = manualExpenseLineKey(accountName, column.key)
+                                  const edited = manualExpenseLineEdits[expenseEditKey]
+                                  const persisted =
+                                    cashFlowData?.manualExpenseLineByMonthAndAccount?.get(`${column.key}::${accountName}`) || 0
+                                  const inputValue =
+                                    typeof edited === 'string'
+                                      ? edited
+                                      : persisted > 0
+                                        ? String(persisted)
+                                        : ''
+                                  return (
+                                    <TableCell
+                                      key={`expense-${accountName}::${column.key}`}
+                                      className={`${valueClassName(value, column.isFuture)} ${currentBoundaryClass(column.key)}`}
+                                    >
+                                      {canEditExpense ? (
+                                        <Input
+                                          type="number"
+                                          step="0.01"
+                                          className="h-8 text-right font-mono"
+                                          value={inputValue}
+                                          onChange={(event) =>
+                                            setManualExpenseLineEdits((prev) => ({
+                                              ...prev,
+                                              [expenseEditKey]: event.target.value,
+                                            }))
+                                          }
+                                          onBlur={() => {
+                                            void saveExpenseLineMonth(accountName, column.key)
+                                          }}
+                                          disabled={Boolean(savingExpenseLineByKey[expenseEditKey])}
+                                          placeholder="0.00"
+                                        />
+                                      ) : (
+                                        formatCurrency(value)
+                                      )}
+                                    </TableCell>
+                                  )
+                                })}
+                              </TableRow>
+                            ))}
+                          </>
+                        )}
+
+                    <TableRow className="bg-muted/20">
+                      <TableCell className="sticky left-0 bg-muted/20 font-semibold">Net Income</TableCell>
+                      {metricEmptyCells}
+                      {tableColumns.map((column) => {
+                        const value = getNetIncomeValue(column.key)
+                        return (
+                          <TableCell
+                            key={`net-income::${column.key}`}
+                            className={`${value < 0 ? 'text-red-600' : ''} text-right font-mono ${currentBoundaryClass(column.key)}`}
+                          >
+                            {formatCurrency(value)}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+
+                    <TableRow className="bg-muted/5">
+                      <TableCell className="sticky left-0 bg-muted/5 font-semibold">
+                        Non-P&amp;L Cash Movement (actual months)
+                      </TableCell>
+                      {metricEmptyCells}
+                      {tableColumns.map((column) => {
+                        const value = getBankNonPnlMovementValue(column.key)
+                        return (
+                          <TableCell
+                            key={`bank-nonpnl::${column.key}`}
+                            className={`text-right font-mono ${currentBoundaryClass(column.key)} ${value !== null && value < 0 ? 'text-red-600' : ''}`}
+                          >
+                            {value === null ? '-' : formatCurrency(value)}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+
+                    <TableRow className="bg-muted/10">
+                      <TableCell className="sticky left-0 bg-muted/10 font-semibold">
+                        Ending Bank Balance <span className="text-xs font-normal text-muted-foreground">(actual through prior month; projected current+future)</span>
+                      </TableCell>
+                      {metricEmptyCells}
+                      {tableColumns.map((column) => {
+                        const value = getEndingBankBalanceValue(column.key)
+                        return (
+                          <TableCell
+                            key={`ending-bank-balance::${column.key}`}
+                            className={`text-right font-mono ${currentBoundaryClass(column.key)}`}
+                          >
+                            {formatCurrency(value)}
+                          </TableCell>
+                        )
+                      })}
+                    </TableRow>
+
+                    {(tableColumns.length || 0) === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={(tableColumns.length || 0) + 1 + metricColumnCount} className="py-8 text-center text-muted-foreground">
+                          No cash-basis Profit &amp; Loss snapshot data found yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  disabled={Object.keys(manualEdits).length === 0}
+                  onClick={() => setManualEdits({})}
+                >
+                  Reset forecast edits
+                </Button>
+                <span className="text-xs text-muted-foreground">Future forecast values auto-save when you leave a cell.</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle>Gross Profit vs Expenses</CardTitle>
+            <CardDescription>Cash-basis trend from the cash flow dataset</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">View by</span>
+              <Select value={chartGranularity} onValueChange={(value: 'month' | 'quarter' | 'year') => setChartGranularity(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="quarter">Quarter</SelectItem>
+                  <SelectItem value="year">Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="h-[300px] min-w-0">
+              {isLoading ? (
+                <Skeleton className="h-full w-full" />
+              ) : (
+                <div className="h-full w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={aggregatedChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" />
+                    <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
+                    <Legend />
+                    <Bar dataKey="grossProfit" fill="#111827" name="Gross Profit" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="totalExpenses" fill="#6B7280" name="Expenses" radius={[4, 4, 0, 0]} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="min-w-0">
+          <CardHeader>
+            <CardTitle>Net Income Trend</CardTitle>
+            <CardDescription>Cash-basis net income over time</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">View by</span>
+              <Select value={chartGranularity} onValueChange={(value: 'month' | 'quarter' | 'year') => setChartGranularity(value)}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">Month</SelectItem>
+                  <SelectItem value="quarter">Quarter</SelectItem>
+                  <SelectItem value="year">Year</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="h-[300px] min-w-0">
+              {isLoading ? (
+                <Skeleton className="h-full w-full" />
+              ) : (
+                <div className="h-full w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={aggregatedChartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="label" />
+                    <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
+                    <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
+                    <Legend />
+                    <ReferenceLine y={0} stroke="#111827" strokeWidth={2} />
+                    <Line type="monotone" dataKey="netIncome" stroke="#2563eb" name="Net Income" strokeWidth={2} dot={false} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="min-w-0">
+        <CardHeader>
+          <CardTitle>Starting Bank Balance Trend</CardTitle>
+          <CardDescription>Starting bank balance by month</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] min-w-0">
+            {isLoading ? (
+              <Skeleton className="h-full w-full" />
+            ) : (
+              <div className="h-full w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={startingBankBalanceTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="label" />
+                  <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
+                  <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
+                  <Legend />
+                  <ReferenceLine y={0} stroke="#111827" strokeWidth={2} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#0f766e"
+                    name="Starting Bank Balance"
+                    strokeWidth={2}
+                    dot={false}
+                  />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

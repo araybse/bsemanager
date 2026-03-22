@@ -1,0 +1,127 @@
+BSE Manager: What Changed (Product Deep Dive)
+==============================================
+
+1) Cash Flow Manager became the center of financial planning
+------------------------------------------------------------
+The Cash Flow page evolved from a simple view into a financial matrix:
+
+- Rows now represent meaningful business structure:
+  - Starting Bank Balance
+  - Total Income with expandable categories
+  - Services drilldown to project and phase
+  - Grouped expense sections with collapsible headers
+  - Total Expenses
+  - Net Income
+  - Ending Bank Balance
+
+- Columns now support operational planning modes:
+  - Monthly
+  - Annually
+  - Current view window (current month forward horizon)
+  - Year filtering controls
+
+- Forecasting controls:
+  - Manual future entries for phase-level services forecasts
+  - Manual expense line-item forecasts (instead of generic averages)
+  - Persisted edits with auto-save behavior
+
+- UX controls:
+  - Expand All / Collapse All
+  - Services-level and year-group collapse
+  - Sticky headers
+  - Tooltips for invoice composition in relevant cells
+  - Hide/show projects with persisted visibility
+
+2) Charts were aligned to the same hybrid logic as the table
+-------------------------------------------------------------
+Three planning charts now communicate the same underlying model used in the table:
+
+- Gross Profit vs Expenses
+- Net Income Trend
+- Starting Bank Balance Trend
+
+Key improvements:
+- No separate, conflicting chart math
+- Responsive sizing inside card boundaries
+- Zero reference lines for interpretability
+- View windows aligned to table behavior
+
+3) Bank balance rollforward model was introduced
+------------------------------------------------
+Cash rollforward now has explicit structure:
+
+- Historical months use real balance sheet snapshots.
+- Current/future months can project via rollforward logic:
+  Ending = Starting + Net Income (with clear projected labeling).
+- Reconciliation row highlights non-P&L cash movement where applicable.
+
+This turns bank balance from a passive number into an explainable sequence.
+
+4) Contract Labor was rebuilt as a full management system
+---------------------------------------------------------
+The Contract Labor page now functions as a dedicated subsystem with tabs:
+
+- Contracts:
+  - Contract registry
+  - Terms, amount/rate, cadence, phase/project association
+  - Lifecycle status and summary metrics
+
+- Schedule:
+  - Monthly grid by contract
+  - Grouped by project
+  - Project-level collapse/expand + global controls
+  - Actuals vs projected schedule behavior
+
+- Actuals:
+  - Synced expenses with contract link visibility
+
+- Reconciliation:
+  - Monthly cross-check against P&L contract labor totals
+
+5) Reimbursables page became a full Expenses operations table
+--------------------------------------------------------------
+The page is now a complete list of QBO job-coded expenses (not only reimbursables):
+
+- Added and refined columns:
+  - Project
+  - Date Charged
+  - Vendor
+  - Contract (contract number when linked)
+  - Description
+  - Expense Type (General Expense vs Contract Labor)
+  - Fee Amount
+  - Amount to Charge
+  - Reimbursable checkbox
+  - Date Paid
+  - Status
+  - Invoice Number
+
+- Functional upgrades:
+  - Column sorting
+  - Contract-link awareness
+  - Status modeling across Pending / Invoiced / Paid
+  - Deterministic invoice-link backfill where data supports it
+
+6) QBO sync expanded from "basic pulls" to domain-specific pipelines
+--------------------------------------------------------------------
+Sync domains now include:
+- Customers
+- Projects
+- Invoices
+- Payments
+- Time entries
+- Contract labor expenses
+- General project expenses
+
+The webhook + manual sync paths were updated to keep relevant domains current.
+
+7) Data quality checks became part of normal operations
+-------------------------------------------------------
+A dedicated integration-style test suite verifies:
+- QBO sync timestamp freshness
+- Invoice header/line consistency
+- Contract labor parity between P&L and schedule source data
+- Snapshot coverage expectations
+
+The key shift: we now validate critical integrity assumptions continuously.
+

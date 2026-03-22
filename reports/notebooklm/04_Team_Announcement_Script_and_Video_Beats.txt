@@ -1,0 +1,75 @@
+BSE Manager Launch Narrative: Team Announcement Script
+======================================================
+
+Use this as source text for NotebookLM video generation.
+Tone target: high-energy, confident, practical, forward-looking.
+
+Opening hook
+------------
+"We are not just improving reports. We are building the financial operating system for BSE.
+This changes how we plan, how we execute, and how we stay in control as we grow."
+
+Narrative arc (for a 3-6 minute internal video)
+------------------------------------------------
+Beat 1: The old problem
+- Too much critical context spread across tools, sheets, and manual reconciliation.
+- Hard to move from "what happened" to "what do we do next."
+
+Beat 2: The new model
+- One connected system where accounting truth, project planning, expenses, contracts, and cash
+  are visible together.
+- We can now explain not just results, but drivers.
+
+Beat 3: What people will feel immediately
+- Faster answers in meetings.
+- Fewer "where did this number come from?" moments.
+- Better confidence in month-end and in forward plans.
+
+Beat 4: Concrete upgrades people should know
+- Cash Flow page:
+  - Full matrix with drilldowns, grouped sections, and persistent forecasts.
+  - Net income and bank balances are now operational planning tools.
+- Contract Labor:
+  - Full contract registry plus schedule and reconciliation views.
+  - Project grouping and collapsible controls for cleaner review.
+- Expenses page:
+  - Unified list of all job-coded expenses from QBO.
+  - Vendor and contract visibility.
+  - Reimbursable controls, status flow, invoice linkage, paid date visibility.
+
+Beat 5: Why leadership should care
+- Better forecast quality means better decisions.
+- Better linkage means cleaner billing recovery and margin protection.
+- Better reconciliation means fewer surprises.
+
+Suggested section voiceover lines
+---------------------------------
+On trust:
+"Historical periods are grounded in source truth. Forward periods are explicit planning assumptions.
+We are no longer mixing those blindly."
+
+On contracts and expenses:
+"Contract labor is no longer hidden in a generic expense bucket.
+It is tracked as a managed commitment with schedule behavior and reconciliation."
+
+On cash:
+"Bank balance is no longer a disconnected number.
+We can now explain month-over-month movement and isolate non-P&L effects."
+
+On operational maturity:
+"We are moving from bookkeeping visibility to management visibility."
+
+Suggested closing
+-----------------
+"This is a major step toward a fully integrated operating system for BSE.
+We now have stronger visibility, cleaner controls, and a better foundation for scale.
+Next, we keep improving automation and forecasting precision so every decision gets better."
+
+On-screen callouts (optional)
+-----------------------------
+- "Single Source + Planning Layer"
+- "Contracts, Expenses, Invoices: Linked"
+- "Historical Truth + Forward Control"
+- "Cash Rollforward with Reconciliation"
+- "Built for Scale"
+

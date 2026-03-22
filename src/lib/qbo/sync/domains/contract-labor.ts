@@ -6,6 +6,118 @@ import {
 } from '../qbo-client'
 import type { QBSettings } from '../types'
 
+type QboRef = {
+  value?: string
+  name?: string
+}
+
+type QboContractLaborLine = {
+  Id?: string
+  Amount?: number | string
+  Description?: string
+  DetailType?: string
+  AccountBasedExpenseLineDetail?: {
+    AccountRef?: QboRef
+    CustomerRef?: QboRef
+  }
+}
+
+type QboExpense = {
+  _entityType?: string
+  Id?: string
+  TxnDate?: string
+  PrivateNote?: string
+  Line?: QboContractLaborLine[]
+  EntityRef?: QboRef
+  VendorRef?: QboRef
+  PayeeRef?: QboRef
+  CustomerRef?: QboRef
+  MetaData?: {
+    LastUpdatedTime?: string
+  }
+}
+
+type SubcontractContractRow = {
+  id: number
+  project_number: string | null
+  vendor_name: string
+  contract_number: string | null
+  contract_type: 'fixed_monthly' | 'fixed_total' | 'hourly'
+  monthly_amount: number | null
+  original_amount: number | null
+  start_date: string | null
+  end_date: string | null
+  phase_name: string | null
+  description: string | null
+  term_notes: string | null
+  status: string
+}
+
+function normalize(value: string | null | undefined) {
+  return (value || '').trim().toLowerCase()
+}
+
+function pickMatchingContractId(
+  contracts: SubcontractContractRow[],
+  input: {
+    projectNumber: string | null
+    vendorName: string
+    expenseDate: string
+    amount: number
+    description: string | null
+  }
+) {
+  if (!input.projectNumber) return null
+  const inDateRange = (contract: SubcontractContractRow) => {
+    if (contract.start_date && input.expenseDate < contract.start_date) return false
+    if (contract.end_date && input.expenseDate > contract.end_date) return false
+    return true
+  }
+
+  const candidates = contracts.filter((contract) => {
+    if (normalize(contract.status) === 'cancelled') return false
+    return (
+      (contract.project_number || '').trim() === input.projectNumber &&
+      normalize(contract.vendor_name) === normalize(input.vendorName) &&
+      inDateRange(contract)
+    )
+  })
+  if (candidates.length === 0) return null
+  if (candidates.length === 1) return candidates[0].id
+
+  const profitShareCandidates = candidates.filter((contract) => {
+    const haystack = [
+      contract.phase_name,
+      contract.description,
+      contract.term_notes,
+      contract.contract_number,
+      input.description,
+    ]
+      .map((value) => normalize(value))
+      .join(' ')
+    return haystack.includes('profit share')
+  })
+  if (profitShareCandidates.length === 1) return profitShareCandidates[0].id
+
+  const monthlyMatches = candidates.filter((contract) => {
+    if (contract.contract_type !== 'fixed_monthly') return false
+    const monthlyAmount = Number(contract.monthly_amount) || 0
+    return Math.abs(monthlyAmount - input.amount) <= 0.01
+  })
+  if (monthlyMatches.length === 1) return monthlyMatches[0].id
+
+  const hourlyMatches = candidates.filter((contract) => contract.contract_type === 'hourly')
+  if (hourlyMatches.length === 1) return hourlyMatches[0].id
+
+  const fixedTotalExactMatches = candidates.filter((contract) => {
+    if (contract.contract_type !== 'fixed_total') return false
+    return Math.abs((Number(contract.original_amount) || 0) - input.amount) <= 0.01
+  })
+  if (fixedTotalExactMatches.length === 1) return fixedTotalExactMatches[0].id
+
+  return null
+}
+
 export async function syncContractLabor(
   supabase: ReturnType<typeof createAdminClient>,
   settings: QBSettings
@@ -16,6 +128,13 @@ export async function syncContractLabor(
     const key = (project.project_number || '').trim()
     if (key) projectMap.set(key, project.id)
   })
+
+  const { data: contracts } = await supabase
+    .from('subcontract_contracts')
+    .select(
+      'id, project_number, vendor_name, contract_number, contract_type, monthly_amount, original_amount, start_date, end_date, phase_name, description, term_notes, status'
+    )
+  const contractRows = ((contracts as SubcontractContractRow[] | null) || [])
 
   // Use account ID matching so changes to AccountRef.name formatting do not break sync.
   const contractLaborAccountId = await fetchContractLaborAccountId(settings)
@@ -40,10 +159,11 @@ export async function syncContractLabor(
   }> = []
   const syncTimestamp = new Date().toISOString()
   const seenQbKeys = new Set<string>()
+  let totalRows = 0
 
   for (const expense of expenses) {
     try {
-      const exp = expense as Record<string, any>
+      const exp = expense as QboExpense
       const entityType = (exp._entityType as string) || 'Purchase'
       const qbId = exp.Id
       const qbKey = `${entityType}:${qbId}`
@@ -62,59 +182,91 @@ export async function syncContractLabor(
       })
       if (!contractLines.length) continue
 
-      const amount = contractLines.reduce((sum, line) => sum + (Number(line.Amount) || 0), 0)
-      const description =
-        contractLines.find((line) => line.Description)?.Description ||
-        (exp.PrivateNote as string | undefined) ||
-        null
       const vendorName =
         exp.EntityRef?.name || exp.VendorRef?.name || exp.PayeeRef?.name || 'Unknown'
-      const customerName =
-        contractLines.find((line) => line.AccountBasedExpenseLineDetail?.CustomerRef?.name)
-          ?.AccountBasedExpenseLineDetail?.CustomerRef?.name ||
-        exp.CustomerRef?.name ||
-        ''
-
-      const projectNumber = extractProjectNumberFromName(customerName)
-      const projectId = projectNumber ? projectMap.get(projectNumber) || null : null
       const qboUpdatedAt = exp.MetaData?.LastUpdatedTime || null
-      const paymentDateValue = paymentDate ? new Date(paymentDate) : new Date()
-      const year = paymentDateValue.getUTCFullYear()
-      const month = paymentDateValue.getUTCMonth() + 1
+      const paymentDateIso = paymentDate || new Date().toISOString().slice(0, 10)
+      const datePaid = entityType === 'Purchase' ? paymentDateIso : null
 
-      const { data: existing } = await supabase
-        .from('contract_labor')
-        .select('id, updated_at, last_synced_at')
-        .eq('qb_expense_id' as never, qbKey as never)
-        .maybeSingle()
+      for (let lineIndex = 0; lineIndex < contractLines.length; lineIndex += 1) {
+        const line = contractLines[lineIndex]
+        const amount = Number(line.Amount) || 0
+        if (amount === 0) continue
 
-      const payload = {
-        project_id: projectId,
-        project_number: projectNumber,
-        vendor_name: vendorName,
-        description,
-        amount,
-        payment_date: paymentDate || paymentDateValue.toISOString().slice(0, 10),
-        year,
-        month,
-        qb_expense_id: qbKey,
-        last_synced_at: syncTimestamp,
-        updated_at: qboUpdatedAt || syncTimestamp,
-      }
+        totalRows += 1
+        const customerName =
+          line.AccountBasedExpenseLineDetail?.CustomerRef?.name ||
+          exp.CustomerRef?.name ||
+          ''
+        const projectNumber = extractProjectNumberFromName(customerName)
+        const projectId = projectNumber ? projectMap.get(projectNumber) || null : null
+        const description =
+          line.Description || (exp.PrivateNote as string | undefined) || null
+        const subcontractContractId = pickMatchingContractId(contractRows, {
+          projectNumber,
+          vendorName,
+          expenseDate: paymentDateIso,
+          amount,
+          description,
+        })
+        const lineIdValue = String(line.Id || '').trim()
+        const sourceLineId = lineIdValue || `line_${lineIndex + 1}`
+        const seenKey = `${qbKey}::${sourceLineId}`
 
-      seenQbKeys.add(qbKey)
+        seenQbKeys.add(seenKey)
 
-      if (existing) {
-        const { error } = await supabase
-          .from('contract_labor')
-          .update(payload as never)
-          .eq('id' as never, (existing as { id: number }).id as never)
-        if (error) errors++
-        else updated++
-      } else {
-        const { error } = await supabase.from('contract_labor').insert(payload as never)
-        if (error) errors++
-        else imported++
+        const { data: existing, error: existingError } = await supabase
+          .from('project_expenses')
+          .select('id, subcontract_contract_id')
+          .eq('source_system', 'qbo')
+          .eq('source_entity_type', 'contract_labor')
+          .eq('source_entity_id', qbKey)
+          .eq('source_line_id', sourceLineId)
+          .maybeSingle()
+
+        if (existingError) {
+          errors++
+          continue
+        }
+
+        const payload = {
+          source_system: 'qbo',
+          source_entity_type: 'contract_labor',
+          source_entity_id: qbKey,
+          source_line_id: sourceLineId,
+          project_id: projectId,
+          project_number: projectNumber,
+          vendor_name: vendorName,
+          expense_date: paymentDateIso,
+          date_paid: datePaid,
+          description,
+          category_name: 'Contract Labor',
+          sub_category_name: null,
+          fee_amount: amount,
+          subcontract_contract_id: subcontractContractId || (existing as { subcontract_contract_id?: number | null } | null)?.subcontract_contract_id || null,
+          is_reimbursable: false,
+          billing_status: 'ignored',
+          status: 'not_reimbursable',
+          source_active: true,
+          source_closed_at: null,
+          source_close_reason: null,
+          qbo_last_updated_at: qboUpdatedAt,
+          last_synced_at: syncTimestamp,
+          updated_at: qboUpdatedAt || syncTimestamp,
+        }
+
+        if (existing) {
+          const { error } = await supabase
+            .from('project_expenses')
+            .update(payload as never)
+            .eq('id', (existing as { id: number }).id as never)
+          if (error) errors++
+          else updated++
+        } else {
+          const { error } = await supabase.from('project_expenses').insert(payload as never)
+          if (error) errors++
+          else imported++
+        }
       }
     } catch (err) {
       console.error('Error syncing contract labor expense:', err)
@@ -123,20 +275,40 @@ export async function syncContractLabor(
   }
 
   const { data: existingRows, error: existingError } = await supabase
-    .from('contract_labor')
-    .select('id, qb_expense_id')
-    .not('qb_expense_id', 'is', null)
-  const existingRowsTyped = (existingRows || []) as Array<{ id: number; qb_expense_id: string | null }>
+    .from('project_expenses')
+    .select('id, source_entity_id, source_line_id')
+    .eq('source_system', 'qbo')
+    .eq('source_entity_type', 'contract_labor')
+    .is('source_active', true)
+  const existingRowsTyped = (existingRows || []) as Array<{
+    id: number
+    source_entity_id: string | null
+    source_line_id: string | null
+  }>
   if (existingError) {
     errors++
   } else if (existingRowsTyped.length) {
     const idsToDelete = existingRowsTyped
-      .filter((row) => row.qb_expense_id && !seenQbKeys.has(row.qb_expense_id))
+      .filter((row) => {
+        const sourceEntityId = (row.source_entity_id || '').trim()
+        const sourceLineId = (row.source_line_id || '').trim()
+        if (!sourceEntityId || !sourceLineId) return false
+        return !seenQbKeys.has(`${sourceEntityId}::${sourceLineId}`)
+      })
       .map((row) => row.id)
     const batchSize = 100
     for (let i = 0; i < idsToDelete.length; i += batchSize) {
       const batch = idsToDelete.slice(i, i + batchSize)
-      const { error } = await supabase.from('contract_labor').delete().in('id', batch as never)
+      const { error } = await supabase
+        .from('project_expenses')
+        .update({
+          source_active: false,
+          source_closed_at: syncTimestamp,
+          source_close_reason: 'removed_in_qbo',
+          updated_at: syncTimestamp,
+          last_synced_at: syncTimestamp,
+        } as never)
+        .in('id', batch as never)
       if (error) errors++
     }
   }
@@ -147,7 +319,7 @@ export async function syncContractLabor(
     skipped,
     pushed,
     errors,
-    total: expenses.length,
+    total: totalRows,
     skippedDetails: skippedDetails.slice(0, 20),
   }
 }

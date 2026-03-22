@@ -60,14 +60,14 @@ export async function GET() {
         })
       }
       fields = (legacyFields || []).map((row) => ({
-        ...row,
+        ...(row as Record<string, unknown>),
         description: null,
         value_mode: 'scalar',
         is_system: false,
       })) as typeof fields
     } else {
       fields = (fieldsWithoutSystem || []).map((row) => ({
-        ...row,
+        ...(row as Record<string, unknown>),
         description: (row as { description?: string | null }).description || null,
         value_mode: (row as { value_mode?: string | null }).value_mode || 'scalar',
         is_system: false,

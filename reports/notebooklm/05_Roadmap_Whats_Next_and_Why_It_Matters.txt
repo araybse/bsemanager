@@ -1,0 +1,72 @@
+BSE Manager Roadmap: What Is Next and Why It Matters
+====================================================
+
+Roadmap theme
+-------------
+We are now in the phase of compounding value:
+from strong integration foundations to smarter automation and tighter planning precision.
+
+Near-term priorities
+--------------------
+1) Complete invoice-expense linkage coverage
+- Finish deterministic linking for remaining unlinked reimbursable rows.
+- Add controlled manual-assignment workflow for edge cases.
+- Maintain clear status transitions: Pending -> Invoiced -> Paid.
+
+2) Strengthen contract-intelligence behaviors
+- Improve automatic contract matching confidence with explicit rule scoring.
+- Add exception reporting for unmatched or low-confidence matches.
+- Surface contract consumption and remaining commitment more prominently.
+
+3) Harden forecast governance
+- Continue separating actuals from projections with clear visuals and labels.
+- Add guardrails where projected totals exceed known remaining scope.
+- Expand scenario support for planning volatility (conservative/base/aggressive).
+
+4) Expand test and audit coverage
+- Add integrity checks for:
+  - expense-invoice link consistency
+  - contract linkage drift over time
+  - chart/table parity in all view modes
+- Add report pack generation for monthly close and leadership review.
+
+Medium-term opportunities
+-------------------------
+1) Workflow automation
+- Suggested actions queue:
+  - expenses needing invoice assignment
+  - contracts needing review
+  - forecast cells outside guardrails
+
+2) Better operational visibility
+- Alerts for exceptions and anomalies:
+  - missing paid dates after status changes
+  - project rows with unusual cash movement
+  - non-P&L deltas exceeding threshold
+
+3) Team-scale adoption tooling
+- Role-based summary views by function:
+  - leadership
+  - project management
+  - accounting operations
+
+4) Planning intelligence
+- Improve projection suggestions based on historical pattern + contract schedule context.
+- Keep manual override as first-class control.
+
+Success metrics to track
+------------------------
+- % of non-contract expenses linked to invoices
+- % of contract-labor expenses linked to contracts
+- Month-end reconciliation exceptions count
+- Forecast variance between projected and actual outcomes
+- Time to close and time to resolve exceptions
+
+Vision checkpoint
+-----------------
+The long-term win is not just better reports.
+It is an operating cadence where decisions are faster, assumptions are explicit, and
+financial outcomes are easier to steer.
+
+This roadmap keeps us pointed at that outcome.
+

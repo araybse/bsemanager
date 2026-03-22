@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireApiRoles } from '@/lib/auth/api-authorization'
+import { normalizeExpenseBillingStatus } from '@/lib/finance/expense-billing-status'
 
 type MultiplierResponse = Record<string, number | null>
 
@@ -68,8 +69,8 @@ export async function GET(request: NextRequest) {
   const [phaseResult, invoiceLineResult, laborResult, expenseResult] = await Promise.all([
     projectIds.length
       ? fetchAllPages<{ project_id: number | null; phase_code: string | null; phase_name: string | null }>(
-          (from, to) =>
-            supabase
+          async (from, to) =>
+            await supabase
               .from('contract_phases')
               .select('project_id, phase_code, phase_name')
               .in('project_id' as never, projectIds as never)
@@ -81,8 +82,8 @@ export async function GET(request: NextRequest) {
       phase_name: string | null
       amount: number | null
       line_type: string | null
-    }>((from, to) =>
-      supabase
+    }>(async (from, to) =>
+      await supabase
         .from('invoice_line_items')
         .select('project_number, phase_name, amount, line_type')
         .in('project_number' as never, projectNumbers as never)
@@ -93,8 +94,8 @@ export async function GET(request: NextRequest) {
       employee_name: string | null
       labor_cost: number | null
       phase_name: string | null
-    }>((from, to) =>
-      supabase
+    }>(async (from, to) =>
+      await supabase
         .from('time_entries')
         .select('project_number, employee_name, labor_cost, phase_name')
         .in('project_number' as never, projectNumbers as never)
@@ -104,10 +105,13 @@ export async function GET(request: NextRequest) {
       project_number: string | null
       fee_amount: number | null
       is_reimbursable: boolean | null
-    }>((from, to) =>
-      supabase
+      status: string | null
+      billing_status: string | null
+      source_active: boolean | null
+    }>(async (from, to) =>
+      await supabase
         .from('project_expenses')
-        .select('project_number, fee_amount, is_reimbursable')
+        .select('project_number, fee_amount, is_reimbursable, status, billing_status, source_active')
         .in('project_number' as never, projectNumbers as never)
         .range(from, to)
     ),
@@ -199,12 +203,17 @@ export async function GET(request: NextRequest) {
         project_number: string | null
         fee_amount: number | null
         is_reimbursable: boolean | null
+        status: string | null
+        billing_status: string | null
+        source_active: boolean | null
       }> | null
     ) || []
   ).forEach((row) => {
+    if (row.source_active === false) return
     const key = (row.project_number || '').trim()
     if (!key) return
-    if (row.is_reimbursable) return
+    const billingStatus = normalizeExpenseBillingStatus(row)
+    if (row.is_reimbursable && billingStatus !== 'ignored') return
     nonReimbExpenseByProject.set(
       key,
       (nonReimbExpenseByProject.get(key) || 0) + (Number(row.fee_amount) || 0)

@@ -5,19 +5,19 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import type { Tables } from '@/lib/types/database'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
   FolderKanban,
   Receipt,
   Clock,
-  DollarSign,
   FileSpreadsheet,
   Settings,
   CreditCard,
   Briefcase,
   TrendingUp,
   Hammer,
+  Landmark,
   LogOut,
   Menu,
   X,
@@ -35,14 +35,14 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'Projects', href: '/projects', icon: FolderKanban },
-  { title: 'Invoices', href: '/invoices', icon: Receipt },
-  { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
-  { title: 'Time Entries', href: '/time-entries', icon: Clock },
-  { title: 'Reimbursables', href: '/reimbursables', icon: CreditCard, roles: ['admin', 'project_manager'] },
   { title: 'Proposals', href: '/proposals', icon: Briefcase },
+  { title: 'Projects', href: '/projects', icon: FolderKanban },
+  { title: 'Time Entries', href: '/time-entries', icon: Clock },
+  { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
+  { title: 'Invoices', href: '/invoices', icon: Receipt },
+  { title: 'Accounting', href: '/accounting', icon: Landmark, roles: ['admin', 'project_manager'] },
   { title: 'Cash Flow', href: '/cash-flow', icon: TrendingUp, roles: ['admin'] },
-  { title: 'Income', href: '/income', icon: DollarSign, roles: ['admin', 'project_manager'] },
+  { title: 'Expenses', href: '/reimbursables', icon: CreditCard, roles: ['admin', 'project_manager'] },
   { title: 'Contract Labor', href: '/contract-labor', icon: Hammer, roles: ['admin'] },
   { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ]
@@ -51,12 +51,17 @@ interface SidebarProps {
   initialProfile: Tables<'profiles'> | null
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'bse.sidebar.collapsed'
+
 export function Sidebar({ initialProfile }: SidebarProps) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const router = useRouter()
   const supabase = createClient()
-  const [isOpen, setIsOpen] = useState(true)
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === 'undefined') return true
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== 'true'
+  })
   
   const role = initialProfile?.role
 
@@ -75,6 +80,12 @@ export function Sidebar({ initialProfile }: SidebarProps) {
     router.push('/login')
   }
 
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(!isOpen))
+  }, [isOpen])
+
+  const toggleSidebar = () => setIsOpen((prev) => !prev)
+
   return (
     <div className={cn(
       "flex h-screen flex-col border-r bg-card transition-all duration-300 ease-in-out",
@@ -87,15 +98,12 @@ export function Sidebar({ initialProfile }: SidebarProps) {
             <span className="text-lg font-semibold">BSE</span>
           </Link>
         )}
-        {!isOpen && (
-          <Link href="/dashboard">
-            <img src="/B_Black.png" alt="BSE" className="h-8 w-8" />
-          </Link>
-        )}
+        {!isOpen && <div />}
         <button
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={toggleSidebar}
           className="rounded-lg p-2 hover:bg-accent transition-colors"
           aria-label="Toggle sidebar"
+          aria-expanded={isOpen}
         >
           {isOpen ? (
             <X className="h-5 w-5" />

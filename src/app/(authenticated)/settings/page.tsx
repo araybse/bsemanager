@@ -49,7 +49,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
-import type { Tables } from '@/lib/types/database'
+import type { InsertTables, Tables, UpdateTables } from '@/lib/types/database'
 import { DataQualityReviewSection } from '@/components/settings/data-quality-review-section'
 import { CamUtilitiesInputsSection } from '@/components/settings/cam-utilities-inputs-section'
 import { CamReconciliationSection } from '@/components/settings/cam-reconciliation-section'
