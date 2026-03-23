@@ -3,6 +3,7 @@ import { requireApiRoles } from '@/lib/auth/api-authorization'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
+const PROJECT_INFO_SCHEMA_EDITORS = ['aburke@blackstoneeng.com']
 
 const toCode = (value: string) =>
   value
@@ -13,7 +14,7 @@ const toCode = (value: string) =>
     .replace(/_+/g, '_')
 
 export async function POST(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()

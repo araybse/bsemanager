@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 
-export async function requireApiRoles(allowedRoles: string[]) {
+export async function requireApiRoles(allowedRoles: string[], allowedEmails: string[] = []) {
   const supabase = await createClient()
   const {
     data: { user },
@@ -22,7 +22,9 @@ export async function requireApiRoles(allowedRoles: string[]) {
     .maybeSingle()
 
   const role = (profile as { role: string | null } | null)?.role || null
-  if (!role || !allowedRoles.includes(role)) {
+  const userEmail = String(user.email || '').toLowerCase()
+  const emailAllowed = allowedEmails.some((email) => email.toLowerCase() === userEmail)
+  if ((!role || !allowedRoles.includes(role)) && !emailAllowed) {
     return {
       ok: false as const,
       response: NextResponse.json({ error: 'Forbidden' }, { status: 403 }),

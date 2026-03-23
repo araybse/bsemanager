@@ -7,6 +7,7 @@ export const runtime = 'nodejs'
 const VALID_TYPES = new Set(['text', 'textarea', 'select', 'date', 'phone', 'number'])
 const VALID_SOURCES = new Set(['static', 'project_managers', 'engineers', 'city_county'])
 const VALID_VALUE_MODES = new Set(['scalar', 'multi'])
+const PROJECT_INFO_SCHEMA_EDITORS = ['aburke@blackstoneeng.com']
 
 const toColumn = (value: string) =>
   value
@@ -23,7 +24,7 @@ const parseMultiValues = (raw: string | null | undefined) =>
     .filter(Boolean)
 
 export async function POST(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
@@ -131,7 +132,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()

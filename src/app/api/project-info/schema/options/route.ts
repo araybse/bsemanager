@@ -3,9 +3,10 @@ import { requireApiRoles } from '@/lib/auth/api-authorization'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export const runtime = 'nodejs'
+const PROJECT_INFO_SCHEMA_EDITORS = ['aburke@blackstoneeng.com']
 
 export async function POST(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
@@ -37,7 +38,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
@@ -73,7 +74,7 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireApiRoles(['admin'])
+  const auth = await requireApiRoles(['admin'], PROJECT_INFO_SCHEMA_EDITORS)
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
