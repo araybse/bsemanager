@@ -1,6 +1,9 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const AUSTIN_BURKE_EMAIL = 'aburke@blackstoneeng.com'
+const AUSTIN_BURKE_ALLOWED_PATHS = ['/projects', '/settings']
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -38,7 +41,7 @@ export async function updateSession(request: NextRequest) {
   const { data: { user } } = (await Promise.race([
     supabase.auth.getUser(),
     new Promise(resolve => setTimeout(() => resolve(timeoutResult), 3000)),
-  ])) as { data: { user: { id: string } | null }, error: Error | null }
+  ])) as { data: { user: { id: string; email?: string } | null }, error: Error | null }
 
   // Protected routes - redirect to login if not authenticated
   const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/contract-labor', '/settings']
@@ -53,14 +56,32 @@ export async function updateSession(request: NextRequest) {
   // Redirect logged in users away from login page
   if (user && request.nextUrl.pathname === '/login') {
     const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
+    url.pathname =
+      user.email?.toLowerCase() === AUSTIN_BURKE_EMAIL ? '/projects' : '/dashboard'
     return NextResponse.redirect(url)
   }
 
   // Redirect root to dashboard if logged in, otherwise to login
   if (request.nextUrl.pathname === '/') {
     const url = request.nextUrl.clone()
-    url.pathname = user ? '/dashboard' : '/login'
+    if (!user) {
+      url.pathname = '/login'
+    } else {
+      url.pathname =
+        user.email?.toLowerCase() === AUSTIN_BURKE_EMAIL ? '/projects' : '/dashboard'
+    }
+    return NextResponse.redirect(url)
+  }
+
+  // Temporary per-user visibility gate for Austin Burke.
+  // He can only access /projects and /settings page trees.
+  if (
+    user?.email?.toLowerCase() === AUSTIN_BURKE_EMAIL &&
+    !request.nextUrl.pathname.startsWith('/api') &&
+    !AUSTIN_BURKE_ALLOWED_PATHS.some((path) => request.nextUrl.pathname.startsWith(path))
+  ) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/projects'
     return NextResponse.redirect(url)
   }
 
