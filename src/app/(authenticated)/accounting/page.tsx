@@ -261,23 +261,25 @@ export default function AccountingPage() {
     },
   })
 
-  const groupLines = (
-    lines:
-      | Array<{
-          section: string | null
-          account_name: string
-          amount: number
-          sort_order: number
-          depth: number
-          is_total: boolean
-        }>
-      | undefined
-  ) => {
-    const grouped = new Map<string, typeof lines>()
-    for (const line of lines || []) {
+  type BalanceSheetLine = {
+    section: string | null
+    account_name: string
+    amount: number
+    sort_order: number
+    depth: number
+    is_total: boolean
+  }
+
+  const groupLines = (lines: BalanceSheetLine[] | undefined): Array<[string, BalanceSheetLine[]]> => {
+    const grouped = new Map<string, BalanceSheetLine[]>()
+    for (const line of lines ?? []) {
       const section = line.section || 'Other'
-      if (!grouped.has(section)) grouped.set(section, [])
-      grouped.get(section)!.push(line)
+      const existing = grouped.get(section)
+      if (existing) {
+        existing.push(line)
+      } else {
+        grouped.set(section, [line])
+      }
     }
     return Array.from(grouped.entries())
   }
