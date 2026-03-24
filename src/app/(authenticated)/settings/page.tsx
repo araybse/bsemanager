@@ -2976,20 +2976,21 @@ function SettingsContent() {
                         </Badge>
                       </div>
 
-                      <Table className="table-fixed w-full">
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="w-[44px]"></TableHead>
-                            <TableHead className="w-[312px]">Label</TableHead>
-                            <TableHead>Description</TableHead>
-                            <TableHead className="w-[258px]">Column</TableHead>
-                            <TableHead className="w-[120px]">Mode</TableHead>
-                            <TableHead className="w-[166px]">Type</TableHead>
-                            <TableHead className="w-[246px]">Source</TableHead>
-                            <TableHead className="w-[172px] text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                      <div className="relative w-full overflow-x-auto">
+                        <Table className="table-fixed w-full min-w-[1740px]">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead className="w-[44px]"></TableHead>
+                              <TableHead className="w-[312px]">Label</TableHead>
+                              <TableHead className="w-[421px] min-w-[421px]">Description</TableHead>
+                              <TableHead className="w-[258px]">Column</TableHead>
+                              <TableHead className="w-[120px]">Mode</TableHead>
+                              <TableHead className="w-[166px]">Type</TableHead>
+                              <TableHead className="w-[246px]">Source</TableHead>
+                              <TableHead className="w-[172px] text-right">Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
                           {sectionFields.map((field) => (
                             <TableRow
                               key={field.id}
@@ -3291,8 +3292,9 @@ function SettingsContent() {
                               </Button>
                             </TableCell>
                           </TableRow>
-                        </TableBody>
-                      </Table>
+                          </TableBody>
+                        </Table>
+                      </div>
 
                       {sectionFields
                         .filter((field) => field.input_type === 'select' && field.source_type === 'static')
@@ -3801,16 +3803,25 @@ function SettingsContent() {
                   <CardTitle>Template Field Mapping</CardTitle>
                   <CardDescription>Map PDF field names to project info canonical keys.</CardDescription>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setMappingDialogOpen(false)
-                    setActivePickerPdfFieldName(null)
-                  }}
-                >
-                  Close
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setMappingDialogOpen(false)
+                      setActivePickerPdfFieldName(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    disabled={mappingDialogSaving || !mappingDialogTemplateId}
+                    onClick={() => void saveTemplateMappings()}
+                  >
+                    {mappingDialogSaving ? 'Saving...' : 'Save Mapping'}
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -3959,23 +3970,6 @@ function SettingsContent() {
                   </div>
                 </div>
               )}
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setMappingDialogOpen(false)
-                    setActivePickerPdfFieldName(null)
-                  }}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  disabled={mappingDialogSaving || !mappingDialogTemplateId}
-                  onClick={() => void saveTemplateMappings()}
-                >
-                  {mappingDialogSaving ? 'Saving...' : 'Save Mapping'}
-                </Button>
-              </DialogFooter>
             </CardContent>
           </Card>
         ) : null}
