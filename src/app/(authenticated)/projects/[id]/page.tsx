@@ -749,10 +749,14 @@ export default function ProjectDetailPage() {
     },
   })
 
-  const { data: teamAssignments, isLoading: loadingTeam } = useQuery({
+  const { data: teamAssignments, isLoading: loadingTeam, error: teamError } = useQuery({
     queryKey: ['project-team', projectId],
     queryFn: async () => {
-      if (!projectId) return []
+      if (!projectId) {
+        console.log('[Team Tab] No projectId, returning empty array')
+        return []
+      }
+      console.log('[Team Tab] Fetching team for project ID:', projectId)
       const { data, error } = await supabase
         .from('project_team_assignments')
         .select(`
@@ -769,7 +773,11 @@ export default function ProjectDetailPage() {
         `)
         .eq('project_id', projectId)
         .order('assigned_at', { ascending: false })
-      if (error) throw error
+      if (error) {
+        console.error('[Team Tab] Query error:', error)
+        throw error
+      }
+      console.log('[Team Tab] Query success, found:', data?.length, 'members')
       return data as Array<{
         id: number
         user_id: string
@@ -3941,6 +3949,60 @@ export default function ProjectDetailPage() {
 
         <TabsContent value="project-info" className="mt-4">
           <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const allKeys = hasDynamicProjectInfoSchema
+                      ? dynamicProjectInfoSections.map(s => `schema-${s.id}`)
+                      : PROJECT_INFO_GROUPS.map(g => `legacy-${g.title}`)
+                    const newState: Record<string, boolean> = {}
+                    allKeys.forEach(key => { newState[key] = true })
+                    setExpandedProjectInfoSections(newState)
+                  }}
+                >
+                  Expand All
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const allKeys = hasDynamicProjectInfoSchema
+                      ? dynamicProjectInfoSections.map(s => `schema-${s.id}`)
+                      : PROJECT_INFO_GROUPS.map(g => `legacy-${g.title}`)
+                    const newState: Record<string, boolean> = {}
+                    allKeys.forEach(key => { newState[key] = false })
+                    setExpandedProjectInfoSections(newState)
+                  }}
+                >
+                  Collapse All
+                </Button>
+              </div>
+              <Button
+                onClick={() =>
+                  hasDynamicProjectInfoSchema
+                    ? saveProjectInfoDynamic.mutate()
+                    : saveProjectInfo.mutate()
+                }
+                disabled={
+                  hasDynamicProjectInfoSchema
+                    ? saveProjectInfoDynamic.isPending || !projectInfoDynamicInitialized
+                    : saveProjectInfo.isPending || !projectInfoFormInitialized
+                }
+              >
+                {hasDynamicProjectInfoSchema
+                  ? saveProjectInfoDynamic.isPending
+                    ? 'Saving...'
+                    : 'Save Project Info'
+                  : saveProjectInfo.isPending
+                    ? 'Saving...'
+                    : 'Save Project Info'}
+              </Button>
+            </div>
             {hasDynamicProjectInfoSchema
               ? dynamicProjectInfoSections.map((section) => {
                   const sectionKey = `schema-${section.id}`
@@ -4040,28 +4102,6 @@ export default function ProjectDetailPage() {
                   )
                 })
               : null}
-            <div className="flex justify-end">
-              <Button
-                onClick={() =>
-                  hasDynamicProjectInfoSchema
-                    ? saveProjectInfoDynamic.mutate()
-                    : saveProjectInfo.mutate()
-                }
-                disabled={
-                  hasDynamicProjectInfoSchema
-                    ? saveProjectInfoDynamic.isPending || !projectInfoDynamicInitialized
-                    : saveProjectInfo.isPending || !projectInfoFormInitialized
-                }
-              >
-                {hasDynamicProjectInfoSchema
-                  ? saveProjectInfoDynamic.isPending
-                    ? 'Saving...'
-                    : 'Save Project Info'
-                  : saveProjectInfo.isPending
-                    ? 'Saving...'
-                    : 'Save Project Info'}
-              </Button>
-            </div>
           </div>
         </TabsContent>
 
@@ -5354,6 +5394,10 @@ export default function ProjectDetailPage() {
             <CardContent className="p-4">
               {loadingTeam ? (
                 <Skeleton className="h-48 w-full" />
+              ) : teamError ? (
+                <div className="py-8 text-center text-red-600">
+                  Error loading team: {teamError.message}
+                </div>
               ) : (
                 <Table>
                   <TableHeader>
