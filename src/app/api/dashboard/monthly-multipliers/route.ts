@@ -44,7 +44,14 @@ export async function GET() {
 
     // Build map: "projectId::phaseName" → phase_code
     const phaseCodeMap = new Map<string, string>()
-    ;(contractPhases || []).forEach((phase) => {
+    const typedPhases = (contractPhases || []) as Array<{
+      id: number
+      project_id: number
+      phase_code: string
+      phase_name: string
+    }>
+    
+    typedPhases.forEach((phase) => {
       const key = `${phase.project_id}::${(phase.phase_name || '').trim().toLowerCase()}`
       phaseCodeMap.set(key, (phase.phase_code || '').trim())
     })
@@ -73,8 +80,15 @@ export async function GET() {
     const revenueBuckets = new Map<string, number>()
     const costBuckets = new Map<string, number>()
 
+    const typedInvoiceLines = (invoiceLines || []) as Array<{
+      project_number: string
+      phase_name: string
+      amount: number
+      invoice_date: string
+    }>
+
     // Process invoice lines
-    ;(invoiceLines || []).forEach((line) => {
+    typedInvoiceLines.forEach((line) => {
       const projectId = line.project_number ? parseInt(line.project_number.split('-')[0], 10) : null
       if (!projectId) return
 
@@ -95,8 +109,16 @@ export async function GET() {
       revenueBuckets.set(month, (revenueBuckets.get(month) || 0) + (Number(line.amount) || 0))
     })
 
+    const typedTimeEntries = (timeEntries || []) as Array<{
+      project_id: number
+      project_number: string
+      phase_name: string
+      labor_cost: number
+      entry_date: string
+    }>
+
     // Process time entries
-    ;(timeEntries || []).forEach((entry) => {
+    typedTimeEntries.forEach((entry) => {
       if (!entry.project_id) return
 
       const key = `${entry.project_id}::${(entry.phase_name || '').trim().toLowerCase()}`
