@@ -41,6 +41,26 @@ function formatMonthLabel(monthKey: string): string {
 export default function DashboardPage() {
   const supabase = createClient()
 
+  // Get current user and role
+  const { data: currentUser, isLoading: loadingUser } = useQuery({
+    queryKey: ['current-user-profile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return null
+      
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, role, full_name, email')
+        .eq('id', user.id)
+        .single()
+      
+      if (error) throw error
+      return profile as { id: string; role: string; full_name: string | null; email: string }
+    },
+  })
+
+  const userRole = currentUser?.role as 'admin' | 'project_manager' | 'employee' | 'client' | undefined
+
   // Fetch billing candidates
   const { data: billingCandidates, isLoading: loadingCandidates } = useQuery({
     queryKey: ['billing-candidates'],
@@ -50,19 +70,6 @@ export default function DashboardPage() {
         .select('*')
       if (error) throw error
       return data as Views<'billing_candidates'>[]
-    },
-  })
-
-  // Fetch backlog summary
-  const { data: backlog, isLoading: loadingBacklog } = useQuery({
-    queryKey: ['backlog-summary'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('backlog_summary')
-        .select('*')
-        .single()
-      if (error) throw error
-      return data as Views<'backlog_summary'>
     },
   })
 
@@ -505,31 +512,60 @@ export default function DashboardPage() {
   })
   const opsState = ((opsFreshness?.state as FreshnessState | undefined) || 'unknown') as FreshnessState
 
+  // Show loading state while fetching user
+  if (loadingUser) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+
+  // Role-based dashboard rendering
+  // For now, PM and Employee roles see a placeholder
+  // Admin sees the full dashboard
+  if (userRole === 'project_manager') {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Project Manager Dashboard</CardTitle>
+            <CardDescription>Your assigned projects and team performance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              PM-specific dashboard coming soon. You'll see stats for projects where you're the PM or assigned as a team member.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  if (userRole === 'employee') {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Employee Dashboard</CardTitle>
+            <CardDescription>Your time entries and project assignments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Employee dashboard coming soon. You'll see your recent time entries and assigned projects.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Admin dashboard (current view, minus backlog card)
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Backlog</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingBacklog ? (
-              <Skeleton className="h-8 w-32" />
-            ) : (
-              <>
-                <div className="text-xl font-bold truncate">
-                  {formatCurrency(backlog?.total_backlog)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {backlog?.project_count || 0} active projects
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Accounts Receivable</CardTitle>
