@@ -21,12 +21,14 @@ export async function GET() {
 
   const supabase = createAdminClient()
 
-  // Calculate date range: last 12 completed months
+  // Calculate date range: last 12 months including current month
+  // We need current month invoices because they represent prior-month work
   const now = new Date()
   const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1)
   const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
   const sinceDate = firstMonth.toISOString().slice(0, 10)
-  const currentMonthStartDate = currentMonthStart.toISOString().slice(0, 10)
+  const nextMonthStartDate = nextMonthStart.toISOString().slice(0, 10)
 
   const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
   const months = Array.from({ length: 12 }, (_, index) => {
@@ -56,22 +58,22 @@ export async function GET() {
       phaseCodeMap.set(key, (phase.phase_code || '').trim())
     })
 
-    // Fetch invoice line items for the date range
+    // Fetch invoice line items for the date range (including current month)
     const { data: invoiceLines, error: invoiceError } = await supabase
       .from('invoice_line_items')
       .select('project_number, phase_name, amount, invoice_date')
       .gte('invoice_date', sinceDate)
-      .lt('invoice_date', currentMonthStartDate)
+      .lt('invoice_date', nextMonthStartDate)
       .order('invoice_date', { ascending: true })
 
     if (invoiceError) throw invoiceError
 
-    // Fetch time entries for the date range
+    // Fetch time entries for the date range (including current month)
     const { data: timeEntries, error: timeError } = await supabase
       .from('time_entries')
       .select('project_id, project_number, phase_name, labor_cost, entry_date')
       .gte('entry_date', sinceDate)
-      .lt('entry_date', currentMonthStartDate)
+      .lt('entry_date', nextMonthStartDate)
       .order('entry_date', { ascending: true })
 
     if (timeError) throw timeError

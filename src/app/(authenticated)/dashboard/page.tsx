@@ -731,9 +731,9 @@ export default function DashboardPage() {
       {/* Monthly Multipliers Chart (Admin Only) */}
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Multipliers (C* Phases)</CardTitle>
+          <CardTitle>Monthly Multipliers</CardTitle>
           <CardDescription>
-            Revenue vs cost multiplier by month (last 12 months, excluding current). Only includes C* contract phases.
+            Project multiplier by month (last 12 months). C-phase revenue ÷ C-phase labor cost.
           </CardDescription>
         </CardHeader>
         <CardContent className="h-[280px]">
@@ -748,25 +748,9 @@ export default function DashboardPage() {
               <ComposedChart data={monthlyMultipliers || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="monthLabel" />
-                <YAxis
-                  yAxisId="left"
-                  tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`}
-                />
-                <YAxis
-                  yAxisId="right"
-                  orientation="right"
-                  tickFormatter={(value) => `${Number(value).toFixed(1)}x`}
-                />
-                <Tooltip
-                  formatter={(value, name) => {
-                    if (name === 'Multiplier') return `${Number(value).toFixed(2)}x`
-                    return formatCurrency(Number(value) || 0)
-                  }}
-                />
-                <Bar yAxisId="left" dataKey="revenue" fill="#111827" radius={[4, 4, 0, 0]} name="Revenue" />
-                <Bar yAxisId="left" dataKey="cost" fill="#6B7280" radius={[4, 4, 0, 0]} name="Cost" />
+                <YAxis tickFormatter={(value) => `${Number(value).toFixed(1)}x`} />
+                <Tooltip formatter={(value) => `${Number(value).toFixed(2)}x`} />
                 <Line
-                  yAxisId="right"
                   type="monotone"
                   dataKey="multiplier"
                   stroke="#2563EB"
