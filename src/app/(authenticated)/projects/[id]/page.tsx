@@ -553,6 +553,7 @@ export default function ProjectDetailPage() {
   const [isContractDialogOpen, setIsContractDialogOpen] = useState(false)
   const [isSavingContract, setIsSavingContract] = useState(false)
   const [isDeletingContract, setIsDeletingContract] = useState(false)
+  const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false)
   const [editingSubcontractContract, setEditingSubcontractContract] = useState<SubcontractContractRow | null>(null)
   const [contractForm, setContractForm] = useState({
     vendor_name: '',
@@ -5389,7 +5390,7 @@ export default function ProjectDetailPage() {
                   Manage team members assigned to this project
                 </CardDescription>
               </div>
-              <Button disabled>Add Team Member</Button>
+              <Button onClick={() => setIsTeamDialogOpen(true)}>Add Team Member</Button>
             </CardHeader>
             <CardContent className="p-4">
               {loadingTeam ? (
@@ -5429,9 +5430,20 @@ export default function ProjectDetailPage() {
                         <TableCell className="text-right">
                           <Button
                             type="button"
-                            variant="outline"
+                            variant="destructive"
                             size="sm"
-                            disabled
+                            onClick={async () => {
+                              if (!confirm(`Remove ${assignment.profiles?.full_name} from team?`)) return
+                              const { error } = await supabase
+                                .from('project_team_assignments')
+                                .delete()
+                                .eq('id', assignment.id)
+                              if (error) {
+                                alert(`Error: ${error.message}`)
+                              } else {
+                                queryClient.invalidateQueries({ queryKey: ['project-team', projectId] })
+                              }
+                            }}
                           >
                             Remove
                           </Button>
@@ -5453,6 +5465,61 @@ export default function ProjectDetailPage() {
         </TabsContent>
 
       </Tabs>
+
+      <Dialog open={isTeamDialogOpen} onOpenChange={setIsTeamDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogDescription>
+              Select users to add to this project team
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+            {(projectManagers || []).map((user) => {
+              const isAssigned = (teamAssignments || []).some(a => a.user_id === user.id)
+              return (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                >
+                  <div>
+                    <div className="text-sm font-medium">{user.full_name}</div>
+                    <div className="text-xs text-muted-foreground">{user.id}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isAssigned ? 'secondary' : 'default'}
+                    disabled={isAssigned}
+                    onClick={async () => {
+                      if (!projectId) return
+                      const { error } = await supabase
+                        .from('project_team_assignments')
+                        .insert({
+                          project_id: projectId,
+                          user_id: user.id,
+                          role: 'team_member'
+                        })
+                      if (error) {
+                        alert(`Error: ${error.message}`)
+                      } else {
+                        queryClient.invalidateQueries({ queryKey: ['project-team', projectId] })
+                      }
+                    }}
+                  >
+                    {isAssigned ? 'Already Added' : 'Add'}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsTeamDialogOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
         <DialogContent className="sm:max-w-xl">
