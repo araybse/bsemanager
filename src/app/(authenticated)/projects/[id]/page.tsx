@@ -759,7 +759,7 @@ export default function ProjectDetailPage() {
       }
       console.log('[Team Tab] Fetching team for project ID:', projectId)
       const { data, error } = await supabase
-        .from('project_team_assignments')
+        .from('project_team_assignments' as any)
         .select(`
           id,
           user_id,
