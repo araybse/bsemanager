@@ -92,9 +92,10 @@ export default function DashboardPage() {
     queryFn: async () => {
       const currentMonthStart = new Date()
       currentMonthStart.setDate(1)
+      const nextMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1)
       const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
       const sinceDate = firstMonth.toISOString().slice(0, 10)
-      const currentMonthStartDate = currentMonthStart.toISOString().slice(0, 10)
+      const nextMonthStartDate = nextMonthStart.toISOString().slice(0, 10)
       const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const months = Array.from({ length: 12 }, (_, index) => {
         const monthDate = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1)
@@ -119,7 +120,7 @@ export default function DashboardPage() {
           .from('invoices')
           .select('date_issued, amount')
           .gte('date_issued' as never, sinceDate as never)
-          .lt('date_issued' as never, currentMonthStartDate as never)
+          .lt('date_issued' as never, nextMonthStartDate as never)
           .order('date_issued', { ascending: true })
           .range(from, from + pageSize - 1)
         if (error) throw error
@@ -131,11 +132,11 @@ export default function DashboardPage() {
 
       from = 0
       while (true) {
-        const { data, error } = await supabase
+        const { data, error} = await supabase
           .from('time_entries')
           .select('id, employee_id, employee_name, entry_date, project_number, project_id, hours')
           .gte('entry_date' as never, sinceDate as never)
-          .lt('entry_date' as never, currentMonthStartDate as never)
+          .lt('entry_date' as never, nextMonthStartDate as never)
           .order('entry_date', { ascending: true })
           .range(from, from + pageSize - 1)
         if (error) throw error
@@ -659,7 +660,7 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Revenue Trend</CardTitle>
-            <CardDescription>Invoices vs billables by month (last 12 months, excluding current)</CardDescription>
+            <CardDescription>Invoices vs billables by month (last 12 months). Invoice month represents prior month work.</CardDescription>
           </CardHeader>
           <CardContent className="h-[280px]">
             {loadingInvoiceTrend ? (
