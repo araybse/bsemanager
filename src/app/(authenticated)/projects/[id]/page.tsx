@@ -749,6 +749,42 @@ export default function ProjectDetailPage() {
     },
   })
 
+  const { data: teamAssignments, isLoading: loadingTeam } = useQuery({
+    queryKey: ['project-team', projectId],
+    queryFn: async () => {
+      if (!projectId) return []
+      const { data, error } = await supabase
+        .from('project_team_assignments')
+        .select(`
+          id,
+          user_id,
+          role,
+          assigned_at,
+          profiles!project_team_assignments_user_id_fkey (
+            id,
+            full_name,
+            email,
+            role
+          )
+        `)
+        .eq('project_id', projectId)
+        .order('assigned_at', { ascending: false })
+      if (error) throw error
+      return data as Array<{
+        id: number
+        user_id: string
+        role: string
+        assigned_at: string
+        profiles: {
+          id: string
+          full_name: string
+          email: string
+          role: string
+        } | null
+      }>
+    },
+  })
+
   const { data: cityCountyOptions } = useQuery({
     queryKey: ['city-county-options'],
     queryFn: async () => {
@@ -3752,6 +3788,7 @@ export default function ProjectDetailPage() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="project-info">Project Info</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
           <TabsTrigger value="agencies-permits">Agencies & Permits</TabsTrigger>
           <TabsTrigger value="applications">Applications</TabsTrigger>
           <TabsTrigger value="phases">Phases</TabsTrigger>
@@ -5293,6 +5330,74 @@ export default function ProjectDetailPage() {
                       <TableRow>
                         <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
                           No contracts
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="team" className="mt-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Team Assignments</CardTitle>
+                <CardDescription>
+                  Manage team members assigned to this project
+                </CardDescription>
+              </div>
+              <Button disabled>Add Team Member</Button>
+            </CardHeader>
+            <CardContent className="p-4">
+              {loadingTeam ? (
+                <Skeleton className="h-48 w-full" />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Assigned</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(teamAssignments || []).map((assignment) => (
+                      <TableRow key={assignment.id}>
+                        <TableCell className="font-medium">
+                          {assignment.profiles?.full_name || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {assignment.profiles?.email || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={assignment.role === 'project_manager' ? 'default' : 'secondary'}>
+                            {assignment.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDate(assignment.assigned_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled
+                          >
+                            Remove
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(teamAssignments || []).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                          No team members assigned yet
                         </TableCell>
                       </TableRow>
                     )}
