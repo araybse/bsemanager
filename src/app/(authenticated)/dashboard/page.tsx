@@ -512,6 +512,24 @@ export default function DashboardPage() {
   })
   const opsState = ((opsFreshness?.state as FreshnessState | undefined) || 'unknown') as FreshnessState
 
+  // Fetch monthly multipliers (C* phases only) for admin dashboard
+  const { data: monthlyMultipliers, isLoading: loadingMonthlyMultipliers } = useQuery({
+    queryKey: ['dashboard-monthly-multipliers'],
+    queryFn: async () => {
+      const response = await fetch('/api/dashboard/monthly-multipliers')
+      if (!response.ok) throw new Error('Failed to fetch monthly multipliers')
+      const data = await response.json()
+      return data.monthlyMultipliers as Array<{
+        month: string
+        monthLabel: string
+        revenue: number
+        cost: number
+        multiplier: number | null
+      }>
+    },
+    enabled: userRole === 'admin', // Only fetch for admin users
+  })
+
   // Show loading state while fetching user
   if (loadingUser) {
     return (
@@ -709,6 +727,58 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Monthly Multipliers Chart (Admin Only) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Monthly Multipliers (C* Phases)</CardTitle>
+          <CardDescription>
+            Revenue vs cost multiplier by month (last 12 months, excluding current). Only includes C* contract phases.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[280px]">
+          {loadingMonthlyMultipliers ? (
+            <Skeleton className="h-full w-full" />
+          ) : (monthlyMultipliers?.length || 0) === 0 ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+              No multiplier data available for the last 12 months.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={monthlyMultipliers || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="monthLabel" />
+                <YAxis
+                  yAxisId="left"
+                  tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`}
+                />
+                <YAxis
+                  yAxisId="right"
+                  orientation="right"
+                  tickFormatter={(value) => `${Number(value).toFixed(1)}x`}
+                />
+                <Tooltip
+                  formatter={(value, name) => {
+                    if (name === 'Multiplier') return `${Number(value).toFixed(2)}x`
+                    return formatCurrency(Number(value) || 0)
+                  }}
+                />
+                <Bar yAxisId="left" dataKey="revenue" fill="#111827" radius={[4, 4, 0, 0]} name="Revenue" />
+                <Bar yAxisId="left" dataKey="cost" fill="#6B7280" radius={[4, 4, 0, 0]} name="Cost" />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="multiplier"
+                  stroke="#2563EB"
+                  strokeWidth={3}
+                  dot={{ r: 4 }}
+                  name="Multiplier"
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Billing Candidates */}
       <Card>
