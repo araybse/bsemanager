@@ -5484,7 +5484,6 @@ export default function ProjectDetailPage() {
                 >
                   <div>
                     <div className="text-sm font-medium">{user.full_name}</div>
-                    <div className="text-xs text-muted-foreground">{user.id}</div>
                   </div>
                   <Button
                     type="button"
