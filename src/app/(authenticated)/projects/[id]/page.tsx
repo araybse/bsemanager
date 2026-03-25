@@ -5435,7 +5435,7 @@ export default function ProjectDetailPage() {
                             onClick={async () => {
                               if (!confirm(`Remove ${assignment.profiles?.full_name} from team?`)) return
                               const { error } = await supabase
-                                .from('project_team_assignments')
+                                .from('project_team_assignments' as any)
                                 .delete()
                                 .eq('id', assignment.id)
                               if (error) {
@@ -5494,7 +5494,7 @@ export default function ProjectDetailPage() {
                     onClick={async () => {
                       if (!projectId) return
                       const { error } = await supabase
-                        .from('project_team_assignments')
+                        .from('project_team_assignments' as any)
                         .insert({
                           project_id: projectId,
                           user_id: user.id,

@@ -78,6 +78,23 @@ export async function GET() {
 
     if (timeError) throw timeError
 
+    // Build project_number → project_id mapping
+    const projectNumberToId = new Map<string, number>()
+    const uniqueProjectNumbers = Array.from(
+      new Set((invoiceLines || []).map((inv: any) => inv.project_number).filter(Boolean))
+    )
+    
+    if (uniqueProjectNumbers.length > 0) {
+      const { data: projectMappings } = await supabase
+        .from('projects')
+        .select('id, project_number')
+        .in('project_number', uniqueProjectNumbers as any)
+      
+      ;(projectMappings || []).forEach((proj: any) => {
+        projectNumberToId.set(proj.project_number, proj.id)
+      })
+    }
+
     // Build revenue and cost buckets by month (only C* phases)
     const revenueBuckets = new Map<string, number>()
     const costBuckets = new Map<string, number>()
@@ -91,7 +108,7 @@ export async function GET() {
 
     // Process invoice lines
     typedInvoiceLines.forEach((line) => {
-      const projectId = line.project_number ? parseInt(line.project_number.split('-')[0], 10) : null
+      const projectId = projectNumberToId.get(line.project_number)
       if (!projectId) return
 
       const key = `${projectId}::${(line.phase_name || '').trim().toLowerCase()}`
