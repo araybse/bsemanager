@@ -758,14 +758,14 @@ export default function ProjectDetailPage() {
         return []
       }
       console.log('[Team Tab] Fetching team for project ID:', projectId)
-      const { data, error } = await supabase
-        .from('project_team_assignments' as any)
+      const { data, error } = await (supabase as any)
+        .from('project_team_assignments')
         .select(`
           id,
           user_id,
           role,
           assigned_at,
-          profiles!project_team_assignments_user_id_fkey (
+          profiles (
             id,
             full_name,
             email,
@@ -5434,8 +5434,8 @@ export default function ProjectDetailPage() {
                             size="sm"
                             onClick={async () => {
                               if (!confirm(`Remove ${assignment.profiles?.full_name} from team?`)) return
-                              const { error } = await supabase
-                                .from('project_team_assignments' as any)
+                              const { error } = await (supabase as any)
+                                .from('project_team_assignments')
                                 .delete()
                                 .eq('id', assignment.id)
                               if (error) {
@@ -5493,8 +5493,8 @@ export default function ProjectDetailPage() {
                     disabled={isAssigned}
                     onClick={async () => {
                       if (!projectId) return
-                      const { error } = await supabase
-                        .from('project_team_assignments' as any)
+                      const { error } = await (supabase as any)
+                        .from('project_team_assignments')
                         .insert({
                           project_id: projectId,
                           user_id: user.id,
