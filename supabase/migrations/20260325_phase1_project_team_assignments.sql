@@ -26,12 +26,12 @@ CREATE POLICY "project_team_admin_full" ON public.project_team_assignments
   );
 
 -- Users can see assignments for projects they're on
+-- Fixed: Removed self-referencing subquery to avoid circular dependency (caused 500 errors)
 CREATE POLICY "project_team_see_own" ON public.project_team_assignments
   AS PERMISSIVE FOR SELECT USING (
-    project_id IN (
+    user_id = auth.uid()
+    OR project_id IN (
       SELECT id FROM public.projects WHERE pm_id = auth.uid()
-      UNION
-      SELECT project_id FROM public.project_team_assignments WHERE user_id = auth.uid()
     )
   );
 
