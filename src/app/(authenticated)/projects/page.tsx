@@ -108,19 +108,14 @@ export default function ProjectsPage() {
       
       const projectIds = (assignments as any[])?.map(a => a.project_id) || []
       
-      // Also include projects where they are the PM
-      const { data: pmProjects, error: pmError } = await supabase
-        .from('projects')
-        .select('id')
-        .eq('project_manager_id', currentUser.id)
+      // PMs are auto-assigned to their projects via project_team_assignments,
+      // so no need for a separate PM query
       
-      if (pmError) throw pmError
-      
-      const allProjectIds = [...new Set([...projectIds, ...(pmProjects as any[] || [])?.map(p => p.id) || []])]
-      
-      if (allProjectIds.length === 0) {
+      if (projectIds.length === 0) {
         return []
       }
+      
+      const allProjectIds = projectIds
       
       const { data, error } = await supabase
         .from('projects')
