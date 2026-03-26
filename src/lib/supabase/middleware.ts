@@ -1,9 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-const AUSTIN_BURKE_EMAIL = 'aburke@blackstoneeng.com'
-const AUSTIN_BURKE_ALLOWED_PATHS = ['/projects', '/settings']
-
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -56,8 +53,7 @@ export async function updateSession(request: NextRequest) {
   // Redirect logged in users away from login page
   if (user && request.nextUrl.pathname === '/login') {
     const url = request.nextUrl.clone()
-    url.pathname =
-      user.email?.toLowerCase() === AUSTIN_BURKE_EMAIL ? '/projects' : '/dashboard'
+    url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }
 
@@ -67,21 +63,8 @@ export async function updateSession(request: NextRequest) {
     if (!user) {
       url.pathname = '/login'
     } else {
-      url.pathname =
-        user.email?.toLowerCase() === AUSTIN_BURKE_EMAIL ? '/projects' : '/dashboard'
+      url.pathname = '/dashboard'
     }
-    return NextResponse.redirect(url)
-  }
-
-  // Temporary per-user visibility gate for Austin Burke.
-  // He can only access /projects and /settings page trees.
-  if (
-    user?.email?.toLowerCase() === AUSTIN_BURKE_EMAIL &&
-    !request.nextUrl.pathname.startsWith('/api') &&
-    !AUSTIN_BURKE_ALLOWED_PATHS.some((path) => request.nextUrl.pathname.startsWith(path))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/projects'
     return NextResponse.redirect(url)
   }
 
