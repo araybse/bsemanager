@@ -1,4 +1,5 @@
 'use client'
+import { usePermissionRedirect } from '@/lib/auth/use-permission-redirect'
 
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'

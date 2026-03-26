@@ -1,0 +1,23 @@
+--- a/src/app/(authenticated)/dashboard/page.tsx
++++ b/src/app/(authenticated)/dashboard/page.tsx
+@@ -1,5 +1,7 @@
+ 'use client'
+ 
++import { useRouter } from 'next/navigation'
++import { useEffect } from 'react'
+ import { useQuery } from '@tanstack/react-query'
+ import { createClient } from '@/lib/supabase/client'
+ import { usePermissions } from '@/lib/auth/use-permissions'
+@@ -59,6 +61,15 @@ export default function DashboardPage() {
+ 
+   const userRole = currentUser?.role as 'admin' | 'project_manager' | 'employee' | 'client' | undefined
+ 
++  // Redirect employees away from dashboard
++  const router = useRouter()
++  useEffect(() => {
++    if (loadingUser === false && userRole === 'employee') {
++      router.replace('/timesheet')
++    }
++  }, [userRole, loadingUser, router])
++
+   // Fetch billing candidates

@@ -4,6 +4,7 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissionRedirect } from '@/lib/auth/use-permission-redirect'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -38,6 +39,9 @@ interface InvoiceWithLineItems extends Tables<'invoices'> {
 
 export default function InvoicesPage() {
   const supabase = createClient()
+
+  // Check permissions - redirect employees
+  usePermissionRedirect({ allowedRoles: ['admin', 'project_manager'] })
   
   // Filter state
   const [dateFrom, setDateFrom] = useState('')

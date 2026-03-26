@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { usePermissionRedirect } from '@/lib/auth/use-permission-redirect'
 import { endOfMonth, format, subMonths } from 'date-fns'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -53,6 +54,9 @@ type BalanceSheetPayload = AccountingLinesPayload & {
 }
 
 export default function AccountingPage() {
+  // Check permissions - admin only
+  usePermissionRedirect({ allowedRoles: ['admin'] })
+
   const COMPANY_START_YEAR = 2023
   const COMPANY_START_MONTH_INDEX = 4 // May (0-based)
   const queryClient = useQueryClient()

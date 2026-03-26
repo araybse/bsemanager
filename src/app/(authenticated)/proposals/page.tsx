@@ -1,4 +1,5 @@
 'use client'
+import { usePermissionRedirect } from '@/lib/auth/use-permission-redirect'
 /* eslint-disable react-hooks/static-components */
 
 import React, { useMemo, useState } from 'react'
