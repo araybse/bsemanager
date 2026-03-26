@@ -97,24 +97,26 @@ export default function ProjectsPage() {
       }
       
       // For PMs and employees, show only their assigned projects
+      if (!currentUser?.id) return []
+      
       const { data: assignments, error: assignError } = await supabase
         .from('project_team_assignments')
         .select('project_id')
-        .eq('user_id', currentUser?.id)
+        .eq('user_id', currentUser.id)
       
       if (assignError) throw assignError
       
-      const projectIds = assignments?.map(a => a.project_id) || []
+      const projectIds = (assignments as any[])?.map(a => a.project_id) || []
       
       // Also include projects where they are the PM
       const { data: pmProjects, error: pmError } = await supabase
         .from('projects')
         .select('id')
-        .eq('project_manager_id', currentUser?.id)
+        .eq('project_manager_id', currentUser.id)
       
       if (pmError) throw pmError
       
-      const allProjectIds = [...new Set([...projectIds, ...(pmProjects?.map(p => p.id) || [])])]
+      const allProjectIds = [...new Set([...projectIds, ...(pmProjects as any[] || [])?.map(p => p.id) || []])]
       
       if (allProjectIds.length === 0) {
         return []

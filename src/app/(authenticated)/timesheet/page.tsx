@@ -62,7 +62,7 @@ export default function TimesheetPage() {
         .select('full_name')
         .eq('id', currentUser.id)
         .single()
-      return data
+      return data as { full_name: string } | null
     },
     enabled: !!currentUser?.id,
   })

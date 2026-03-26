@@ -580,10 +580,11 @@ export default function DashboardPage() {
     const { data: employeeProjects } = useQuery({
       queryKey: ['employee-my-projects'],
       queryFn: async () => {
+        if (!currentUser?.id) return []
         const { data, error } = await supabase
           .from('project_team_assignments')
           .select('projects(id, project_number, project_name)')
-          .eq('user_id', currentUser?.id)
+          .eq('user_id', currentUser.id)
         if (error) throw error
         return (data as any[])?.map(a => a.projects) || []
       },
