@@ -55,8 +55,6 @@ interface SidebarProps {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'bse.sidebar.collapsed'
-const AUSTIN_BURKE_EMAIL = 'aburke@blackstoneeng.com'
-const AUSTIN_BURKE_ALLOWED_HREFS = new Set(['/projects', '/settings'])
 
 export function Sidebar({ initialProfile }: SidebarProps) {
   const pathname = usePathname()
@@ -69,13 +67,8 @@ export function Sidebar({ initialProfile }: SidebarProps) {
   })
   
   const role = initialProfile?.role as UserRole | undefined
-  const isAustinBurke = initialProfile?.email?.toLowerCase() === AUSTIN_BURKE_EMAIL
 
   const filteredNavItems = navItems.filter((item) => {
-    if (isAustinBurke) {
-      return AUSTIN_BURKE_ALLOWED_HREFS.has(item.href)
-    }
-
     // If role not loaded yet, don't show items
     if (!role) return false
     
