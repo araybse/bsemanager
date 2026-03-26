@@ -5085,7 +5085,9 @@ export default function ProjectDetailPage() {
                         <TableHead>Employee</TableHead>
                         <TableHead>Phase</TableHead>
                         <TableHead className="text-right">Hours</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
+                        {perms.isAdmin() && (
+                          <TableHead className="text-right">Amount</TableHead>
+                        )}
                         <TableHead>Notes</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -5098,9 +5100,11 @@ export default function ProjectDetailPage() {
                           <TableCell className="text-right font-mono">
                             {formatHours(entry.hours)}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            {formatCurrency(Number(entry.labor_cost) || 0)}
-                          </TableCell>
+                          {perms.isAdmin() && (
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(Number(entry.labor_cost) || 0)}
+                            </TableCell>
+                          )}
                           <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
                             {entry.notes || '—'}
                           </TableCell>
@@ -5108,7 +5112,7 @@ export default function ProjectDetailPage() {
                       ))}
                       {filteredTimeEntries.length === 0 && (
                         <TableRow>
-                          <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          <TableCell colSpan={perms.isAdmin() ? 6 : 5} className="text-center py-8 text-muted-foreground">
                             No time entries
                           </TableCell>
                         </TableRow>
@@ -5121,11 +5125,13 @@ export default function ProjectDetailPage() {
                               filteredTimeEntries.reduce((sum, entry) => sum + (Number(entry.hours) || 0), 0)
                             )}
                           </TableCell>
-                          <TableCell className="text-right font-mono">
-                            {formatCurrency(
-                              filteredTimeEntries.reduce((sum, entry) => sum + (Number(entry.labor_cost) || 0), 0)
-                            )}
-                          </TableCell>
+                          {perms.isAdmin() && (
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(
+                                filteredTimeEntries.reduce((sum, entry) => sum + (Number(entry.labor_cost) || 0), 0)
+                              )}
+                            </TableCell>
+                          )}
                           <TableCell colSpan={1}></TableCell>
                         </TableRow>
                       )}
