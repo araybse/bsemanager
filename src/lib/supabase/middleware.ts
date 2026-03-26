@@ -63,8 +63,8 @@ export async function updateSession(request: NextRequest) {
 
     // Role-based page restrictions
     if (userRole === 'employee') {
-      // Employees can only access /timesheet
-      const allowedPaths = ['/timesheet', '/settings']
+      // Employees can only access /projects and /timesheet
+      const allowedPaths = ['/projects', '/timesheet', '/settings']
       if (!allowedPaths.some(path => request.nextUrl.pathname.startsWith(path)) && 
           !request.nextUrl.pathname.startsWith('/api/') &&
           request.nextUrl.pathname !== '/logout') {
