@@ -635,59 +635,66 @@ export default function DashboardPage() {
       },
     })
 
-    const { data: pmPerformanceData } = useQuery({
-      queryKey: ['pm-monthly-performance', pmProjects?.map(p => p.id).join(',')],
+    const { data: pmPerformanceData, isLoading: loadingPerformance } = useQuery({
+      queryKey: ['pm-monthly-performance', pmProjects?.map(p => p.id).join(',') || ''],
       queryFn: async () => {
         if (!pmProjects?.length) return []
         
-        const projectIds = pmProjects.map(p => p.id)
+        const projectIds = pmProjects.map((p: any) => p.id)
         const currentMonthStart = new Date()
         currentMonthStart.setDate(1)
         const nextMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1)
         const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
         const sinceDate = firstMonth.toISOString().slice(0, 10)
         const nextMonthStartDate = nextMonthStart.toISOString().slice(0, 10)
-        const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        
         const months = Array.from({ length: 12 }, (_, index) => {
           const monthDate = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1)
-          return monthKey(monthDate)
+          const year = monthDate.getFullYear()
+          const month = String(monthDate.getMonth() + 1).padStart(2, '0')
+          return `${year}-${month}`
         })
 
-        const timeRows: Array<{
-          project_id: number | null
-          entry_date: string
-          hours: number
-        }> = []
-        const pageSize = 1000
-        let from = 0
-        
-        while (true) {
-          const { data, error } = await supabase
-            .from('time_entries')
-            .select('project_id, entry_date, hours')
-            .gte('entry_date' as never, sinceDate as never)
-            .lt('entry_date' as never, nextMonthStartDate as never)
-            .in('project_id' as never, projectIds as never)
-            .range(from, from + pageSize - 1)
-          if (error) throw error
-          const batch = (data || []) as typeof timeRows
-          timeRows.push(...batch)
-          if (batch.length < pageSize) break
-          from += pageSize
-        }
-
-        // Calculate multiplier per month
-        const result = months.map(month => {
-          const monthEntries = timeRows.filter(row => row.entry_date.startsWith(month))
-          const totalHours = monthEntries.reduce((sum, e) => sum + (e.hours || 0), 0)
-          return {
-            month,
-            hours: totalHours,
-            multiplier: totalHours > 0 ? (totalHours * 0.85) / totalHours : 0, // Placeholder calculation
+        try {
+          const timeRows: Array<{
+            project_id: number | null
+            entry_date: string
+            hours: number
+          }> = []
+          const pageSize = 1000
+          let from = 0
+          
+          while (true) {
+            const { data, error } = await supabase
+              .from('time_entries')
+              .select('project_id, entry_date, hours')
+              .gte('entry_date' as never, sinceDate as never)
+              .lt('entry_date' as never, nextMonthStartDate as never)
+              .in('project_id' as never, projectIds as never)
+              .range(from, from + pageSize - 1)
+            if (error) throw error
+            const batch = (data || []) as typeof timeRows
+            timeRows.push(...batch)
+            if (batch.length < pageSize) break
+            from += pageSize
           }
-        })
-        
-        return result
+
+          // Calculate performance per month
+          const result = months.map(month => {
+            const monthEntries = timeRows.filter(row => row.entry_date?.startsWith(month))
+            const totalHours = monthEntries.reduce((sum, e) => sum + (e.hours || 0), 0)
+            return {
+              month,
+              hours: totalHours,
+              multiplier: 0.85, // Placeholder - actual calculation would be revenue/cost
+            }
+          })
+          
+          return result
+        } catch (error) {
+          console.error('Error fetching PM performance data:', error)
+          return []
+        }
       },
       enabled: !!pmProjects?.length,
     })
@@ -728,7 +735,9 @@ export default function DashboardPage() {
             <CardDescription>Your projects&apos; multiplier performance (last 12 months)</CardDescription>
           </CardHeader>
           <CardContent>
-            {pmPerformanceData && pmPerformanceData.length > 0 ? (
+            {loadingPerformance ? (
+              <Skeleton className="h-[300px] w-full" />
+            ) : pmPerformanceData && pmPerformanceData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <ComposedChart data={pmPerformanceData}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -737,7 +746,7 @@ export default function DashboardPage() {
                   <YAxis yAxisId="right" orientation="right" />
                   <Tooltip 
                     labelFormatter={(label) => formatMonthLabel(label)}
-                    formatter={(value) => {
+                    formatter={(value: any) => {
                       if (typeof value === 'number' && value < 10) {
                         return value.toFixed(2)
                       }
