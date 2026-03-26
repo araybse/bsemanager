@@ -132,6 +132,8 @@ export async function GET(request: NextRequest) {
   const nonReimbExpenseByProject = new Map<string, number>()
 
   const zReimPhaseNamesByProject = new Map<string, Set<string>>()
+  const cPhaseNamesByProject = new Map<string, Set<string>>()
+  
   ;(
     (phaseResult.data as Array<{ project_id: number | null; phase_code: string | null; phase_name: string | null }> | null) ||
     []
@@ -141,9 +143,18 @@ export async function GET(request: NextRequest) {
     const phaseCode = (row.phase_code || '').trim().toLowerCase()
     const phaseName = (row.phase_name || '').trim().toLowerCase()
     if (!key || !phaseCode || !phaseName) return
-    if (phaseCode !== 'zreim') return
-    if (!zReimPhaseNamesByProject.has(key)) zReimPhaseNamesByProject.set(key, new Set())
-    zReimPhaseNamesByProject.get(key)!.add(phaseName)
+    
+    // Track ZREIM phases
+    if (phaseCode === 'zreim') {
+      if (!zReimPhaseNamesByProject.has(key)) zReimPhaseNamesByProject.set(key, new Set())
+      zReimPhaseNamesByProject.get(key)!.add(phaseName)
+    }
+    
+    // Track C* phases (contract phases for Performance Multiplier)
+    if (phaseCode.startsWith('c')) {
+      if (!cPhaseNamesByProject.has(key)) cPhaseNamesByProject.set(key, new Set())
+      cPhaseNamesByProject.get(key)!.add(phaseName)
+    }
   })
 
   ;(
@@ -169,6 +180,12 @@ export async function GET(request: NextRequest) {
       phaseName.includes('reimburs') ||
       Boolean(zReimNames?.has(phaseName))
     if (isZReimPhase) return
+    
+    // For Performance Multiplier, ONLY include C-phase revenue (excludes hourly/CA contractor work)
+    const cPhaseNames = cPhaseNamesByProject.get(key)
+    const isCPhase = Boolean(cPhaseNames?.has(phaseName))
+    if (!isCPhase) return
+    
     revenueByProject.set(key, (revenueByProject.get(key) || 0) + (Number(row.amount) || 0))
   })
 
@@ -194,6 +211,12 @@ export async function GET(request: NextRequest) {
       phaseName.includes('reimburs') ||
       Boolean(zReimNames?.has(phaseName))
     if (isZReimPhase) return
+    
+    // For Performance Multiplier, ONLY include C-phase labor (excludes hourly/CA contractor work)
+    const cPhaseNames = cPhaseNamesByProject.get(key)
+    const isCPhase = Boolean(cPhaseNames?.has(phaseName))
+    if (!isCPhase) return
+    
     laborByProject.set(key, (laborByProject.get(key) || 0) + (Number(row.labor_cost) || 0))
   })
 
