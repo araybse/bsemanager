@@ -142,6 +142,9 @@ function escapeRegExp(value: string): string {
 }
 
 export default function CashFlowPage() {
+  // Check permissions - admin only
+  usePermissionRedirect({ allowedRoles: ['admin'] })
+
   const supabase = createClient()
   const queryClient = useQueryClient()
   const [tableGranularity, setTableGranularity] = useState<'month' | 'current' | 'year'>('current')

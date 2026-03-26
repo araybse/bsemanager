@@ -570,6 +570,11 @@ export default function DashboardPage() {
     )
   }
 
+  // If employee, return nothing while redirect happens
+  if (userRole === 'employee') {
+    return null
+  }
+
   // Role-based dashboard rendering using permissions system
   // Admin sees the full dashboard
   // PM sees filtered My Projects and Monthly Performance Multipliers
