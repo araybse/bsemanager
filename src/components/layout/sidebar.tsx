@@ -37,6 +37,7 @@ const navItems: NavItem[] = [
   { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { title: 'Proposals', href: '/proposals', icon: Briefcase },
   { title: 'Projects', href: '/projects', icon: FolderKanban },
+  { title: 'Timesheet', href: '/timesheet', icon: Clock },
   { title: 'Time Entries', href: '/time-entries', icon: Clock },
   { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
   { title: 'Invoices', href: '/invoices', icon: Receipt },
