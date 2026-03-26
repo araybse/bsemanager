@@ -61,8 +61,27 @@ export async function updateSession(request: NextRequest) {
 
     const userRole = (profile as { role: string } | null)?.role
 
-    // Redirect non-admin users away from admin-only pages
-    if (userRole !== 'admin') {
+    // Role-based page restrictions
+    if (userRole === 'employee') {
+      // Employees can only access /timesheet
+      const allowedPaths = ['/timesheet', '/settings']
+      if (!allowedPaths.some(path => request.nextUrl.pathname.startsWith(path)) && 
+          !request.nextUrl.pathname.startsWith('/api/') &&
+          request.nextUrl.pathname !== '/logout') {
+        const url = request.nextUrl.clone()
+        url.pathname = '/timesheet'
+        return NextResponse.redirect(url)
+      }
+    } else if (userRole === 'project_manager') {
+      // Project managers cannot access admin-only pages
+      const adminOnlyPaths = ['/accounting', '/cash-flow', '/contract-labor', '/proposals', '/time-entries']
+      if (adminOnlyPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
+    } else if (userRole !== 'admin') {
+      // Admins can access everything; others redirect to dashboard
       const adminOnlyPaths = ['/accounting', '/cash-flow', '/contract-labor', '/proposals', '/time-entries']
       if (adminOnlyPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
         const url = request.nextUrl.clone()
