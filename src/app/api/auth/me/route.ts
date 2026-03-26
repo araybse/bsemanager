@@ -51,7 +51,43 @@ export async function GET() {
 
     console.log('[/api/auth/me] Profile result:', profile?.full_name || 'null', 'Error:', profileError?.message || 'none')
 
-    return NextResponse.json({ user, profile })
+    // Fetch assigned project IDs (PM or team member)
+    let assignedProjectIds: number[] = []
+    
+    if (profile?.role === 'admin') {
+      // Admins see all projects (will be filtered elsewhere if needed)
+      assignedProjectIds = []
+    } else if (profile?.role === 'project_manager' || profile?.role === 'employee') {
+      // Get projects where user is PM
+      const { data: pmProjects, error: pmError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('pm_id', user.id)
+
+      // Get projects where user is team member
+      const { data: teamProjects, error: teamError } = await supabase
+        .from('project_team_assignments')
+        .select('project_id')
+        .eq('user_id', user.id)
+
+      if (!pmError && pmProjects) {
+        assignedProjectIds = [...new Set([
+          ...assignedProjectIds,
+          ...pmProjects.map(p => p.id),
+        ])]
+      }
+
+      if (!teamError && teamProjects) {
+        assignedProjectIds = [...new Set([
+          ...assignedProjectIds,
+          ...teamProjects.map(p => p.project_id),
+        ])]
+      }
+
+      console.log('[/api/auth/me] Assigned projects:', assignedProjectIds.length)
+    }
+
+    return NextResponse.json({ user, profile, assignedProjectIds })
   } catch (error) {
     console.log('[/api/auth/me] Error during auth check:', error)
     return NextResponse.json({ user: null, profile: null }, { status: 401 })

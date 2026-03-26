@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null
   profile: Tables<'profiles'> | null
   role: UserRole | null
+  assignedProjectIds: number[] // Projects where user is PM or team member
   isLoading: boolean
   isReady: boolean
   signOut: () => Promise<void>
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
   role: null,
+  assignedProjectIds: [],
   isLoading: true,
   isReady: false,
   signOut: async () => {},
@@ -28,6 +30,7 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Tables<'profiles'> | null>(null)
+  const [assignedProjectIds, setAssignedProjectIds] = useState<number[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isReady, setIsReady] = useState(false)
   const initRef = useRef(false)
@@ -45,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const data = await response.json()
         setUser(data.user)
         setProfile(data.profile)
+        setAssignedProjectIds(data.assignedProjectIds || [])
         console.log('[Auth] Fetch success:', data.user?.email)
         return true
       } else if (response.status === 401 && retries > 0) {
@@ -56,6 +60,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Fetch failed:', response.status)
         setUser(null)
         setProfile(null)
+        setAssignedProjectIds([])
         return false
       }
     } catch (error) {
@@ -67,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setUser(null)
       setProfile(null)
+      setAssignedProjectIds([])
       return false
     }
   }
@@ -128,6 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
     setUser(null)
     setProfile(null)
+    setAssignedProjectIds([])
     setIsLoading(false)
   }
 
@@ -141,6 +148,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         profile,
         role: profile?.role ?? null,
+        assignedProjectIds,
         isLoading,
         isReady,
         signOut,

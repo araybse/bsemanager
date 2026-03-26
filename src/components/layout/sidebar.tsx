@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
-import type { Tables } from '@/lib/types/database'
+import type { Tables, UserRole } from '@/lib/types/database'
 import { useEffect, useState } from 'react'
 import {
   LayoutDashboard,
@@ -25,26 +25,29 @@ import {
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { PAGE_VISIBILITY, type PageVisibility } from '@/lib/auth/permissions'
 
 interface NavItem {
   title: string
   href: string
   icon: React.ComponentType<{ className?: string }>
-  roles?: ('admin' | 'project_manager' | 'employee')[]
+  pageKey: string // Key for PAGE_VISIBILITY lookup
 }
 
 const navItems: NavItem[] = [
-  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { title: 'Proposals', href: '/proposals', icon: Briefcase },
-  { title: 'Projects', href: '/projects', icon: FolderKanban },
-  { title: 'Time Entries', href: '/time-entries', icon: Clock },
-  { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, roles: ['admin', 'project_manager'] },
-  { title: 'Invoices', href: '/invoices', icon: Receipt },
-  { title: 'Accounting', href: '/accounting', icon: Landmark, roles: ['admin', 'project_manager'] },
-  { title: 'Cash Flow', href: '/cash-flow', icon: TrendingUp, roles: ['admin'] },
-  { title: 'Expenses', href: '/reimbursables', icon: CreditCard, roles: ['admin', 'project_manager'] },
-  { title: 'Contract Labor', href: '/contract-labor', icon: Hammer, roles: ['admin'] },
-  { title: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
+  { title: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, pageKey: 'dashboard' },
+  { title: 'Proposals', href: '/proposals', icon: Briefcase, pageKey: 'proposals' },
+  { title: 'Projects', href: '/projects', icon: FolderKanban, pageKey: 'projects' },
+  { title: 'Timesheet', href: '/timesheet', icon: Clock, pageKey: 'timesheet' },
+  { title: 'Time Entries', href: '/time-entries', icon: Clock, pageKey: 'time-entries' },
+  { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, pageKey: 'billables-report' },
+  { title: 'Invoices', href: '/invoices', icon: Receipt, pageKey: 'invoices' },
+  { title: 'Accounting', href: '/accounting', icon: Landmark, pageKey: 'accounting' },
+  { title: 'Cash Flow', href: '/cash-flow', icon: TrendingUp, pageKey: 'cash-flow' },
+  { title: 'Expenses', href: '/reimbursables', icon: CreditCard, pageKey: 'expenses' },
+  { title: 'Contract Labor', href: '/contract-labor', icon: Hammer, pageKey: 'contract-labor' },
+  { title: 'Contracts', href: '/contracts', icon: FileSpreadsheet, pageKey: 'contracts' },
+  { title: 'Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
 ]
 
 interface SidebarProps {
@@ -65,7 +68,7 @@ export function Sidebar({ initialProfile }: SidebarProps) {
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== 'true'
   })
   
-  const role = initialProfile?.role
+  const role = initialProfile?.role as UserRole | undefined
   const isAustinBurke = initialProfile?.email?.toLowerCase() === AUSTIN_BURKE_EMAIL
 
   const filteredNavItems = navItems.filter((item) => {
@@ -73,13 +76,12 @@ export function Sidebar({ initialProfile }: SidebarProps) {
       return AUSTIN_BURKE_ALLOWED_HREFS.has(item.href)
     }
 
-    // Always show items without role restrictions
-    if (!item.roles) return true
-    // If role not loaded yet, show all items
-    if (!role) return true
-    // Only show items for admin, project_manager, or employee roles
-    if (role === 'client') return false
-    return item.roles.includes(role)
+    // If role not loaded yet, don't show items
+    if (!role) return false
+    
+    // Check visibility based on role and pageKey
+    const visibility = PAGE_VISIBILITY[item.pageKey]?.[role] as PageVisibility | undefined
+    return visibility === 'visible'
   })
 
   const handleSignOut = async () => {
