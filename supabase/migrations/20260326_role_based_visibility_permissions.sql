@@ -19,19 +19,17 @@ CREATE OR REPLACE FUNCTION public.get_user_assigned_projects(user_id UUID)
 RETURNS TABLE(project_id BIGINT) AS $$
 BEGIN
   RETURN QUERY
+  -- User is PM
   SELECT DISTINCT p.id
   FROM public.projects p
-  WHERE 
-    -- User is admin (via role check later)
-    TRUE
-    -- User is PM
-    OR p.pm_id = user_id
-    -- User is team member
-    OR p.id IN (
-      SELECT pta.project_id 
-      FROM public.project_team_assignments pta 
-      WHERE pta.user_id = user_id
-    );
+  WHERE p.pm_id = user_id
+  
+  UNION
+  
+  -- User is team member
+  SELECT DISTINCT pta.project_id
+  FROM public.project_team_assignments pta
+  WHERE pta.user_id = user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
