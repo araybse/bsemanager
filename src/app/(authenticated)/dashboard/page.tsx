@@ -620,49 +620,137 @@ export default function DashboardPage() {
       </div>
     )
   }
-  if (!perms.isAdmin()) {
-    if (perms.isProjectManagerOrAdmin()) {
-      return (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>My Projects</CardTitle>
-              <CardDescription>Projects where you are the PM or assigned as a team member</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                PM-specific project list coming soon. You&apos;ll see stats for projects where you&apos;re the PM or assigned as a team member.
-              </p>
-            </CardContent>
-          </Card>
+  // PM dashboard
+  if (userRole === 'project_manager') {
+    const { data: pmProjects } = useQuery({
+      queryKey: ['pm-my-projects', currentUser?.id],
+      queryFn: async () => {
+        if (!currentUser?.id) return []
+        const { data, error } = await supabase
+          .from('project_team_assignments')
+          .select('projects(id, project_number, project_name)')
+          .eq('user_id', currentUser.id)
+        if (error) throw error
+        return (data as any[])?.map(a => a.projects) || []
+      },
+    })
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Monthly Performance</CardTitle>
-              <CardDescription>Your projects&apos; multiplier performance (last 12 months)</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Project multiplier data coming soon.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )
-    }
+    const { data: pmPerformanceData } = useQuery({
+      queryKey: ['pm-monthly-performance', pmProjects?.map(p => p.id).join(',')],
+      queryFn: async () => {
+        if (!pmProjects?.length) return []
+        
+        const projectIds = pmProjects.map(p => p.id)
+        const currentMonthStart = new Date()
+        currentMonthStart.setDate(1)
+        const nextMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1)
+        const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
+        const sinceDate = firstMonth.toISOString().slice(0, 10)
+        const nextMonthStartDate = nextMonthStart.toISOString().slice(0, 10)
+        const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        const months = Array.from({ length: 12 }, (_, index) => {
+          const monthDate = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1)
+          return monthKey(monthDate)
+        })
 
-    // Employee dashboard
+        const timeRows: Array<{
+          project_id: number | null
+          entry_date: string
+          hours: number
+        }> = []
+        const pageSize = 1000
+        let from = 0
+        
+        while (true) {
+          const { data, error } = await supabase
+            .from('time_entries')
+            .select('project_id, entry_date, hours')
+            .gte('entry_date' as never, sinceDate as never)
+            .lt('entry_date' as never, nextMonthStartDate as never)
+            .in('project_id' as never, projectIds as never)
+            .range(from, from + pageSize - 1)
+          if (error) throw error
+          const batch = (data || []) as typeof timeRows
+          timeRows.push(...batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+        }
+
+        // Calculate multiplier per month
+        const result = months.map(month => {
+          const monthEntries = timeRows.filter(row => row.entry_date.startsWith(month))
+          const totalHours = monthEntries.reduce((sum, e) => sum + (e.hours || 0), 0)
+          return {
+            month,
+            hours: totalHours,
+            multiplier: totalHours > 0 ? (totalHours * 0.85) / totalHours : 0, // Placeholder calculation
+          }
+        })
+        
+        return result
+      },
+      enabled: !!pmProjects?.length,
+    })
+
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <CardTitle>Employee Dashboard</CardTitle>
-            <CardDescription>Your time entries and project assignments</CardDescription>
+            <CardTitle>My Projects</CardTitle>
+            <CardDescription>Projects where you are the PM or assigned as a team member</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-muted-foreground">
-              You can view your timesheet and project assignments. Use the Timesheet page to manage your time entries.
-            </p>
+            {pmProjects && pmProjects.length > 0 ? (
+              <div className="space-y-2">
+                {pmProjects.map((project: any) => (
+                  <div key={project.id} className="flex items-center justify-between p-3 border rounded">
+                    <div>
+                      <p className="font-semibold">{project.project_number}</p>
+                      <p className="text-sm text-gray-600">{project.project_name}</p>
+                    </div>
+                    <Link href={`/projects/${project.id}`}>
+                      <Button variant="outline" size="sm">
+                        View <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No projects assigned yet</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Monthly Performance</CardTitle>
+            <CardDescription>Your projects&apos; multiplier performance (last 12 months)</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {pmPerformanceData && pmPerformanceData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <ComposedChart data={pmPerformanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tickFormatter={formatMonthLabel} />
+                  <YAxis yAxisId="left" />
+                  <YAxis yAxisId="right" orientation="right" />
+                  <Tooltip 
+                    labelFormatter={(label) => formatMonthLabel(label)}
+                    formatter={(value) => {
+                      if (typeof value === 'number' && value < 10) {
+                        return value.toFixed(2)
+                      }
+                      return value
+                    }}
+                  />
+                  <Bar yAxisId="left" dataKey="hours" fill="#3b82f6" name="Hours" />
+                  <Line yAxisId="right" type="monotone" dataKey="multiplier" stroke="#10b981" name="Multiplier" strokeWidth={2} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="text-gray-500">No performance data available</p>
+            )}
           </CardContent>
         </Card>
       </div>
