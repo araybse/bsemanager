@@ -758,6 +758,7 @@ export default function ProjectDetailPage() {
         return []
       }
       console.log('[Team Tab] Fetching team for project ID:', projectId)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('project_team_assignments')
         .select(`
@@ -5434,6 +5435,7 @@ export default function ProjectDetailPage() {
                             size="sm"
                             onClick={async () => {
                               if (!confirm(`Remove ${assignment.profiles?.full_name} from team?`)) return
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
                               const { error } = await (supabase as any)
                                 .from('project_team_assignments')
                                 .delete()
@@ -5492,6 +5494,7 @@ export default function ProjectDetailPage() {
                     disabled={isAssigned}
                     onClick={async () => {
                       if (!projectId) return
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       const { error } = await (supabase as any)
                         .from('project_team_assignments')
                         .insert({

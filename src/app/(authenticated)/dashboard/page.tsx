@@ -554,7 +554,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              PM-specific dashboard coming soon. You'll see stats for projects where you're the PM or assigned as a team member.
+              PM-specific dashboard coming soon. You&apos;ll see stats for projects where you&apos;re the PM or assigned as a team member.
             </p>
           </CardContent>
         </Card>
@@ -572,7 +572,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Employee dashboard coming soon. You'll see your recent time entries and assigned projects.
+              Employee dashboard coming soon. You&apos;ll see your recent time entries and assigned projects.
             </p>
           </CardContent>
         </Card>

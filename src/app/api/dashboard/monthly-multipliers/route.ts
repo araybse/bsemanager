@@ -81,16 +81,16 @@ export async function GET() {
     // Build project_number → project_id mapping
     const projectNumberToId = new Map<string, number>()
     const uniqueProjectNumbers = Array.from(
-      new Set((invoiceLines || []).map((inv: any) => inv.project_number).filter(Boolean))
+      new Set((invoiceLines || []).map((inv: { project_number?: string }) => inv.project_number).filter(Boolean))
     )
     
     if (uniqueProjectNumbers.length > 0) {
       const { data: projectMappings } = await supabase
         .from('projects')
         .select('id, project_number')
-        .in('project_number', uniqueProjectNumbers as any)
+        .in('project_number', uniqueProjectNumbers as string[])
       
-      ;(projectMappings || []).forEach((proj: any) => {
+      ;(projectMappings || []).forEach((proj: { id: number; project_number: string }) => {
         projectNumberToId.set(proj.project_number, proj.id)
       })
     }

@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Migration and utility scripts (CommonJS, not part of app)
+    "scripts/**",
   ]),
 ]);
 
