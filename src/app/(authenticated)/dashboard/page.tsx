@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissions } from '@/lib/auth/use-permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -40,6 +41,7 @@ function formatMonthLabel(monthKey: string): string {
 
 export default function DashboardPage() {
   const supabase = createClient()
+  const perms = usePermissions()
 
   // Get current user and role
   const { data: currentUser, isLoading: loadingUser } = useQuery({
@@ -558,28 +560,42 @@ export default function DashboardPage() {
     )
   }
 
-  // Role-based dashboard rendering
-  // For now, PM and Employee roles see a placeholder
+  // Role-based dashboard rendering using permissions system
   // Admin sees the full dashboard
-  if (userRole === 'project_manager') {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Manager Dashboard</CardTitle>
-            <CardDescription>Your assigned projects and team performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              PM-specific dashboard coming soon. You&apos;ll see stats for projects where you&apos;re the PM or assigned as a team member.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    )
-  }
+  // PM sees filtered My Projects and Monthly Performance Multipliers
+  // Employee sees a dashboard placeholder
+  if (!perms.isAdmin()) {
+    if (perms.isProjectManagerOrAdmin()) {
+      return (
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>My Projects</CardTitle>
+              <CardDescription>Projects where you are the PM or assigned as a team member</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                PM-specific project list coming soon. You&apos;ll see stats for projects where you&apos;re the PM or assigned as a team member.
+              </p>
+            </CardContent>
+          </Card>
 
-  if (userRole === 'employee') {
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly Performance</CardTitle>
+              <CardDescription>Your projects&apos; multiplier performance (last 12 months)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground">
+                Project multiplier data coming soon.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    // Employee dashboard
     return (
       <div className="space-y-6">
         <Card>
@@ -589,7 +605,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-muted-foreground">
-              Employee dashboard coming soon. You&apos;ll see your recent time entries and assigned projects.
+              You can view your timesheet and project assignments. Use the Timesheet page to manage your time entries.
             </p>
           </CardContent>
         </Card>

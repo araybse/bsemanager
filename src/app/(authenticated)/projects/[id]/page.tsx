@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { endOfMonth, format as formatMonthLabel, subMonths } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissions } from '@/lib/auth/use-permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -515,6 +516,7 @@ export default function ProjectDetailPage() {
   const searchParams = useSearchParams()
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const perms = usePermissions()
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isSavingEdits, setIsSavingEdits] = useState(false)
   const [dragPhaseIndex, setDragPhaseIndex] = useState<number | null>(null)
@@ -3798,15 +3800,29 @@ export default function ProjectDetailPage() {
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="project-info">Project Info</TabsTrigger>
-          <TabsTrigger value="team">Team</TabsTrigger>
+          {perms.canSeeProjectTab('team') && (
+            <TabsTrigger value="team">Team</TabsTrigger>
+          )}
           <TabsTrigger value="agencies-permits">Agencies & Permits</TabsTrigger>
           <TabsTrigger value="applications">Applications</TabsTrigger>
-          <TabsTrigger value="phases">Phases</TabsTrigger>
-          <TabsTrigger value="billables">Billables</TabsTrigger>
-          <TabsTrigger value="invoices">Invoices</TabsTrigger>
-          <TabsTrigger value="time">Labor</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
-          <TabsTrigger value="contracts">Contracts</TabsTrigger>
+          {perms.canSeeProjectTab('phases') && (
+            <TabsTrigger value="phases">Phases</TabsTrigger>
+          )}
+          {perms.canSeeProjectTab('billables') && (
+            <TabsTrigger value="billables">Billables</TabsTrigger>
+          )}
+          {perms.canSeeProjectTab('invoices') && (
+            <TabsTrigger value="invoices">Invoices</TabsTrigger>
+          )}
+          {perms.canSeeProjectTab('labor') && (
+            <TabsTrigger value="time">Labor</TabsTrigger>
+          )}
+          {perms.canSeeProjectTab('expenses') && (
+            <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          )}
+          {perms.canSeeProjectTab('contracts') && (
+            <TabsTrigger value="contracts">Contracts</TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-4">
@@ -4600,9 +4616,10 @@ export default function ProjectDetailPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="phases" className="mt-4">
-          <Card>
-            <CardContent className="p-4">
+        {perms.canSeeProjectTab('phases') && (
+          <TabsContent value="phases" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
               {loadingPhases ? (
                 <div className="p-4">
                   <Skeleton className="h-48 w-full" />
@@ -4713,9 +4730,11 @@ export default function ProjectDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+            </TabsContent>
+        )}
 
-        <TabsContent value="billables" className="mt-4">
+        {perms.canSeeProjectTab('billables') && (
+          <TabsContent value="billables" className="mt-4">
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
@@ -4868,11 +4887,13 @@ export default function ProjectDetailPage() {
               </Card>
             )}
           </div>
-        </TabsContent>
+            </TabsContent>
+        )}
 
-        <TabsContent value="invoices" className="mt-4">
-          <Card>
-            <CardContent className="p-4">
+        {perms.canSeeProjectTab('invoices') && (
+          <TabsContent value="invoices" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
               {loadingInvoices ? (
                 <div className="p-4">
                   <Skeleton className="h-48 w-full" />
@@ -4981,13 +5002,15 @@ export default function ProjectDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+            </TabsContent>
+        )}
 
-        <TabsContent value="time" className="mt-4">
-          <Card>
-            <CardContent className="p-4">
+        {perms.canSeeProjectTab('labor') && (
+          <TabsContent value="time" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
               {loadingTime ? (
                 <div className="p-4">
                   <Skeleton className="h-48 w-full" />
@@ -5112,11 +5135,13 @@ export default function ProjectDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+            </TabsContent>
+        )}
 
-        <TabsContent value="expenses" className="mt-4">
-          <Card>
-            <CardContent className="p-4">
+        {perms.canSeeProjectTab('expenses') && (
+          <TabsContent value="expenses" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
               {loadingExpenses ? (
                 <div className="p-4">
                   <Skeleton className="h-48 w-full" />
@@ -5306,13 +5331,15 @@ export default function ProjectDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+            </TabsContent>
+        )}
 
-        <TabsContent value="contracts" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+        {perms.canSeeProjectTab('contracts') && (
+          <TabsContent value="contracts" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Subcontract Contracts</CardTitle>
                 <CardDescription>
@@ -5378,12 +5405,14 @@ export default function ProjectDetailPage() {
                   </TableBody>
                 </Table>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+            </TabsContent>
+        )}
 
-        <TabsContent value="team" className="mt-4">
-          <Card>
+        {perms.canSeeProjectTab('team') && (
+          <TabsContent value="team" className="mt-4">
+            <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Team Assignments</CardTitle>
@@ -5464,7 +5493,8 @@ export default function ProjectDetailPage() {
               )}
             </CardContent>
           </Card>
-        </TabsContent>
+            </TabsContent>
+        )}
 
       </Tabs>
 

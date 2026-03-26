@@ -3,6 +3,8 @@
 import { useState, useMemo, useCallback, Fragment } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissions } from '@/lib/auth/use-permissions'
+import { useProjectVisibility } from '@/lib/auth/use-project-visibility'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -38,6 +40,8 @@ type SortDirection = 'asc' | 'desc'
 export default function ProjectsPage() {
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const perms = usePermissions()
+  const projVis = useProjectVisibility()
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('')
@@ -645,10 +649,12 @@ export default function ProjectsPage() {
         <div>
           <h2 className="text-lg font-medium">All Projects</h2>
         </div>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Project
-        </Button>
+        {perms.isAdmin() && (
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Project
+          </Button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -775,8 +781,12 @@ export default function ProjectsPage() {
                         Multiplier
                       </div>
                     </TableHead>
-                    <TableHead className="text-right text-xs font-medium text-muted-foreground">Action</TableHead>
-                    <TableHead className="text-right text-xs font-medium text-muted-foreground">Archive</TableHead>
+                    {perms.isAdmin() && (
+                      <>
+                        <TableHead className="text-right text-xs font-medium text-muted-foreground">Action</TableHead>
+                        <TableHead className="text-right text-xs font-medium text-muted-foreground">Archive</TableHead>
+                      </>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -787,7 +797,7 @@ export default function ProjectsPage() {
                     return (
                       <Fragment key={`year-${year}`}>
                         <TableRow className="bg-muted/20 font-medium">
-                          <TableCell colSpan={8} className="py-2">
+                          <TableCell colSpan={perms.isAdmin() ? 8 : 6} className="py-2">
                             <button
                               type="button"
                               className="flex items-center gap-2 text-sm font-medium"
@@ -838,55 +848,59 @@ export default function ProjectsPage() {
                                   })()}
                                 </Link>
                               </TableCell>
-                              <TableCell className="text-right">
-                                <Link href={`/projects/${project.id}?edit=phases`} className="inline-flex">
-                                  <Button variant="outline" size="sm">
-                                    Edit
-                                  </Button>
-                                </Link>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <IconButton
-                                  variant="ghost"
-                                  size="icon"
-                          onClick={async (event) => {
-                                    event.stopPropagation()
-                            const projectId = Number(project.id)
-                            const nextArchived = !Boolean(
-                              (project as { is_archived?: boolean }).is_archived
-                            )
-                            queryClient.setQueryData<ProjectWithClient[]>(
-                              ['projects'],
-                              (prev) =>
-                                (prev || []).map((item) =>
-                                  item.id === projectId
-                                    ? ({ ...item, is_archived: nextArchived } as ProjectWithClient)
-                                    : item
+                              {perms.isAdmin() && (
+                                <>
+                                  <TableCell className="text-right">
+                                    <Link href={`/projects/${project.id}?edit=phases`} className="inline-flex">
+                                      <Button variant="outline" size="sm">
+                                        Edit
+                                      </Button>
+                                    </Link>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    <IconButton
+                                      variant="ghost"
+                                      size="icon"
+                              onClick={async (event) => {
+                                        event.stopPropagation()
+                                const projectId = Number(project.id)
+                                const nextArchived = !Boolean(
+                                  (project as { is_archived?: boolean }).is_archived
                                 )
-                            )
-                            const { error: updateError } = await supabase
-                              .from('projects')
-                              .update({ is_archived: nextArchived } as never)
-                              .eq('id' as never, projectId as never)
-                            if (updateError) {
-                              console.error('Failed to update archive status:', updateError)
-                              queryClient.invalidateQueries({ queryKey: ['projects'] })
-                              return
-                            }
-                                  }}
-                          aria-label={
-                            (project as { is_archived?: boolean }).is_archived
-                              ? 'Unarchive project'
-                              : 'Archive project'
-                          }
-                                >
-                          {(project as { is_archived?: boolean }).is_archived ? (
-                                    <ArchiveX className="h-4 w-4" />
-                                  ) : (
-                                    <Archive className="h-4 w-4" />
-                                  )}
-                                </IconButton>
-                              </TableCell>
+                                queryClient.setQueryData<ProjectWithClient[]>(
+                                  ['projects'],
+                                  (prev) =>
+                                    (prev || []).map((item) =>
+                                      item.id === projectId
+                                        ? ({ ...item, is_archived: nextArchived } as ProjectWithClient)
+                                        : item
+                                    )
+                                )
+                                const { error: updateError } = await supabase
+                                  .from('projects')
+                                  .update({ is_archived: nextArchived } as never)
+                                  .eq('id' as never, projectId as never)
+                                if (updateError) {
+                                  console.error('Failed to update archive status:', updateError)
+                                  queryClient.invalidateQueries({ queryKey: ['projects'] })
+                                  return
+                                }
+                                      }}
+                              aria-label={
+                                (project as { is_archived?: boolean }).is_archived
+                                  ? 'Unarchive project'
+                                  : 'Archive project'
+                              }
+                                    >
+                              {(project as { is_archived?: boolean }).is_archived ? (
+                                        <ArchiveX className="h-4 w-4" />
+                                      ) : (
+                                        <Archive className="h-4 w-4" />
+                                      )}
+                                    </IconButton>
+                                  </TableCell>
+                                </>
+                              )}
                             </TableRow>
                           ))}
                       </Fragment>
@@ -894,7 +908,7 @@ export default function ProjectsPage() {
                   })}
                   {filteredProjects.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={perms.isAdmin() ? 8 : 6} className="text-center py-8 text-muted-foreground">
                         {searchQuery
                           ? 'No projects match the current filters'
                           : showArchived

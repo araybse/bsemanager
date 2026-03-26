@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useMemo, useRef, type FormEvent } from '
 import { useSearchParams } from 'next/navigation'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissions } from '@/lib/auth/use-permissions'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -420,6 +421,7 @@ function SettingsContent() {
   const supabase = createClient()
   const queryClient = useQueryClient()
   const searchParams = useSearchParams()
+  const perms = usePermissions()
   const [isSyncing, setIsSyncing] = useState(false)
   const [syncType, setSyncType] = useState<'all' | 'customers' | 'projects' | 'invoices' | 'time'>('all')
   const [lastSyncResults, setLastSyncResults] = useState<SyncResults | null>(null)
@@ -2049,17 +2051,22 @@ function SettingsContent() {
 
       <Tabs key={selectedSettingsTab} defaultValue={selectedSettingsTab} className="space-y-4">
         <TabsList>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="qbo">QBO</TabsTrigger>
-          <TabsTrigger value="schedule-of-rates">Schedule of Rates</TabsTrigger>
-          <TabsTrigger value="clients">Clients</TabsTrigger>
-          <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
+          {perms.isAdmin() && (
+            <>
+              <TabsTrigger value="users">Users</TabsTrigger>
+              <TabsTrigger value="qbo">QBO</TabsTrigger>
+              <TabsTrigger value="schedule-of-rates">Schedule of Rates</TabsTrigger>
+              <TabsTrigger value="clients">Clients</TabsTrigger>
+              <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
+            </>
+          )}
           <TabsTrigger value="project-info">Project Info</TabsTrigger>
           <TabsTrigger value="agencies-permits">Agencies and Permits</TabsTrigger>
         </TabsList>
-        <TabsContent value="users" className="space-y-6">
+        {perms.isAdmin() && (
+          <TabsContent value="users" className="space-y-6">
 
-      {/* User Management */}
+            {/* User Management */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -2221,10 +2228,13 @@ function SettingsContent() {
           </form>
         </DialogContent>
       </Dialog>
-      </TabsContent>
+            </TabsContent>
+        )}
 
-      {/* QuickBooks Integration */}
-      <TabsContent value="qbo">
+        {perms.isAdmin() && (
+          <>
+            {/* QuickBooks Integration */}
+            <TabsContent value="qbo">
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -2908,9 +2918,11 @@ function SettingsContent() {
             <CamReconciliationSection />
           </TabsContent>
         </Tabs>
-      </TabsContent>
+            </TabsContent>
+          </>
+        )}
 
-      <TabsContent value="project-info" className="space-y-4">
+        <TabsContent value="project-info" className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle>Project Info Schema</CardTitle>
