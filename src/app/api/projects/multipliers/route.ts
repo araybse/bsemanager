@@ -130,6 +130,7 @@ export async function GET(request: NextRequest) {
   const revenueByProject = new Map<string, number>()
   const laborByProject = new Map<string, number>()
   const nonReimbExpenseByProject = new Map<string, number>()
+  const morganRevenueByProject = new Map<string, number>()
 
   const zReimPhaseNamesByProject = new Map<string, Set<string>>()
   const cPhaseNamesByProject = new Map<string, Set<string>>()
@@ -243,10 +244,51 @@ export async function GET(request: NextRequest) {
     )
   })
 
+  // Calculate Morgan Wilson's billed revenue (hours × billing rate)
+  // Get billing rate for Project Inspector
+  const { data: billingRates } = await supabase
+    .from('billable_rates')
+    .select('employee_type, hourly_rate')
+  
+  const typedRates = (billingRates || []) as Array<{ employee_type: string; hourly_rate: number }>
+  const projectInspectorRate = typedRates.find((rate) => 
+    rate.employee_type === 'Project Inspector'
+  )?.hourly_rate || 0
+
+  // Fetch Morgan Wilson's time entries for these projects
+  const { data: morganTimeData } = await fetchAllPages<{
+    project_number: string | null
+    phase_name: string | null
+    hours: number | null
+  }>(async (from, to) =>
+    await supabase
+      .from('time_entries')
+      .select('project_number, phase_name, hours')
+      .eq('employee_name', 'Morgan Wilson')
+      .in('project_number' as never, projectNumbers as never)
+      .range(from, to)
+  )
+
+  // Calculate Morgan's billed revenue by project (only C-phases)
+  ;((morganTimeData as Array<{ project_number: string | null; phase_name: string | null; hours: number | null }>) || []).forEach((row) => {
+    const key = (row.project_number || '').trim()
+    if (!key) return
+    const phaseName = (row.phase_name || '').trim().toLowerCase()
+    const cPhaseNames = cPhaseNamesByProject.get(key)
+    const isCPhase = Boolean(cPhaseNames?.has(phaseName))
+    if (!isCPhase) return
+    
+    const morganRevenue = (Number(row.hours) || 0) * projectInspectorRate
+    morganRevenueByProject.set(key, (morganRevenueByProject.get(key) || 0) + morganRevenue)
+  })
+
+  // Calculate final Performance Multipliers (excluding Morgan's billed revenue from numerator)
   projectNumbers.forEach((projectNumber) => {
-    const revenue = revenueByProject.get(projectNumber) || 0
+    const cPhaseRevenue = revenueByProject.get(projectNumber) || 0
+    const morganRevenue = morganRevenueByProject.get(projectNumber) || 0
+    const performanceRevenue = cPhaseRevenue - morganRevenue
     const cost = (laborByProject.get(projectNumber) || 0) + (nonReimbExpenseByProject.get(projectNumber) || 0)
-    multipliers[projectNumber] = revenue > 0 && cost > 0 ? revenue / cost : null
+    multipliers[projectNumber] = performanceRevenue > 0 && cost > 0 ? performanceRevenue / cost : null
   })
 
   return NextResponse.json({ multipliers })

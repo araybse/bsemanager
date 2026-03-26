@@ -3841,7 +3841,7 @@ export default function ProjectDetailPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Project Multiplier</CardDescription>
+                  <CardDescription>Performance Multiplier</CardDescription>
                   <CardTitle className="text-xl">
                     {typeof multiplier === 'number' ? multiplier.toFixed(2) + 'x' : '—'}
                   </CardTitle>
