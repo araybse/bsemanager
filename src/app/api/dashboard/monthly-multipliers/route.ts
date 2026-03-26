@@ -2,6 +2,27 @@ import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { requireApiRoles } from '@/lib/auth/api-authorization'
 
+const PAGE_SIZE = 1000
+
+async function fetchAllPages<T>(
+  fetchPage: (from: number, to: number) => Promise<{ data: T[] | null; error: { message: string } | null }>
+): Promise<{ data: T[]; error: { message: string } | null }> {
+  const rows: T[] = []
+  let from = 0
+
+  while (true) {
+    const to = from + PAGE_SIZE - 1
+    const { data, error } = await fetchPage(from, to)
+    if (error) return { data: rows, error }
+    const page = data || []
+    rows.push(...page)
+    if (page.length < PAGE_SIZE) break
+    from += PAGE_SIZE
+  }
+
+  return { data: rows, error: null }
+}
+
 /**
  * GET /api/dashboard/monthly-multipliers
  * 
@@ -58,23 +79,29 @@ export async function GET() {
       phaseCodeMap.set(key, (phase.phase_code || '').trim())
     })
 
-    // Fetch invoice line items for the date range (including current month)
-    const { data: invoiceLines, error: invoiceError } = await supabase
-      .from('invoice_line_items')
-      .select('project_number, phase_name, amount, invoice_date')
-      .gte('invoice_date', sinceDate)
-      .lt('invoice_date', nextMonthStartDate)
-      .order('invoice_date', { ascending: true })
+    // Fetch invoice line items for the date range (including current month) with pagination
+    const { data: invoiceLines, error: invoiceError } = await fetchAllPages((from, to) =>
+      supabase
+        .from('invoice_line_items')
+        .select('project_number, phase_name, amount, invoice_date')
+        .gte('invoice_date', sinceDate)
+        .lt('invoice_date', nextMonthStartDate)
+        .order('invoice_date', { ascending: true })
+        .range(from, to)
+    )
 
     if (invoiceError) throw invoiceError
 
-    // Fetch time entries for the date range (including current month)
-    const { data: timeEntries, error: timeError } = await supabase
-      .from('time_entries')
-      .select('project_id, project_number, phase_name, labor_cost, entry_date')
-      .gte('entry_date', sinceDate)
-      .lt('entry_date', nextMonthStartDate)
-      .order('entry_date', { ascending: true })
+    // Fetch time entries for the date range (including current month) with pagination
+    const { data: timeEntries, error: timeError } = await fetchAllPages((from, to) =>
+      supabase
+        .from('time_entries')
+        .select('project_id, project_number, phase_name, labor_cost, entry_date')
+        .gte('entry_date', sinceDate)
+        .lt('entry_date', nextMonthStartDate)
+        .order('entry_date', { ascending: true })
+        .range(from, to)
+    )
 
     if (timeError) throw timeError
 
