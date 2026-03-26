@@ -50,22 +50,54 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect logged in users away from login page
-  if (user && request.nextUrl.pathname === '/login') {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
-  }
+  // Permission-based redirects for logged-in users
+  if (user) {
+    // Get user's role for permission checks
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
 
-  // Redirect root to dashboard if logged in, otherwise to login
-  if (request.nextUrl.pathname === '/') {
-    const url = request.nextUrl.clone()
-    if (!user) {
-      url.pathname = '/login'
-    } else {
-      url.pathname = '/dashboard'
+    const userRole = (profile as { role: string } | null)?.role
+
+    // Redirect employees away from dashboard
+    if (userRole === 'employee' && request.nextUrl.pathname.startsWith('/dashboard')) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/timesheet'
+      return NextResponse.redirect(url)
     }
-    return NextResponse.redirect(url)
+
+    // Redirect non-admin users away from admin-only pages
+    if (userRole !== 'admin') {
+      const adminOnlyPaths = ['/accounting', '/cash-flow', '/contract-labor', '/proposals', '/time-entries']
+      if (adminOnlyPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
+        const url = request.nextUrl.clone()
+        url.pathname = userRole === 'employee' ? '/timesheet' : '/dashboard'
+        return NextResponse.redirect(url)
+      }
+    }
+
+    // Redirect logged in users away from login page
+    if (request.nextUrl.pathname === '/login') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect root to dashboard if logged in, otherwise to login
+    if (request.nextUrl.pathname === '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
+  } else {
+    // Not logged in - redirect root to login
+    if (request.nextUrl.pathname === '/') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
