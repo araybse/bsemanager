@@ -531,6 +531,23 @@ export default function DashboardPage() {
     enabled: userRole === 'admin', // Only fetch for admin users
   })
 
+  // Fetch summary metrics for 4-card dashboard
+  const { data: summaryMetrics, isLoading: loadingSummary } = useQuery({
+    queryKey: ['dashboard-summary-metrics'],
+    queryFn: async () => {
+      const response = await fetch('/api/dashboard/summary-metrics')
+      if (!response.ok) throw new Error('Failed to fetch summary metrics')
+      const data = await response.json()
+      return data as {
+        totalContract: number
+        totalRevenue: number
+        totalCost: number
+        performanceMultiplier: number | null
+      }
+    },
+    enabled: userRole === 'admin',
+  })
+
   // Show loading state while fetching user
   if (loadingUser) {
     return (
@@ -584,22 +601,22 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Accounts Receivable</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Contract</CardTitle>
             <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loadingAR ? (
+            {loadingSummary ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <div className="text-xl font-bold truncate">
-                  {formatCurrency(arData?.total)}
+                <div className="text-2xl font-bold">
+                  {formatCurrency(summaryMetrics?.totalContract)}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {arData?.invoices?.length || 0} unpaid invoices
+                <p className="text-xs text-muted-foreground mt-1">
+                  All contract phases
                 </p>
               </>
             )}
@@ -608,19 +625,19 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ready to Bill</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <Receipt className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loadingCandidates ? (
+            {loadingSummary ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <div className="text-xl font-bold">
-                  {billingCandidates?.length || 0}
+                <div className="text-2xl font-bold">
+                  {formatCurrency(summaryMetrics?.totalRevenue)}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Projects with billable activity
+                <p className="text-xs text-muted-foreground mt-1">
+                  All invoices (incl. reimbursables)
                 </p>
               </>
             )}
@@ -629,26 +646,42 @@ export default function DashboardPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ops Freshness</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            {loadingOpsFreshness ? (
+            {loadingSummary ? (
               <Skeleton className="h-8 w-32" />
             ) : (
               <>
-                <Badge variant={freshnessBadgeVariant(opsState)}>
-                  {freshnessLabel(opsState)}
-                </Badge>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Last sync:{' '}
-                  {opsFreshness?.syncAt ? new Date(opsFreshness.syncAt).toLocaleString() : 'none'}
+                <div className="text-2xl font-bold">
+                  {formatCurrency(summaryMetrics?.totalCost)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  All labor + expenses
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Last quality run:{' '}
-                  {opsFreshness?.qualityAt
-                    ? new Date(opsFreshness.qualityAt).toLocaleString()
-                    : 'none'}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Performance Multiplier</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {loadingSummary ? (
+              <Skeleton className="h-8 w-32" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {summaryMetrics?.performanceMultiplier 
+                    ? summaryMetrics.performanceMultiplier.toFixed(2) + 'x'
+                    : 'N/A'}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Team efficiency (excl. contractor)
                 </p>
               </>
             )}
