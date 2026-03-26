@@ -63,20 +63,73 @@ export default function ProjectsPage() {
 
   // local archive state only used as fallback during migration
 
-  const { data: projects, isLoading, error } = useQuery({
-    queryKey: ['projects'],
+  // Get current user
+  const { data: currentUser } = useQuery({
+    queryKey: ['current-user-for-projects'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return null
+      
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, role')
+        .eq('id', user.id)
+        .single()
+      
+      return profile as { id: string; role: string } | null
+    },
+  })
+
+  const { data: projects, isLoading, error } = useQuery({
+    queryKey: ['projects', currentUser?.id],
+    queryFn: async () => {
+      // For admins, show all projects
+      if (currentUser?.role === 'admin') {
+        const { data, error } = await supabase
+          .from('projects')
+          .select(`
+            *,
+            clients (name)
+          `)
+          .order('project_number', { ascending: false })
+        if (error) throw error
+        return data as ProjectWithClient[]
+      }
+      
+      // For PMs and employees, show only their assigned projects
+      const { data: assignments, error: assignError } = await supabase
+        .from('project_team_assignments')
+        .select('project_id')
+        .eq('user_id', currentUser?.id)
+      
+      if (assignError) throw assignError
+      
+      const projectIds = assignments?.map(a => a.project_id) || []
+      
+      // Also include projects where they are the PM
+      const { data: pmProjects, error: pmError } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('project_manager_id', currentUser?.id)
+      
+      if (pmError) throw pmError
+      
+      const allProjectIds = [...new Set([...projectIds, ...(pmProjects?.map(p => p.id) || [])])]
+      
+      if (allProjectIds.length === 0) {
+        return []
+      }
+      
       const { data, error } = await supabase
         .from('projects')
         .select(`
           *,
           clients (name)
         `)
+        .in('id', allProjectIds)
         .order('project_number', { ascending: false })
-      if (error) {
-        console.error('Projects query error:', error)
-        throw error
-      }
+      
+      if (error) throw error
       return data as ProjectWithClient[]
     },
   })
