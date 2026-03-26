@@ -570,15 +570,55 @@ export default function DashboardPage() {
     )
   }
 
-  // If employee, return nothing while redirect happens
-  if (userRole === 'employee') {
-    return null
-  }
-
   // Role-based dashboard rendering using permissions system
   // Admin sees the full dashboard
   // PM sees filtered My Projects and Monthly Performance Multipliers
-  // Employee sees a dashboard placeholder
+  // Employee sees My Projects card
+  
+  // Employee dashboard - My Projects only
+  if (userRole === 'employee') {
+    const { data: employeeProjects } = useQuery({
+      queryKey: ['employee-my-projects'],
+      queryFn: async () => {
+        const { data, error } = await supabase
+          .from('project_team_assignments')
+          .select('projects(id, project_number, project_name)')
+          .eq('user_id', currentUser?.id)
+        if (error) throw error
+        return (data as any[])?.map(a => a.projects) || []
+      },
+    })
+    
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>My Projects</CardTitle>
+            <CardDescription>Projects you are assigned to</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {employeeProjects && employeeProjects.length > 0 ? (
+              <div className="space-y-2">
+                {employeeProjects.map((project: any) => (
+                  <div key={project.id} className="flex items-center justify-between p-3 border rounded">
+                    <div>
+                      <p className="font-semibold">{project.project_number}</p>
+                      <p className="text-sm text-gray-600">{project.project_name}</p>
+                    </div>
+                    <Link href={`/projects/${project.id}`}>
+                      <Button variant="outline" size="sm">View</Button>
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500">No projects assigned yet</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
   if (!perms.isAdmin()) {
     if (perms.isProjectManagerOrAdmin()) {
       return (

@@ -61,19 +61,12 @@ export async function updateSession(request: NextRequest) {
 
     const userRole = (profile as { role: string } | null)?.role
 
-    // Redirect employees away from dashboard
-    if (userRole === 'employee' && request.nextUrl.pathname.startsWith('/dashboard')) {
-      const url = request.nextUrl.clone()
-      url.pathname = '/timesheet'
-      return NextResponse.redirect(url)
-    }
-
     // Redirect non-admin users away from admin-only pages
     if (userRole !== 'admin') {
       const adminOnlyPaths = ['/accounting', '/cash-flow', '/contract-labor', '/proposals', '/time-entries']
       if (adminOnlyPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
         const url = request.nextUrl.clone()
-        url.pathname = userRole === 'employee' ? '/timesheet' : '/dashboard'
+        url.pathname = '/dashboard'
         return NextResponse.redirect(url)
       }
     }
