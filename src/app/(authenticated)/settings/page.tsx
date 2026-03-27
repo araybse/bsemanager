@@ -1109,10 +1109,12 @@ function SettingsContent() {
     setSyncType(type)
     setLastSyncResults(null)
     try {
-      const response = await fetch('/api/qb-time/sync', {
+      // Use new parallel sync-all endpoint for better performance
+      const endpoint = type === 'all' ? '/api/qb-time/sync-all' : '/api/qb-time/sync'
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type }),
+        body: type === 'all' ? undefined : JSON.stringify({ type }),
       })
       
       const data = await response.json()
