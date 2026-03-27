@@ -46,10 +46,10 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src="/Stacked_Black.png" alt="Blackstone Engineering" className="mx-auto mb-4 h-24" />
-          <CardTitle className="text-2xl">BSE Management Portal</CardTitle>
+          <img src="/logos/iris-logo-horizontal.svg" alt="IRIS" className="mx-auto mb-4 h-16" />
+          <CardTitle className="text-2xl">IRIS</CardTitle>
           <CardDescription>
-            Billing Management Console
+            Integrated Resource Intelligence System
           </CardDescription>
         </CardHeader>
         <CardContent>
