@@ -73,12 +73,18 @@ export async function getApplicableRate(
 
   if (projectOverride && !overrideError) {
     console.log(`[Rate Resolution] Project override found for ${positionTitle} on project ${projectId}`)
+    const override = projectOverride as { 
+      id: number
+      hourly_rate: string
+      effective_from: string
+      effective_to: string | null
+    }
     return {
-      hourlyRate: parseFloat(projectOverride.hourly_rate),
+      hourlyRate: parseFloat(override.hourly_rate),
       source: 'project_override',
-      sourceId: projectOverride.id,
-      effectiveFrom: projectOverride.effective_from,
-      effectiveTo: projectOverride.effective_to,
+      sourceId: override.id,
+      effectiveFrom: override.effective_from,
+      effectiveTo: override.effective_to,
       metadata: {
         projectId,
         positionTitle,
@@ -107,44 +113,58 @@ export async function getApplicableRate(
     .limit(1)
     .single()
 
-  if (scheduleAssignment && !assignmentError && scheduleAssignment.rate_schedule) {
-    const schedule = scheduleAssignment.rate_schedule as {
+  type ScheduleAssignment = {
+    rate_schedule: {
       id: number
       name: string
       effective_from: string
       effective_to: string | null
-    }
+    } | null
+  }
 
-    // Get rate from this schedule
-    const { data: scheduleRate, error: rateError } = await supabase
-      .from('rate_schedule_items')
-      .select('*')
-      .eq('rate_schedule_id', schedule.id)
-      .eq('position_title', positionTitle)
-      .lte('effective_from', effectiveDate)
-      .or(`effective_to.is.null,effective_to.gte.${effectiveDate}`)
-      .order('effective_from', { ascending: false })
-      .limit(1)
-      .single()
+  if (scheduleAssignment && !assignmentError) {
+    const assignment = scheduleAssignment as ScheduleAssignment
+    
+    if (assignment.rate_schedule) {
+      const schedule = assignment.rate_schedule
 
-    if (scheduleRate && !rateError) {
-      console.log(`[Rate Resolution] Rate schedule "${schedule.name}" found for ${positionTitle} on project ${projectId}`)
-      return {
-        hourlyRate: parseFloat(scheduleRate.hourly_rate),
-        source: 'rate_schedule',
-        sourceId: scheduleRate.id,
-        rateScheduleName: schedule.name,
-        effectiveFrom: scheduleRate.effective_from,
-        effectiveTo: scheduleRate.effective_to,
-        metadata: {
-          projectId,
-          positionTitle,
-          effectiveDate,
-          resolvedAt
+      // Get rate from this schedule
+      const { data: scheduleRate, error: rateError } = await supabase
+        .from('rate_schedule_items')
+        .select('*')
+        .eq('rate_schedule_id', schedule.id)
+        .eq('position_title', positionTitle)
+        .lte('effective_from', effectiveDate)
+        .or(`effective_to.is.null,effective_to.gte.${effectiveDate}`)
+        .order('effective_from', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (scheduleRate && !rateError) {
+        console.log(`[Rate Resolution] Rate schedule "${schedule.name}" found for ${positionTitle} on project ${projectId}`)
+        const rate = scheduleRate as {
+          id: number
+          hourly_rate: string
+          effective_from: string
+          effective_to: string | null
         }
+        return {
+          hourlyRate: parseFloat(rate.hourly_rate),
+          source: 'rate_schedule',
+          sourceId: rate.id,
+          rateScheduleName: schedule.name,
+          effectiveFrom: rate.effective_from,
+          effectiveTo: rate.effective_to,
+          metadata: {
+            projectId,
+            positionTitle,
+            effectiveDate,
+            resolvedAt
+          }
+        }
+      } else {
+        warnings.push(`Rate schedule "${schedule.name}" assigned but no rate found for position "${positionTitle}"`)
       }
-    } else {
-      warnings.push(`Rate schedule "${schedule.name}" assigned but no rate found for position "${positionTitle}"`)
     }
   }
 
@@ -159,14 +179,20 @@ export async function getApplicableRate(
     .limit(1)
     .single()
 
-  if (defaultSchedule && !defaultError) {
-    const items = defaultSchedule.rate_schedule_items as Array<{
+  type DefaultSchedule = {
+    name: string
+    rate_schedule_items: Array<{
       id: number
       position_title: string
       hourly_rate: string
       effective_from: string
       effective_to: string | null
     }>
+  }
+
+  if (defaultSchedule && !defaultError) {
+    const schedule = defaultSchedule as DefaultSchedule
+    const items = schedule.rate_schedule_items
 
     const matchingRate = items.find(item => 
       item.position_title === positionTitle &&
@@ -180,7 +206,7 @@ export async function getApplicableRate(
         hourlyRate: parseFloat(matchingRate.hourly_rate),
         source: 'default_schedule',
         sourceId: matchingRate.id,
-        rateScheduleName: defaultSchedule.name,
+        rateScheduleName: schedule.name,
         effectiveFrom: matchingRate.effective_from,
         effectiveTo: matchingRate.effective_to,
         metadata: {

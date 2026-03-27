@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
       imported: (acc.imported || 0) + (r.counts?.imported || 0),
       updated: (acc.updated || 0) + (r.counts?.updated || 0),
       errors: (acc.errors || 0) + (r.counts?.errors || 0)
-    }), {})
+    }), { imported: 0, updated: 0, errors: 0 })
 
     return NextResponse.json({
       success: failureCount === 0,

@@ -11,9 +11,12 @@ import { requireApiRoles } from '@/lib/auth/api-authorization'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Await params (Next.js 16 requirement)
+    const { id: invoiceId } = await params
+    
     // Check auth (allow internal webhook calls or admin/PM users)
     const internalSyncToken = request.headers.get('x-internal-sync-token')
     const expectedInternalSyncToken = process.env.INTERNAL_SYNC_TOKEN
@@ -36,8 +39,6 @@ export async function POST(
         { status: 400 }
       )
     }
-
-    const invoiceId = params.id
     const body = await request.json().catch(() => ({}))
     const operation = body.operation || 'Update'
 
