@@ -179,5 +179,53 @@ export async function syncInvoices(
     startPosition += maxResults
   }
 
+  // Mark invoices deleted in QB
+  // Get all QB invoice IDs we just synced
+  const syncedQbIds = new Set<string>()
+  startPosition = 1
+  while (true) {
+    const data = await qboQuery(
+      settings,
+      `SELECT Id FROM Invoice WHERE TxnDate >= '${startDate}' ORDERBY TxnDate DESC STARTPOSITION ${startPosition} MAXRESULTS ${maxResults}`
+    )
+    const invoices = data.QueryResponse?.Invoice || []
+    if (!invoices.length) break
+    
+    invoices.forEach((inv: { Id: string }) => syncedQbIds.add(inv.Id))
+    
+    if (invoices.length < maxResults) break
+    startPosition += maxResults
+  }
+
+  // Find invoices in IRIS that have QB IDs but weren't in the sync
+  const { data: irisInvoices } = await supabase
+    .from('invoices')
+    .select('id, qb_invoice_id, invoice_number')
+    .not('qb_invoice_id', 'is', null)
+    .gte('date_issued' as never, startDate as never)
+
+  if (irisInvoices && irisInvoices.length > 0) {
+    const deletedIds: number[] = []
+    for (const invoice of irisInvoices) {
+      const inv = invoice as { id: number; qb_invoice_id: string; invoice_number: string }
+      if (!syncedQbIds.has(inv.qb_invoice_id)) {
+        deletedIds.push(inv.id)
+        console.log(`Marking invoice as deleted: ${inv.invoice_number} (QB ID: ${inv.qb_invoice_id})`)
+      }
+    }
+
+    if (deletedIds.length > 0) {
+      await supabase
+        .from('invoices')
+        .update({ 
+          status: 'deleted',
+          deleted_at: new Date().toISOString() 
+        } as never)
+        .in('id' as never, deletedIds as never)
+      
+      console.log(`Marked ${deletedIds.length} invoice(s) as deleted`)
+    }
+  }
+
   return { imported, updated, skipped, total }
 }
