@@ -1,0 +1,58 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="irisGradient">
+      <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e40af;stop-opacity:1" />
+    </radialGradient>
+    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Outer circle -->
+  <circle cx="60" cy="60" r="55" fill="none" stroke="url(#ringGradient)" stroke-width="2.5" opacity="0.9"/>
+  
+  <!-- Middle ring -->
+  <circle cx="60" cy="60" r="40" fill="none" stroke="url(#ringGradient)" stroke-width="3"/>
+  
+  <!-- Inner iris with gradient -->
+  <circle cx="60" cy="60" r="28" fill="url(#irisGradient)"/>
+  
+  <!-- Pupil -->
+  <circle cx="60" cy="60" r="15" fill="#0f172a"/>
+  
+  <!-- Radial fiber lines (8 directions) -->
+  <g opacity="0.4" stroke="#1e3a8a" stroke-width="1.5">
+    <line x1="60" y1="32" x2="60" y2="45"/>
+    <line x1="79.8" y1="40.2" x2="71.2" y2="48.8"/>
+    <line x1="88" y1="60" x2="75" y2="60"/>
+    <line x1="79.8" y1="79.8" x2="71.2" y2="71.2"/>
+    <line x1="60" y1="88" x2="60" y2="75"/>
+    <line x1="40.2" y1="79.8" x2="48.8" y2="71.2"/>
+    <line x1="32" y1="60" x2="45" y2="60"/>
+    <line x1="40.2" y1="40.2" x2="48.8" y2="48.8"/>
+  </g>
+  
+  <!-- Data connection nodes (positioned around outer ring) -->
+  <circle cx="60" cy="5" r="3.5" fill="#3b82f6"/>
+  <circle cx="103" cy="30" r="3.5" fill="#3b82f6"/>
+  <circle cx="115" cy="60" r="3.5" fill="#3b82f6"/>
+  <circle cx="103" cy="90" r="3.5" fill="#3b82f6"/>
+  <circle cx="60" cy="115" r="3.5" fill="#3b82f6"/>
+  <circle cx="17" cy="90" r="3.5" fill="#3b82f6"/>
+  <circle cx="5" cy="60" r="3.5" fill="#3b82f6"/>
+  <circle cx="17" cy="30" r="3.5" fill="#3b82f6"/>
+  
+  <!-- Connection lines from nodes to ring (subtle) -->
+  <g opacity="0.3" stroke="#3b82f6" stroke-width="1">
+    <line x1="60" y1="5" x2="60" y2="15"/>
+    <line x1="103" y1="30" x2="94" y2="38"/>
+    <line x1="115" y1="60" x2="105" y2="60"/>
+    <line x1="103" y1="90" x2="94" y2="82"/>
+    <line x1="60" y1="115" x2="60" y2="105"/>
+    <line x1="17" y1="90" x2="26" y2="82"/>
+    <line x1="5" y1="60" x2="15" y2="60"/>
+    <line x1="17" y1="30" x2="26" y2="38"/>
+  </g>
+</svg>
