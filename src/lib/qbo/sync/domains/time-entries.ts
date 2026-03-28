@@ -412,7 +412,7 @@ export async function syncTimeEntries(
           hours,
           notes: timeActivity.Description || null,
           is_billable: isBillable,
-          is_billed: timeActivity.BillableStatus === 'HasBeenBilled',
+          is_billed: false, // Will be calculated based on invoice billing_period, not QB status
           labor_cost: laborCost,
         } as never
 

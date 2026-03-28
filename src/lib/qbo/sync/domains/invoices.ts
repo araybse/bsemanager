@@ -79,6 +79,7 @@ export async function syncInvoices(
           billing_period: monthStart(invoice.TxnDate),
           budget_date: invoice.DueDate || null,
           date_paid: isPaid ? (lastUpdatedDate || invoice.TxnDate || null) : null,
+          status: isPaid ? 'paid' : 'unpaid',
           amount: totalAmt,
           qb_invoice_id: qbId,
           description_of_services: invoice.CustomerMemo?.value || null,

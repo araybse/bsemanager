@@ -255,7 +255,8 @@ export default function ReimbursablesPage() {
               ))}
             </div>
           ) : (
-            <Table>
+            <div className="overflow-x-auto">
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>{renderSortButton('project', 'Project')}</TableHead>
@@ -353,6 +354,7 @@ export default function ReimbursablesPage() {
                 )}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
