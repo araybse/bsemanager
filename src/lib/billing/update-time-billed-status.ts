@@ -47,9 +47,9 @@ export async function updateTimeBilledStatus() {
   for (const period of billedPeriods) {
     const { data: updated, error: updateError } = await supabase
       .from('time_entries')
-      .update({ is_billed: true })
-      .eq('billing_period', period)
-      .eq('is_billed', false) // Only update unbilled entries
+      .update({ is_billed: true } as any)
+      .eq('billing_period' as any, period as any)
+      .eq('is_billed' as any, false as any) // Only update unbilled entries
       .select('id')
     
     if (updateError) {
