@@ -160,22 +160,6 @@ export async function POST(request: NextRequest) {
       errors: (acc.errors || 0) + (r.counts?.errors || 0)
     }), { imported: 0, updated: 0, errors: 0 })
 
-    // Update time entry billed status based on invoices
-    let timeBillingUpdate = null
-    try {
-      console.log('📊 Updating time entry billed status...')
-      const updateResponse = await fetch(`${baseUrl}/api/billing/update-time-status`, {
-        method: 'POST',
-        headers: {
-          'x-internal-sync-token': internalToken
-        }
-      })
-      timeBillingUpdate = await updateResponse.json()
-      console.log('✅ Time billing status updated:', timeBillingUpdate)
-    } catch (err) {
-      console.error('⚠️  Failed to update time billing status:', err)
-    }
-
     return NextResponse.json({
       success: failureCount === 0,
       message: failureCount === 0 
@@ -184,8 +168,7 @@ export async function POST(request: NextRequest) {
       duration_ms: overallDuration,
       results,
       totals: totalCounts,
-      parallel_speedup: true,
-      time_billing_update: timeBillingUpdate
+      parallel_speedup: true
     })
 
   } catch (error) {
