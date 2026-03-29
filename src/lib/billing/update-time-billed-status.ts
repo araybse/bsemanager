@@ -20,6 +20,7 @@ export async function updateTimeBilledStatus() {
     .select('billing_period, date_issued')
     .not('billing_period', 'is', null)
     .order('billing_period')
+    .returns<{ billing_period: string; date_issued: string }[]>()
   
   if (invoicesError) {
     console.error('❌ Error fetching invoices:', invoicesError)
