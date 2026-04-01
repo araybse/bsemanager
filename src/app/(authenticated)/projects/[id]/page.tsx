@@ -3511,6 +3511,46 @@ export default function ProjectDetailPage() {
 
   const multiplierDenominatorCost = nonZReimLaborCost + nonReimbursableExpenseCost
 
+  // ===================================================================
+  // NEW: Simple Total Revenue, Total Cost, Project Multiplier
+  // March 31, 2026 - Changed to show totals instead of C-phase logic
+  // To revert: Comment out this section and use the above logic
+  // ===================================================================
+
+  // Total Revenue: Sum of ALL invoice line items (no exclusions)
+  const totalRevenue = useMemo(() => {
+    if (!invoiceLineItems) return 0
+    return invoiceLineItems.reduce((sum, item) => sum + (Number(item.amount) || 0), 0)
+  }, [invoiceLineItems])
+
+  // Total Expenses: Sum of ALL expenses (fee amount, not charge amount)
+  const totalExpenses = useMemo(() => {
+    if (!expenses) return 0
+    return expenses.reduce((sum, item) => sum + (Number(item.fee_amount) || 0), 0)
+  }, [expenses])
+
+  // Total Cost: BSE Labor + Expenses
+  // NOTE: Do NOT include contractLaborCost here - those payments are already in expenses!
+  // The Contracts tab is just for tracking vendor agreements, not separate costs.
+  const bseLaborOnly = useMemo(() => {
+    if (!allTimeEntries) return 0
+    return allTimeEntries.reduce((sum, entry) => sum + (Number(entry.labor_cost) || 0), 0)
+  }, [allTimeEntries])
+
+  const totalCost = useMemo(() => {
+    return bseLaborOnly + totalExpenses
+  }, [bseLaborOnly, totalExpenses])
+
+  // Project Multiplier: Total Revenue / Total Cost
+  const projectMultiplier = useMemo(() => {
+    if (totalCost === 0) return 0
+    return totalRevenue / totalCost
+  }, [totalRevenue, totalCost])
+
+  // ===================================================================
+  // END NEW LOGIC
+  // ===================================================================
+
   const laborByPhase = useMemo(() => {
     const totals = new Map<string, { hours: number; cost: number }>()
     allTimeEntries?.forEach((entry) => {
@@ -3837,8 +3877,8 @@ export default function ProjectDetailPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Revenue</CardDescription>
-                  <CardTitle className="text-xl">{formatCurrency(multiplierNumeratorRevenue)}</CardTitle>
+                  <CardDescription>Total Revenue</CardDescription>
+                  <CardTitle className="text-xl">{formatCurrency(totalRevenue)}</CardTitle>
                 </CardHeader>
               </Card>
               <Card>
@@ -3849,17 +3889,17 @@ export default function ProjectDetailPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Project Cost</CardDescription>
+                  <CardDescription>Total Cost</CardDescription>
                   <CardTitle className="text-xl">
-                    {formatCurrency(multiplierDenominatorCost)}
+                    {formatCurrency(totalCost)}
                   </CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Performance Multiplier</CardDescription>
+                  <CardDescription>Project Multiplier</CardDescription>
                   <CardTitle className="text-xl">
-                    {typeof multiplier === 'number' ? multiplier.toFixed(2) + 'x' : '—'}
+                    {projectMultiplier > 0 ? projectMultiplier.toFixed(2) + 'x' : '—'}
                   </CardTitle>
                 </CardHeader>
               </Card>
