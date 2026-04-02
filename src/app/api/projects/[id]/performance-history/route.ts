@@ -18,6 +18,13 @@ export async function GET(
 
   const supabase = createAdminClient()
 
+  // Type definitions
+  type Project = { id: number; project_number: string }
+  type Phase = { id: number; phase_code: string; phase_name: string }
+  type Selection = { phase_id: number; included: boolean }
+  type InvoiceLine = { phase_name: string | null; amount: number | null; line_type: string | null; invoice_date: string | null }
+  type TimeEntry = { phase_name: string | null; labor_cost: number | null; entry_date: string | null }
+
   // Get project
   const { data: project, error: projectError } = await supabase
     .from('projects')
@@ -30,7 +37,7 @@ export async function GET(
   }
 
   // Get phase selections
-  const { data: phases, error: phasesError } = await supabase
+  const { data: phases, error: phasesError} = await supabase
     .from('contract_phases')
     .select('id, phase_code, phase_name')
     .eq('project_id', projectId)
@@ -49,12 +56,12 @@ export async function GET(
   }
 
   const selectionMap = new Map(
-    (selections || []).map(s => [s.phase_id, s.included])
+    ((selections || []) as Selection[]).map(s => [s.phase_id, s.included])
   )
 
   // Determine selected phases (default to C* if no selections)
   const hasSelections = selections && selections.length > 0
-  const selectedPhaseIds = (phases || [])
+  const selectedPhaseIds = ((phases || []) as Phase[])
     .filter(phase => {
       if (hasSelections && selectionMap.has(phase.id)) {
         return selectionMap.get(phase.id) === true
@@ -70,7 +77,7 @@ export async function GET(
     return NextResponse.json({ history: [] })
   }
 
-  const selectedPhaseNames = (phases || [])
+  const selectedPhaseNames = ((phases || []) as Phase[])
     .filter(p => selectedPhaseIds.includes(p.id))
     .map(p => (p.phase_name || '').trim().toLowerCase())
 
@@ -78,7 +85,7 @@ export async function GET(
   const { data: invoiceLines, error: invoiceLinesError } = await supabase
     .from('invoice_line_items')
     .select('phase_name, amount, line_type, invoice_date')
-    .eq('project_number', project.project_number)
+    .eq('project_number', (project as Project).project_number)
     .not('invoice_date', 'is', null)
     .order('invoice_date', { ascending: true })
 
@@ -90,7 +97,7 @@ export async function GET(
   const { data: timeEntries, error: timeEntriesError } = await supabase
     .from('time_entries')
     .select('phase_name, labor_cost, entry_date')
-    .eq('project_number', project.project_number)
+    .eq('project_number', (project as Project).project_number)
     .not('entry_date', 'is', null)
     .order('entry_date', { ascending: true })
 
@@ -102,7 +109,7 @@ export async function GET(
   const monthlyData = new Map<string, { revenue: number; cost: number }>()
 
   // Process invoices
-  ;(invoiceLines || []).forEach(line => {
+  ;((invoiceLines || []) as InvoiceLine[]).forEach(line => {
     const phaseName = (line.phase_name || '').trim().toLowerCase()
     if (!selectedPhaseNames.includes(phaseName)) return
     
@@ -120,7 +127,7 @@ export async function GET(
   })
 
   // Process time entries
-  ;(timeEntries || []).forEach(entry => {
+  ;((timeEntries || []) as TimeEntry[]).forEach(entry => {
     const phaseName = (entry.phase_name || '').trim().toLowerCase()
     if (!selectedPhaseNames.includes(phaseName)) return
     

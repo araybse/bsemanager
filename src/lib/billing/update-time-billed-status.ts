@@ -35,6 +35,7 @@ export async function updateTimeBilledStatus(
 
   try {
     // Get all unbilled time entries for this project and billing period
+    type TimeEntry = { id: number }
     const { data: timeEntries, error: fetchError } = await supabase
       .from('time_entries')
       .select('id')
@@ -59,7 +60,7 @@ export async function updateTimeBilledStatus(
       }
     }
 
-    const entryIds = timeEntries.map(e => e.id)
+    const entryIds = (timeEntries as TimeEntry[]).map(e => e.id)
 
     // Update all entries to billed
     const { error: updateError } = await supabase
@@ -67,8 +68,8 @@ export async function updateTimeBilledStatus(
       .update({ 
         is_billed: true,
         updated_at: new Date().toISOString()
-      })
-      .in('id', entryIds)
+      } as never)
+      .in('id', entryIds as never)
 
     if (updateError) {
       console.error('[Billing Status] Failed to update time entries:', updateError)
@@ -137,6 +138,7 @@ export async function backfillTimeBilledStatus(): Promise<{
 
   try {
     // Get all invoices with their project and billing period
+    type Invoice = { id: number; project_id: number; billing_period: string | null }
     const { data: invoices, error: fetchError } = await supabase
       .from('invoices')
       .select('id, project_id, billing_period')
@@ -164,7 +166,7 @@ export async function backfillTimeBilledStatus(): Promise<{
 
     console.log(`[Backfill] Processing ${invoices.length} invoices...`)
 
-    for (const invoice of invoices) {
+    for (const invoice of (invoices as Invoice[])) {
       const result = await updateTimeBilledStatus({
         projectId: invoice.project_id,
         billingPeriod: invoice.billing_period!,
