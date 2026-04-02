@@ -66,8 +66,7 @@ export async function updateTimeBilledStatus(
     const { error: updateError } = await supabase
       .from('time_entries')
       .update({ 
-        is_billed: true,
-        updated_at: new Date().toISOString()
+        is_billed: true
       } as never)
       .in('id', entryIds as never)
 
