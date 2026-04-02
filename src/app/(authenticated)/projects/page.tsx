@@ -55,10 +55,10 @@ export default function ProjectsPage() {
   const [sortField, setSortField] = useState<SortField>('project_number')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [expandedYears, setExpandedYears] = useState<Record<string, boolean>>({
-    '23': true,
-    '24': true,
-    '25': true,
-    '26': true,
+    '23': false,
+    '24': false,
+    '25': false,
+    '26': false,
   })
 
   // local archive state only used as fallback during migration
@@ -828,7 +828,7 @@ export default function ProjectsPage() {
                     <TableHead className="text-xs font-medium text-muted-foreground">Project Manager</TableHead>
                     <TableHead className="text-right">
                       <div className="flex justify-end text-xs font-medium text-muted-foreground">
-                        Multiplier
+                        Project Multiplier
                       </div>
                     </TableHead>
                     {perms.isAdmin() && (
@@ -843,7 +843,7 @@ export default function ProjectsPage() {
                   {yearOrder.map((year) => {
                     const group = projectsByYear.get(year) || []
                     if (!group.length) return null
-                    const isExpanded = expandedYears[year] ?? true
+                    const isExpanded = expandedYears[year] ?? false
                     return (
                       <Fragment key={`year-${year}`}>
                         <TableRow className="bg-muted/20 font-medium">

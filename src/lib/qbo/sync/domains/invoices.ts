@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchInvoiceById, qboQuery } from '../qbo-client'
 import type { QBSettings } from '../types'
 import { classifyInvoiceLineType } from '@/lib/finance/invoice-line-classification'
+import { updateTimeBilledStatus } from '@/lib/billing/update-time-billed-status'
 
 type QboInvoiceLine = {
   Id?: string
@@ -91,12 +92,15 @@ export async function syncInvoices(
           .eq('qb_invoice_id' as never, qbId as never)
           .maybeSingle()
 
+        let invoiceId: number | null = null
+
         if (existing) {
           await supabase
             .from('invoices')
             .update(invoiceData as never)
             .eq('id' as never, (existing as { id: number }).id as never)
           updated++
+          invoiceId = (existing as { id: number }).id
         } else {
           const { data: numberMatch } = await supabase
             .from('invoices')
@@ -109,9 +113,31 @@ export async function syncInvoices(
               .update({ ...invoiceData, qb_invoice_id: qbId } as never)
               .eq('id' as never, (numberMatch as { id: number }).id as never)
             updated++
+            invoiceId = (numberMatch as { id: number }).id
           } else {
-            await supabase.from('invoices').insert(invoiceData as never)
+            const { data: inserted } = await supabase
+              .from('invoices')
+              .insert(invoiceData as never)
+              .select('id')
+              .single()
             imported++
+            if (inserted) {
+              invoiceId = (inserted as { id: number }).id
+            }
+          }
+        }
+
+        // Update time entry billing status for this invoice
+        if (invoiceId && projectId && invoiceData.billing_period) {
+          try {
+            await updateTimeBilledStatus({
+              projectId,
+              billingPeriod: invoiceData.billing_period,
+              invoiceId
+            })
+          } catch (err) {
+            console.error(`[Invoice Sync] Failed to update time billed status for invoice ${invoiceId}:`, err)
+            // Don't fail the sync if billing status update fails
           }
         }
 

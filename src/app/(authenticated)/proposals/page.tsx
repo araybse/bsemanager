@@ -713,7 +713,7 @@ export default function ProposalsPage() {
     })
 
     const trend = computePolyTrend(buckets.map((b) => b.total), 6)
-    return buckets.map((b, idx) => ({ ...b, trend: trend[idx] }))
+    return buckets.map((b, idx) => ({ ...b, trend: Math.max(0, trend[idx]) }))
   }, [proposals, proposedGranularity])
 
   const executedSeries = useMemo(() => {
@@ -738,7 +738,7 @@ export default function ProposalsPage() {
     })
 
     const trend = computePolyTrend(buckets.map((b) => b.total), 6)
-    return buckets.map((b, idx) => ({ ...b, trend: trend[idx] }))
+    return buckets.map((b, idx) => ({ ...b, trend: Math.max(0, trend[idx]) }))
   }, [proposals, executedGranularity])
 
   return (
@@ -799,7 +799,7 @@ export default function ProposalsPage() {
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} domain={[0, 'auto']} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="total" fill="#555555" radius={[4, 4, 0, 0]} barSize={18} />
                 <Line type="natural" dataKey="trend" stroke="#111111" strokeWidth={2} dot={false} strokeDasharray="6 4" />
@@ -833,7 +833,7 @@ export default function ProposalsPage() {
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} domain={[0, 'auto']} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
                 <Bar dataKey="total" fill="#000000" radius={[4, 4, 0, 0]} barSize={18} />
                 <Line type="natural" dataKey="trend" stroke="#111111" strokeWidth={2} dot={false} strokeDasharray="6 4" />
@@ -965,10 +965,11 @@ export default function ProposalsPage() {
 
                     return aCode.localeCompare(bCode)
                   })
+                  const hasNoPhases = phases.length === 0
                   return (
                     <React.Fragment key={proposal.id}>
                       <TableRow
-                        className="cursor-pointer hover:bg-muted/50 h-10 [&>td]:py-1"
+                        className={`cursor-pointer hover:bg-muted/50 h-10 [&>td]:py-1 ${hasNoPhases ? 'text-muted-foreground' : ''}`}
                         onClick={() => toggleProposal(proposal.id)}
                       >
                         <TableCell className={`${columnClasses.expand} py-1`}>

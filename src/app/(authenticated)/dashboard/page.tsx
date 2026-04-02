@@ -769,72 +769,6 @@ export default function DashboardPage() {
   // Admin dashboard (current view, minus backlog card)
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Contract</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingSummary ? (
-              <Skeleton className="h-8 w-32" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(summaryMetrics?.totalContract)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  All contract phases
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingSummary ? (
-              <Skeleton className="h-8 w-32" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(summaryMetrics?.totalRevenue)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  All invoices (incl. reimbursables)
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            {loadingSummary ? (
-              <Skeleton className="h-8 w-32" />
-            ) : (
-              <>
-                <div className="text-2xl font-bold">
-                  {formatCurrency(summaryMetrics?.totalCost)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  All labor + expenses
-                </p>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
@@ -929,7 +863,33 @@ export default function DashboardPage() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="monthLabel" />
                 <YAxis tickFormatter={(value) => `${Number(value).toFixed(1)}x`} />
-                <Tooltip formatter={(value) => `${Number(value).toFixed(2)}x`} />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload
+                      return (
+                        <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                          <p className="font-semibold mb-2">{data.monthLabel}</p>
+                          <div className="space-y-1 text-sm">
+                            <div className="flex justify-between gap-4">
+                              <span className="text-gray-600">Multiplier:</span>
+                              <span className="font-medium">{data.multiplier ? `${Number(data.multiplier).toFixed(2)}x` : '—'}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-gray-600">C-Phase Revenue:</span>
+                              <span className="font-medium">{formatCurrency(data.revenue || 0)}</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-gray-600">C-Phase Labor Cost:</span>
+                              <span className="font-medium">{formatCurrency(data.cost || 0)}</span>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+                    return null
+                  }}
+                />
                 <Line
                   type="monotone"
                   dataKey="multiplier"

@@ -73,6 +73,8 @@ import {
   Cell,
   Legend,
   LabelList,
+  LineChart,
+  Line,
 } from 'recharts'
 
 type ProjectWithRelations = Tables<'projects'> & {
@@ -277,7 +279,20 @@ type ApplicationRunRow = {
   error_message: string | null
 }
 
-const PIE_COLORS = ['#000000', '#333333', '#555555', '#777777', '#999999', '#bbbbbb', '#dddddd']
+const PIE_COLORS = [
+  '#3B82F6', // Blue
+  '#10B981', // Green
+  '#F59E0B', // Amber
+  '#EF4444', // Red
+  '#8B5CF6', // Purple
+  '#EC4899', // Pink
+  '#14B8A6', // Teal
+  '#F97316', // Orange
+  '#6366F1', // Indigo
+  '#84CC16', // Lime
+  '#06B6D4', // Cyan
+  '#A855F7', // Violet
+]
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const PROJECT_INFO_EXTRA_FIELDS = [
@@ -510,6 +525,270 @@ const buildEmptyExtraProjectInfoForm = () =>
     string
   >
 
+// Performance Multiplier Card Component
+function PerformanceMultiplierCard({ projectId, phases }: { projectId: number; phases: any[] }) {
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [selectedPhaseIds, setSelectedPhaseIds] = useState<number[]>([])
+  const queryClient = useQueryClient()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['performance-multiplier', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/performance-multiplier`)
+      if (!res.ok) throw new Error('Failed to fetch performance multiplier')
+      return res.json() as Promise<{
+        multiplier: number | null
+        selectedPhaseIds: number[]
+        totalRevenue: number
+        totalLaborCost: number
+      }>
+    }
+  })
+
+  useEffect(() => {
+    if (data?.selectedPhaseIds) {
+      setSelectedPhaseIds(data.selectedPhaseIds)
+    }
+  }, [data])
+
+  const saveMutation = useMutation({
+    mutationFn: async (phaseIds: number[]) => {
+      const res = await fetch(`/api/projects/${projectId}/performance-multiplier`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedPhaseIds: phaseIds })
+      })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to save selections')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performance-multiplier', projectId] })
+      setIsEditOpen(false)
+      toast.success('Performance multiplier updated')
+    },
+    onError: (error: Error) => {
+      console.error('Save error:', error)
+      toast.error(error.message || 'Failed to update performance multiplier')
+    }
+  })
+
+  const togglePhase = (phaseId: number) => {
+    setSelectedPhaseIds(prev =>
+      prev.includes(phaseId)
+        ? prev.filter(id => id !== phaseId)
+        : [...prev, phaseId]
+    )
+  }
+
+  const handleSave = () => {
+    saveMutation.mutate(selectedPhaseIds)
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardDescription>Performance Multiplier</CardDescription>
+              <CardTitle className="text-xl group relative cursor-help">
+                {isLoading ? (
+                  <Skeleton className="h-7 w-16" />
+                ) : data?.multiplier != null ? (
+                  <>
+                    {`${data.multiplier.toFixed(2)}x`}
+                    <div className="invisible group-hover:visible absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
+                      <div className="space-y-1 text-sm font-normal">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Selected Revenue:</span>
+                          <span className="font-medium">{formatCurrency(data.totalRevenue)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Selected Cost:</span>
+                          <span className="font-medium">{formatCurrency(data.totalLaborCost)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 pt-1 border-t">
+                          <span className="font-semibold">Multiplier:</span>
+                          <span className="font-semibold">{data.multiplier.toFixed(2)}x</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-2">
+                          {data.selectedPhaseIds.length} {data.selectedPhaseIds.length === 1 ? 'phase' : 'phases'} selected
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  '—'
+                )}
+              </CardTitle>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 -mt-1"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Performance Multiplier</DialogTitle>
+            <DialogDescription>
+              Select which phases to include in the performance calculation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {phases.map((phase) => (
+              <div key={phase.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`phase-${phase.id}`}
+                  checked={selectedPhaseIds.includes(phase.id)}
+                  onCheckedChange={() => togglePhase(phase.id)}
+                />
+                <label
+                  htmlFor={`phase-${phase.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                >
+                  <span className="font-mono">{phase.phase_code}</span> - {phase.phase_name}
+                </label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+// Performance History Chart Component
+function PerformanceHistoryChart({ projectId }: { projectId: number }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['performance-history', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/performance-history`)
+      if (!res.ok) throw new Error('Failed to fetch performance history')
+      return res.json() as Promise<{
+        history: Array<{
+          month: string
+          monthLabel: string
+          cumulativeRevenue: number
+          cumulativeCost: number
+          multiplier: number | null
+        }>
+      }>
+    }
+  })
+
+  if (isLoading) {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Performance Multiplier Over Time</CardTitle>
+          <CardDescription>Cumulative performance from project start</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[300px] w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!data?.history || data.history.length === 0) {
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Performance Multiplier Over Time</CardTitle>
+          <CardDescription>Cumulative performance from project start</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+            No performance history available
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-base">Performance Multiplier Over Time</CardTitle>
+        <CardDescription>
+          Cumulative performance from project start ({data.history.length} months)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data.history} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="monthLabel" 
+              tick={{ fontSize: 11 }}
+            />
+            <YAxis 
+              tickFormatter={(value) => `${Number(value).toFixed(1)}x`}
+              label={{ value: 'Multiplier', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                      <p className="font-semibold mb-2">{data.monthLabel}</p>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Multiplier:</span>
+                          <span className="font-medium">
+                            {data.multiplier != null ? `${data.multiplier.toFixed(2)}x` : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Cumulative Revenue:</span>
+                          <span className="font-medium">{formatCurrency(data.cumulativeRevenue)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Cumulative Cost:</span>
+                          <span className="font-medium">{formatCurrency(data.cumulativeCost)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="multiplier"
+              stroke="#2563EB"
+              strokeWidth={3}
+              dot={{ r: 4 }}
+              name="Performance Multiplier"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function ProjectDetailPage() {
   const params = useParams()
   const projectId = Number(params.id)
@@ -565,7 +844,7 @@ export default function ProjectDetailPage() {
     start_date: '',
     end_date: '',
   })
-  const [timeDistributionView, setTimeDistributionView] = useState<'employee' | 'phase'>('employee')
+  const [timeDistributionView, setTimeDistributionView] = useState<'employee' | 'phase'>('phase')
   const [projectInfoFormInitialized, setProjectInfoFormInitialized] = useState(false)
   const [projectInfoDynamicInitialized, setProjectInfoDynamicInitialized] = useState(false)
   const [expandedProjectInfoSections, setExpandedProjectInfoSections] = useState<
@@ -3297,6 +3576,25 @@ export default function ProjectDetailPage() {
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [visibleRequiredItems])
 
+  const applicationsByAgency = useMemo(() => {
+    const grouped = new Map<number, { agency: any; items: typeof selectedApplicationItems }>()
+    
+    selectedApplicationItems.forEach((item) => {
+      const selection = permitSelectionsById.get(item.project_permit_selection_id)
+      const permit = selection ? permitById.get(selection.permit_id) : null
+      const agency = permit?.agency_id ? agencyById.get(permit.agency_id) : null
+      
+      if (agency) {
+        if (!grouped.has(agency.id)) {
+          grouped.set(agency.id, { agency, items: [] })
+        }
+        grouped.get(agency.id)!.items.push(item)
+      }
+    })
+    
+    return Array.from(grouped.values()).sort((a, b) => a.agency.name.localeCompare(b.agency.name))
+  }, [selectedApplicationItems, permitSelectionsById, permitById, agencyById])
+
   const legacyPermitsOnly = useMemo(() => {
     if ((projectPermitSelections || []).length > 0) return []
     return (permits || []).map((permit) => ({
@@ -3883,26 +4181,55 @@ export default function ProjectDetailPage() {
               </Card>
               <Card>
                 <CardHeader className="pb-2">
-                  <CardDescription>Remaining</CardDescription>
-                  <CardTitle className="text-xl">{formatCurrency(totalRemaining)}</CardTitle>
-                </CardHeader>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
                   <CardDescription>Total Cost</CardDescription>
-                  <CardTitle className="text-xl">
+                  <CardTitle className="text-xl group relative cursor-help">
                     {formatCurrency(totalCost)}
+                    <div className="invisible group-hover:visible absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
+                      <div className="space-y-1 text-sm font-normal">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Labor:</span>
+                          <span className="font-medium">{formatCurrency(bseLaborOnly)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Expenses:</span>
+                          <span className="font-medium">{formatCurrency(totalExpenses)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 pt-1 border-t">
+                          <span className="font-semibold">Total:</span>
+                          <span className="font-semibold">{formatCurrency(totalCost)}</span>
+                        </div>
+                      </div>
+                    </div>
                   </CardTitle>
                 </CardHeader>
               </Card>
               <Card>
                 <CardHeader className="pb-2">
                   <CardDescription>Project Multiplier</CardDescription>
-                  <CardTitle className="text-xl">
+                  <CardTitle className="text-xl group relative cursor-help">
                     {projectMultiplier > 0 ? projectMultiplier.toFixed(2) + 'x' : '—'}
+                    {projectMultiplier > 0 && (
+                      <div className="invisible group-hover:visible absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
+                        <div className="space-y-1 text-sm font-normal">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-gray-600">Total Revenue:</span>
+                            <span className="font-medium">{formatCurrency(totalRevenue)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-gray-600">Total Cost:</span>
+                            <span className="font-medium">{formatCurrency(totalCost)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4 pt-1 border-t">
+                            <span className="font-semibold">Multiplier:</span>
+                            <span className="font-semibold">{projectMultiplier.toFixed(2)}x</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardTitle>
                 </CardHeader>
               </Card>
+              <PerformanceMultiplierCard projectId={projectId} phases={phases || []} />
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
@@ -3922,10 +4249,30 @@ export default function ProjectDetailPage() {
                       <XAxis type="number" tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
                       <YAxis type="category" dataKey="name" width={60} interval={0} />
                       <Tooltip 
-                        formatter={(value) => formatCurrency(Number(value))}
-                        labelFormatter={(label) => {
-                          const phase = phaseChartData.find(p => p.name === label)
-                          return phase?.fullName || label
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload
+                            return (
+                              <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                                <p className="font-semibold mb-2">{data.fullName}</p>
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-gray-600">Billed:</span>
+                                    <span className="font-medium">{formatCurrency(data.billed)}</span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-gray-600">Contract:</span>
+                                    <span className="font-medium">{formatCurrency(data.contract)}</span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-gray-600">Remaining:</span>
+                                    <span className="font-medium">{formatCurrency(data.remaining)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          }
+                          return null
                         }}
                       />
                       <Bar dataKey="billed" stackId="progress" fill="#000000" name="Billed" radius={[0, 4, 4, 0]} />
@@ -3979,10 +4326,8 @@ export default function ProjectDetailPage() {
                         dataKey="hours"
                         nameKey="name"
                         cx="50%"
-                        cy="50%"
-                        outerRadius={100}
-                        label={({ name }) => `${name}`}
-                        labelLine={true}
+                        cy="40%"
+                        outerRadius={80}
                       >
                         {timeDistributionData.map((entry, index) => (
                           <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
@@ -3991,7 +4336,11 @@ export default function ProjectDetailPage() {
                       <Tooltip 
                         formatter={(value) => formatHours(Number(value))}
                       />
-                      <Legend />
+                      <Legend 
+                        verticalAlign="bottom"
+                        height={60}
+                        wrapperStyle={{ fontSize: '12px' }}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
@@ -4002,44 +4351,29 @@ export default function ProjectDetailPage() {
               </CardContent>
             </Card>
             </div>
+
+            {/* Performance Multiplier Over Time */}
+            <PerformanceHistoryChart projectId={projectId} />
           </div>
         </TabsContent>
 
         <TabsContent value="project-info" className="mt-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const allKeys = hasDynamicProjectInfoSchema
-                      ? dynamicProjectInfoSections.map(s => `schema-${s.id}`)
-                      : PROJECT_INFO_GROUPS.map(g => `legacy-${g.title}`)
-                    const newState: Record<string, boolean> = {}
-                    allKeys.forEach(key => { newState[key] = true })
-                    setExpandedProjectInfoSections(newState)
-                  }}
-                >
-                  Expand All
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const allKeys = hasDynamicProjectInfoSchema
-                      ? dynamicProjectInfoSections.map(s => `schema-${s.id}`)
-                      : PROJECT_INFO_GROUPS.map(g => `legacy-${g.title}`)
-                    const newState: Record<string, boolean> = {}
-                    allKeys.forEach(key => { newState[key] = false })
-                    setExpandedProjectInfoSections(newState)
-                  }}
-                >
-                  Collapse All
-                </Button>
-              </div>
+          <Tabs defaultValue={hasDynamicProjectInfoSchema ? `schema-${dynamicProjectInfoSections[0]?.id}` : 'legacy-General'} className="w-full">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <TabsList className="h-auto flex-wrap justify-start">
+                {hasDynamicProjectInfoSchema
+                  ? dynamicProjectInfoSections.map((section) => (
+                      <TabsTrigger key={`schema-tab-${section.id}`} value={`schema-${section.id}`}>
+                        {section.title}
+                      </TabsTrigger>
+                    ))
+                  : PROJECT_INFO_GROUPS.map((group) => (
+                      <TabsTrigger key={`legacy-tab-${group.title}`} value={`legacy-${group.title}`}>
+                        {group.title}
+                      </TabsTrigger>
+                    ))
+                }
+              </TabsList>
               <Button
                 onClick={() =>
                   hasDynamicProjectInfoSchema
@@ -4062,28 +4396,10 @@ export default function ProjectDetailPage() {
               </Button>
             </div>
             {hasDynamicProjectInfoSchema
-              ? dynamicProjectInfoSections.map((section) => {
-                  const sectionKey = `schema-${section.id}`
-                  const isExpanded = expandedProjectInfoSections[sectionKey] ?? true
-                  return (
-                    <Card key={`schema-section-${section.id}`}>
-                      <CardHeader className="pb-2">
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between text-left"
-                          onClick={() => toggleProjectInfoSection(sectionKey)}
-                          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
-                        >
-                          <CardTitle>{section.title}</CardTitle>
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </button>
-                      </CardHeader>
-                      {isExpanded ? (
-                        <CardContent className="p-4 pt-0">
+              ? dynamicProjectInfoSections.map((section) => (
+                    <TabsContent key={`schema-section-${section.id}`} value={`schema-${section.id}`} className="mt-0">
+                      <Card>
+                        <CardContent className="p-4">
                           <Table>
                             <TableHeader>
                               <TableRow>
@@ -4109,10 +4425,9 @@ export default function ProjectDetailPage() {
                             </TableBody>
                           </Table>
                         </CardContent>
-                      ) : null}
-                    </Card>
-                  )
-                })
+                      </Card>
+                    </TabsContent>
+                  ))
               : null}
             {hasDynamicProjectInfoSchema && dynamicProjectInfoSections.length === 0 ? (
               <Card>
@@ -4122,28 +4437,10 @@ export default function ProjectDetailPage() {
               </Card>
             ) : null}
             {!hasDynamicProjectInfoSchema
-              ? PROJECT_INFO_GROUPS.map((group) => {
-                  const sectionKey = `legacy-${group.title}`
-                  const isExpanded = expandedProjectInfoSections[sectionKey] ?? true
-                  return (
-                    <Card key={group.title}>
-                      <CardHeader className="pb-2">
-                        <button
-                          type="button"
-                          className="flex w-full items-center justify-between text-left"
-                          onClick={() => toggleProjectInfoSection(sectionKey)}
-                          aria-label={isExpanded ? 'Collapse section' : 'Expand section'}
-                        >
-                          <CardTitle>{group.title}</CardTitle>
-                          {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                          )}
-                        </button>
-                      </CardHeader>
-                      {isExpanded ? (
-                        <CardContent className="p-4 pt-0">
+              ? PROJECT_INFO_GROUPS.map((group) => (
+                    <TabsContent key={group.title} value={`legacy-${group.title}`} className="mt-0">
+                      <Card>
+                        <CardContent className="p-4">
                           <Table>
                             <TableBody>
                               {group.fields.map((field) => (
@@ -4155,25 +4452,31 @@ export default function ProjectDetailPage() {
                             </TableBody>
                           </Table>
                         </CardContent>
-                      ) : null}
-                    </Card>
-                  )
-                })
+                      </Card>
+                    </TabsContent>
+                  ))
               : null}
-          </div>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="agencies-permits" className="mt-4">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle>Agencies</CardTitle>
-                    <CardDescription>
-                      Agencies currently selected for this project.
-                    </CardDescription>
-                  </div>
+          <Tabs defaultValue="agencies" className="w-full">
+            <TabsList>
+              <TabsTrigger value="agencies">Agencies</TabsTrigger>
+              <TabsTrigger value="permit-selections">Permit Selections</TabsTrigger>
+              <TabsTrigger value="required-items">Required Items</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="agencies" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Agencies</CardTitle>
+                      <CardDescription>
+                        Agencies currently selected for this project.
+                      </CardDescription>
+                    </div>
                   <Button
                     type="button"
                     variant="outline"
@@ -4284,16 +4587,18 @@ export default function ProjectDetailPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            </TabsContent>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <CardTitle>Permits By Agency</CardTitle>
-                    <CardDescription>
-                      Permits currently selected for this project.
-                    </CardDescription>
-                  </div>
+            <TabsContent value="permit-selections" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Permits By Agency</CardTitle>
+                      <CardDescription>
+                        Permits currently selected for this project.
+                      </CardDescription>
+                    </div>
                   <Button
                     type="button"
                     variant="outline"
@@ -4459,14 +4764,16 @@ export default function ProjectDetailPage() {
                 )}
               </DialogContent>
             </Dialog>
+            </TabsContent>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Required Items</CardTitle>
-                <CardDescription>
-                  Checklist of deliverables across selected permits.
-                </CardDescription>
-              </CardHeader>
+            <TabsContent value="required-items" className="mt-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle>Required Items</CardTitle>
+                  <CardDescription>
+                    Checklist of deliverables across selected permits.
+                  </CardDescription>
+                </CardHeader>
               <CardContent className="p-4 pt-0">
                 <Table>
                   <TableHeader>
@@ -4511,20 +4818,32 @@ export default function ProjectDetailPage() {
                 </Table>
               </CardContent>
             </Card>
-          </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="applications" className="mt-4">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle>Applications To Generate</CardTitle>
-                <CardDescription>
-                  Generates downloadable application PDFs from mapped project data.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-4 pt-0">
-                <Table>
+          {applicationsByAgency.length > 0 ? (
+            <Tabs defaultValue={`agency-${applicationsByAgency[0].agency.id}`} className="w-full">
+              <TabsList className="mb-4">
+                {applicationsByAgency.map(({ agency }) => (
+                  <TabsTrigger key={`app-agency-${agency.id}`} value={`agency-${agency.id}`}>
+                    {agency.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {applicationsByAgency.map(({ agency, items }) => (
+                <TabsContent key={`app-content-${agency.id}`} value={`agency-${agency.id}`} className="mt-0">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle>{agency.name} Applications</CardTitle>
+                      <CardDescription>
+                        Generates downloadable application PDFs from mapped project data.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <Table>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Application Item</TableHead>
@@ -4534,69 +4853,80 @@ export default function ProjectDetailPage() {
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {selectedApplicationItems.map((item) => {
-                      const selection = permitSelectionsById.get(item.project_permit_selection_id)
-                      const permit = selection ? permitById.get(selection.permit_id) : null
-                      const requiredCatalog = item.required_item_catalog_id
-                        ? requiredCatalogById.get(item.required_item_catalog_id)
-                        : null
-                      const template = requiredCatalog?.application_template_id
-                        ? templateById.get(requiredCatalog.application_template_id)
-                        : null
-                      return (
-                        <TableRow key={item.id}>
-                          <TableCell>{item.name}</TableCell>
-                          <TableCell>{permit?.name || 'Unknown Permit'}</TableCell>
-                          <TableCell>
-                            {template ? (
-                              <div>
-                                <div className="font-medium">{template.name}</div>
-                                <div className="text-xs text-muted-foreground">{template.code}</div>
-                              </div>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">No template</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={item.status === 'generated' ? 'default' : 'secondary'}>
-                              {item.status.replace(/_/g, ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={generatingRequiredItemId === item.id || !template}
-                                onClick={() => void generateApplication(item.id)}
-                              >
-                                {generatingRequiredItemId === item.id ? 'Generating...' : 'Generate'}
-                              </Button>
-                              {item.output_file_url ? (
-                                <Button asChild size="sm">
-                                  <a href={item.output_file_url} target="_blank" rel="noreferrer">
-                                    Download
-                                  </a>
-                                </Button>
-                              ) : null}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                    {selectedApplicationItems.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
-                          No application-type required items are selected yet.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                        <TableBody>
+                          {items.map((item) => {
+                            const selection = permitSelectionsById.get(item.project_permit_selection_id)
+                            const permit = selection ? permitById.get(selection.permit_id) : null
+                            const requiredCatalog = item.required_item_catalog_id
+                              ? requiredCatalogById.get(item.required_item_catalog_id)
+                              : null
+                            const template = requiredCatalog?.application_template_id
+                              ? templateById.get(requiredCatalog.application_template_id)
+                              : null
+                            return (
+                              <TableRow key={item.id}>
+                                <TableCell>{item.name}</TableCell>
+                                <TableCell>{permit?.name || 'Unknown Permit'}</TableCell>
+                                <TableCell>
+                                  {template ? (
+                                    <div>
+                                      <div className="font-medium">{template.name}</div>
+                                      <div className="text-xs text-muted-foreground">{template.code}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">No template</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={item.status === 'generated' ? 'default' : 'secondary'}>
+                                    {item.status.replace(/_/g, ' ')}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={generatingRequiredItemId === item.id || !template}
+                                      onClick={() => void generateApplication(item.id)}
+                                    >
+                                      {generatingRequiredItemId === item.id ? 'Generating...' : 'Generate'}
+                                    </Button>
+                                    {item.output_file_url ? (
+                                      <Button asChild size="sm">
+                                        <a href={item.output_file_url} target="_blank" rel="noreferrer">
+                                          Download
+                                        </a>
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                          {items.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                No application-type required items for this agency.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))}
+            </Tabs>
+          ) : (
+            <Card>
+              <CardContent className="p-4 text-center text-muted-foreground">
+                No application-type required items are selected yet.
               </CardContent>
             </Card>
+          )}
 
+            {/* Hidden: Application Run History 
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle>Application Run History</CardTitle>
@@ -4652,8 +4982,7 @@ export default function ProjectDetailPage() {
                 </Table>
               </CardContent>
             </Card>
-
-          </div>
+            */}
         </TabsContent>
 
         {perms.canSeeProjectTab('phases') && (
@@ -4674,8 +5003,8 @@ export default function ProjectDetailPage() {
                       <TableHead className="text-right">Total Fee</TableHead>
                       <TableHead className="text-right">Invoiced</TableHead>
                       <TableHead className="text-right">Remaining</TableHead>
-                      <TableHead className="text-right">Total Labor</TableHead>
-                      <TableHead className="text-right">Total Labor Cost</TableHead>
+                      <TableHead className="text-right">Labor</TableHead>
+                      <TableHead className="text-right">Labor Cost</TableHead>
                       <TableHead className="text-right">Phase Multiplier</TableHead>
                     </TableRow>
                   </TableHeader>
