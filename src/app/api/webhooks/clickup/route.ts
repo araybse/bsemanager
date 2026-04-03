@@ -8,12 +8,15 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
+    // Log full payload for debugging
+    console.log('📋 ClickUp webhook received:', JSON.stringify(body, null, 2))
+    
     // ClickUp sends different event types
     const eventType = body.event
     const taskId = body.task_id
     const historyItems = body.history_items || []
     
-    console.log(`📋 ClickUp webhook: ${eventType} for task ${taskId}`)
+    console.log(`   Event: ${eventType}, Task: ${taskId}`)
     
     // Check if this is a task assignment to Austin (user ID: 96293060)
     const assignmentChange = historyItems.find((item: any) => 
