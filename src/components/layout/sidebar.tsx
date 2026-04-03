@@ -40,7 +40,7 @@ const navItems: NavItem[] = [
   { title: 'Projects', href: '/projects', icon: FolderKanban, pageKey: 'projects' },
   { title: 'Timesheet', href: '/timesheet', icon: Clock, pageKey: 'timesheet' },
   { title: 'Time Entries', href: '/time-entries', icon: Clock, pageKey: 'time-entries' },
-  { title: 'Billables Report', href: '/unbilled', icon: FileSpreadsheet, pageKey: 'billables-report' },
+  { title: 'Billables Report', href: '/billable', icon: FileSpreadsheet, pageKey: 'billables-report' },
   { title: 'Invoices', href: '/invoices', icon: Receipt, pageKey: 'invoices' },
   { title: 'Accounting', href: '/accounting', icon: Landmark, pageKey: 'accounting' },
   { title: 'Cash Flow', href: '/cash-flow', icon: TrendingUp, pageKey: 'cash-flow' },
@@ -91,16 +91,17 @@ export function Sidebar({ initialProfile }: SidebarProps) {
   return (
     <div className={cn(
       "flex h-screen flex-col border-r bg-card transition-all duration-300 ease-in-out",
-      isOpen ? "w-64" : "w-20"
+      isOpen ? "w-64" : "w-16"
     )}>
-      <div className="flex h-16 items-center justify-between border-b px-4">
+      <div className={cn(
+        "flex h-16 items-center border-b",
+        isOpen ? "justify-between px-4" : "justify-center"
+      )}>
         {isOpen && (
           <Link href="/dashboard" className="flex items-center gap-2">
-            <img src="/B_Black.png" alt="BSE" className="h-8 w-8" />
-            <span className="text-lg font-semibold">BSE</span>
+            <img src="/logos/iris-logo-simple.svg" alt="IRIS" className="h-10" />
           </Link>
         )}
-        {!isOpen && <div />}
         <button
           onClick={toggleSidebar}
           className="rounded-lg p-2 hover:bg-accent transition-colors"

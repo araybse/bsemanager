@@ -1,7 +1,7 @@
 'use client'
 import { usePermissionRedirect } from '@/lib/auth/use-permission-redirect'
 
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { endOfMonth, format, subMonths } from 'date-fns'
 import { createClient } from '@/lib/supabase/client'
@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
   TableBody,
@@ -54,6 +55,7 @@ export default function UnbilledReportPage() {
   const [selectedMonth, setSelectedMonth] = useState(() => format(subMonths(new Date(), 1), 'yyyy-MM'))
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({})
   const [collapsedPhases, setCollapsedPhases] = useState<Record<string, boolean>>({})
+  const [selectedProjectTab, setSelectedProjectTab] = useState<string>('')
 
   const monthOptions = useMemo(() => {
     const today = new Date()
@@ -80,13 +82,14 @@ export default function UnbilledReportPage() {
   }, [selectedMonth])
 
   const { data: unbilledData, isLoading, error } = useQuery({
-    queryKey: ['unbilled-report', selectedMonth],
+    queryKey: ['billable-report-v2', selectedMonth],
     queryFn: async () => {
       // Get unbilled time entries with rates
       const { data: timeEntries, error: timeError } = await supabase
         .from('time_entries')
         .select(`
           id,
+          employee_id,
           employee_name,
           entry_date,
           project_number,
@@ -337,7 +340,7 @@ export default function UnbilledReportPage() {
         })
       }
 
-      const excludedProjectSections = new Set(['paid', 'holiday', 'general', 'business'])
+      const excludedProjectSections = new Set(['paid', 'holiday', 'general', 'business', 'go', 'training'])
       const reportEntries = entriesWithRates.filter((entry) => {
         const projectKey = (entry.project_number || '').trim().toLowerCase()
         return projectKey.length > 0 && !excludedProjectSections.has(projectKey)
@@ -407,6 +410,18 @@ export default function UnbilledReportPage() {
       return { grouped, grandTotal }
     },
   })
+
+  const projectsArray = useMemo(() => 
+    Object.values(unbilledData?.grouped || {}),
+    [unbilledData]
+  )
+
+  // Auto-select first project when data loads
+  useEffect(() => {
+    if (projectsArray.length > 0 && !selectedProjectTab) {
+      setSelectedProjectTab(projectsArray[0].project_number)
+    }
+  }, [projectsArray, selectedProjectTab])
 
   const toggleProjectCollapsed = (projectNumber: string) => {
     setCollapsedProjects((prev) => ({
@@ -480,153 +495,118 @@ export default function UnbilledReportPage() {
           ))}
         </div>
       ) : (
-        <>
-          <div className="flex items-center justify-end gap-2">
-            <Button type="button" variant="outline" size="sm" onClick={() => setAllProjectsCollapsed(false)}>
-              Expand All
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => setAllProjectsCollapsed(true)}>
-              Collapse All
-            </Button>
-          </div>
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Project</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.values(unbilledData?.grouped || {}).map((project) => {
-                    const isCollapsed = collapsedProjects[project.project_number] ?? false
+        <Tabs value={selectedProjectTab} onValueChange={setSelectedProjectTab} className="w-full">
+        <TabsList className="w-full justify-start overflow-x-auto flex-nowrap h-auto p-1 bg-muted/50">
+          {projectsArray.map((project) => (
+            <TabsTrigger
+              key={project.project_number}
+              value={project.project_number}
+              className="whitespace-nowrap data-[state=active]:bg-background"
+            >
+              {project.project_number}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {projectsArray.map((project) => (
+          <TabsContent key={project.project_number} value={project.project_number} className="mt-4">
+            <Card>
+              <CardContent className="p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      {project.project_number} {project.project_name}
+                    </h3>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold font-mono">
+                      {formatCurrency(project.total)}
+                    </div>
+                    <div className="text-sm text-muted-foreground">Total Billable</div>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  {Object.values(project.phases).map((phase) => {
+                    const phaseCollapseKey = getPhaseCollapseKey(project.project_number, phase.phase_name)
+                    const isPhaseCollapsed = collapsedPhases[phaseCollapseKey] ?? false
 
                     return (
-                      <Fragment key={project.project_number}>
-                        <TableRow>
-                          <TableCell>
-                            <button
-                              type="button"
-                              className="flex items-center text-left font-medium"
-                              onClick={() => toggleProjectCollapsed(project.project_number)}
-                            >
-                              {isCollapsed ? (
-                                <ChevronRight className="mr-1 h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="mr-1 h-4 w-4" />
-                              )}
-                              {project.project_number} {project.project_name}
-                            </button>
-                          </TableCell>
-                          <TableCell className="text-right font-bold font-mono">
-                            {formatCurrency(project.total)}
-                          </TableCell>
-                        </TableRow>
-                        {isCollapsed ? null : (
-                          <TableRow>
-                            <TableCell colSpan={2} className="bg-muted/20">
-                              <div className="space-y-4 py-2 pl-6">
-                                {Object.values(project.phases).map((phase) => (
-                                  <div key={phase.phase_name} className="space-y-2">
-                                    {(() => {
-                                      const phaseCollapseKey = getPhaseCollapseKey(
-                                        project.project_number,
-                                        phase.phase_name
-                                      )
-                                      const isPhaseCollapsed = collapsedPhases[phaseCollapseKey] ?? false
+                      <div key={phase.phase_name} className="border rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <button
+                            type="button"
+                            className="flex items-center text-left font-medium"
+                            onClick={() => togglePhaseCollapsed(project.project_number, phase.phase_name)}
+                          >
+                            {isPhaseCollapsed ? (
+                              <ChevronRight className="mr-2 h-4 w-4" />
+                            ) : (
+                              <ChevronDown className="mr-2 h-4 w-4" />
+                            )}
+                            <span className="text-base">{phase.phase_name}</span>
+                          </button>
+                          <span className="font-semibold font-mono">{formatCurrency(phase.total)}</span>
+                        </div>
 
-                                      return (
-                                        <>
-                                          <div className="flex items-center justify-between border-b pb-1">
-                                            <button
-                                              type="button"
-                                              className="flex items-center text-left font-medium text-sm"
-                                              onClick={() =>
-                                                togglePhaseCollapsed(project.project_number, phase.phase_name)
-                                              }
-                                            >
-                                              {isPhaseCollapsed ? (
-                                                <ChevronRight className="mr-1 h-4 w-4" />
-                                              ) : (
-                                                <ChevronDown className="mr-1 h-4 w-4" />
-                                              )}
-                                              {phase.phase_name}
-                                            </button>
-                                            <span className="font-medium text-sm">{formatCurrency(phase.total)}</span>
-                                          </div>
-
-                                          {isPhaseCollapsed ? null : (
-                                            <div className="pl-6">
-                                              <Table className="w-full table-fixed">
-                                                <TableHeader>
-                                                  <TableRow>
-                                                    <TableHead className="w-[220px]">Employee</TableHead>
-                                                    <TableHead className="w-[120px]">Date</TableHead>
-                                                    <TableHead className="w-[100px] text-right">Hours</TableHead>
-                                                    <TableHead className="w-[120px] text-right">Rate</TableHead>
-                                                    <TableHead className="w-[120px] text-right">Amount</TableHead>
-                                                    <TableHead>Notes</TableHead>
-                                                  </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                  {Object.values(phase.employees).map((emp) => (
-                                                    <Fragment key={emp.employee_name}>
-                                                      {emp.entries.map((entry) => (
-                                                        <TableRow key={entry.id}>
-                                                          <TableCell className="w-[220px]">
-                                                            {entry.employee_name}
-                                                          </TableCell>
-                                                          <TableCell className="w-[120px]">
-                                                            {formatDate(entry.entry_date)}
-                                                          </TableCell>
-                                                          <TableCell className="w-[100px] text-right font-mono">
-                                                            {formatHours(entry.hours)}
-                                                          </TableCell>
-                                                          <TableCell className="w-[120px] text-right font-mono">
-                                                            {entry.is_rate_unresolved ? 'Unresolved' : formatCurrency(entry.hourly_rate)}
-                                                          </TableCell>
-                                                          <TableCell className="w-[120px] text-right font-mono">
-                                                            {formatCurrency(entry.amount)}
-                                                          </TableCell>
-                                                          <TableCell className="text-muted-foreground text-sm max-w-[300px] truncate">
-                                                            {entry.notes || '—'}
-                                                          </TableCell>
-                                                        </TableRow>
-                                                      ))}
-                                                      <TableRow className="bg-muted/50">
-                                                        <TableCell colSpan={4} className="text-right font-medium">
-                                                          Total {emp.employee_name}
-                                                        </TableCell>
-                                                        <TableCell className="text-right font-bold font-mono">
-                                                          {formatCurrency(emp.total)}
-                                                        </TableCell>
-                                                        <TableCell />
-                                                      </TableRow>
-                                                    </Fragment>
-                                                  ))}
-                                                </TableBody>
-                                              </Table>
-                                            </div>
-                                          )}
-                                        </>
-                                      )
-                                    })()}
-                                  </div>
+                        {!isPhaseCollapsed && (
+                          <div className="mt-4">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[220px]">Employee</TableHead>
+                                  <TableHead className="w-[120px]">Date</TableHead>
+                                  <TableHead className="w-[100px] text-right">Hours</TableHead>
+                                  <TableHead className="w-[120px] text-right">Rate</TableHead>
+                                  <TableHead className="w-[120px] text-right">Amount</TableHead>
+                                  <TableHead>Notes</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {Object.values(phase.employees).map((emp) => (
+                                  <Fragment key={emp.employee_name}>
+                                    {emp.entries.map((entry) => (
+                                      <TableRow key={entry.id}>
+                                        <TableCell className="w-[220px]">{entry.employee_name}</TableCell>
+                                        <TableCell className="w-[120px]">{formatDate(entry.entry_date)}</TableCell>
+                                        <TableCell className="w-[100px] text-right font-mono">
+                                          {formatHours(entry.hours)}
+                                        </TableCell>
+                                        <TableCell className="w-[120px] text-right font-mono">
+                                          {entry.is_rate_unresolved ? 'Unresolved' : formatCurrency(entry.hourly_rate)}
+                                        </TableCell>
+                                        <TableCell className="w-[120px] text-right font-mono">
+                                          {formatCurrency(entry.amount)}
+                                        </TableCell>
+                                        <TableCell className="text-muted-foreground text-sm max-w-[300px] truncate">
+                                          {entry.notes || '—'}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                    <TableRow className="bg-muted/50">
+                                      <TableCell colSpan={4} className="text-right font-medium">
+                                        Total {emp.employee_name}
+                                      </TableCell>
+                                      <TableCell className="text-right font-bold font-mono">
+                                        {formatCurrency(emp.total)}
+                                      </TableCell>
+                                      <TableCell />
+                                    </TableRow>
+                                  </Fragment>
                                 ))}
-                              </div>
-                            </TableCell>
-                          </TableRow>
+                              </TableBody>
+                            </Table>
+                          </div>
                         )}
-                      </Fragment>
+                      </div>
                     )
                   })}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </>
-      )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>)}
 
       {!isLoading && Object.keys(unbilledData?.grouped || {}).length === 0 && (
         <Card>

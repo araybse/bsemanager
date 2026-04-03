@@ -16,6 +16,10 @@ export async function GET(
     return NextResponse.json({ error: 'Invalid project ID' }, { status: 400 })
   }
 
+  // Get optional phase filter from query params
+  const { searchParams } = new URL(request.url)
+  const phaseFilter = searchParams.get('phase') || 'selected'
+
   const supabase = createAdminClient()
 
   // Type definitions
@@ -59,19 +63,32 @@ export async function GET(
     ((selections || []) as Selection[]).map(s => [s.phase_id, s.included])
   )
 
-  // Determine selected phases (default to C* if no selections)
-  const hasSelections = selections && selections.length > 0
-  const selectedPhaseIds = ((phases || []) as Phase[])
-    .filter(phase => {
-      if (hasSelections && selectionMap.has(phase.id)) {
-        return selectionMap.get(phase.id) === true
-      }
-      if (!hasSelections) {
-        return phase.phase_code?.toUpperCase().startsWith('C') ?? false
-      }
-      return false
-    })
-    .map(p => p.id)
+  // Determine selected phases based on filter parameter
+  let selectedPhaseIds: number[]
+  
+  if (phaseFilter === 'all') {
+    // Include all phases
+    selectedPhaseIds = ((phases || []) as Phase[]).map(p => p.id)
+  } else if (phaseFilter === 'selected') {
+    // Use saved selections (default to C* if no selections)
+    const hasSelections = selections && selections.length > 0
+    selectedPhaseIds = ((phases || []) as Phase[])
+      .filter(phase => {
+        if (hasSelections && selectionMap.has(phase.id)) {
+          return selectionMap.get(phase.id) === true
+        }
+        if (!hasSelections) {
+          return phase.phase_code?.toUpperCase().startsWith('C') ?? false
+        }
+        return false
+      })
+      .map(p => p.id)
+  } else {
+    // Filter by specific phase name
+    selectedPhaseIds = ((phases || []) as Phase[])
+      .filter(p => p.phase_name === phaseFilter)
+      .map(p => p.id)
+  }
 
   if (selectedPhaseIds.length === 0) {
     return NextResponse.json({ history: [] })

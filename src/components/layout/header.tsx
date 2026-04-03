@@ -7,7 +7,7 @@ const pageTitles: Record<string, string> = {
   '/projects': 'Projects',
   '/contracts': 'Active Contracts',
   '/invoices': 'Invoice Tracker',
-  '/unbilled': 'Billables Report',
+  '/billable': 'Billables Report',
   '/time-entries': 'Time Entries',
   '/reimbursables': 'Reimbursables',
   '/rates': 'Schedule of Rates',
@@ -27,7 +27,7 @@ export function Header() {
   // Get title from exact match or parent path
   const title = pageTitles[pathname] || 
     Object.entries(pageTitles).find(([path]) => pathname.startsWith(path + '/'))?.[1] ||
-    'BSE Management Portal'
+    'IRIS'
 
   return (
     <header className="flex h-16 items-center border-b bg-card px-6">

@@ -75,6 +75,7 @@ import {
   LabelList,
   LineChart,
   Line,
+  ComposedChart,
 } from 'recharts'
 
 type ProjectWithRelations = Tables<'projects'> & {
@@ -677,11 +678,14 @@ function PerformanceMultiplierCard({ projectId, phases }: { projectId: number; p
 }
 
 // Performance History Chart Component
-function PerformanceHistoryChart({ projectId }: { projectId: number }) {
+function PerformanceHistoryChartContent({ projectId, phaseFilter }: { projectId: number; phaseFilter?: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: ['performance-history', projectId],
+    queryKey: ['performance-history', projectId, phaseFilter],
     queryFn: async () => {
-      const res = await fetch(`/api/projects/${projectId}/performance-history`)
+      const url = phaseFilter && phaseFilter !== 'all'
+        ? `/api/projects/${projectId}/performance-history?phase=${encodeURIComponent(phaseFilter)}`
+        : `/api/projects/${projectId}/performance-history?phase=all`
+      const res = await fetch(url)
       if (!res.ok) throw new Error('Failed to fetch performance history')
       return res.json() as Promise<{
         history: Array<{
@@ -696,44 +700,19 @@ function PerformanceHistoryChart({ projectId }: { projectId: number }) {
   })
 
   if (isLoading) {
-    return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-base">Performance Multiplier Over Time</CardTitle>
-          <CardDescription>Cumulative performance from project start</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[300px] w-full" />
-        </CardContent>
-      </Card>
-    )
+    return <Skeleton className="h-[300px] w-full" />
   }
 
   if (!data?.history || data.history.length === 0) {
     return (
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="text-base">Performance Multiplier Over Time</CardTitle>
-          <CardDescription>Cumulative performance from project start</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            No performance history available
-          </div>
-        </CardContent>
-      </Card>
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No performance history available
+      </div>
     )
   }
 
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle className="text-base">Performance Multiplier Over Time</CardTitle>
-        <CardDescription>
-          Cumulative performance from project start ({data.history.length} months)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="h-[300px]">
+    <div className="h-[300px]">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data.history} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -784,8 +763,7 @@ function PerformanceHistoryChart({ projectId }: { projectId: number }) {
             />
           </LineChart>
         </ResponsiveContainer>
-      </CardContent>
-    </Card>
+    </div>
   )
 }
 
@@ -1021,13 +999,163 @@ export default function ProjectDetailPage() {
   const { data: projectManagers } = useQuery({
     queryKey: ['project-managers'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error} = await supabase
         .from('profiles')
         .select('id, full_name, role')
         .in('role', ['employee', 'project_manager', 'admin'])
         .order('full_name')
       if (error) throw error
       return data as { id: string; full_name: string }[]
+    },
+  })
+
+  const [selectedPhaseFilter, setSelectedPhaseFilter] = useState<string>('all')
+
+  const { data: performanceOverTime, isLoading: loadingPerformanceOverTime } = useQuery({
+    queryKey: ['project-performance-over-time', projectId, selectedPhaseFilter],
+    queryFn: async () => {
+      if (!projectId) return []
+      
+      const currentDate = new Date()
+      const firstMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 12, 1)
+      const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
+      const lastDay = new Date(nextMonth.getTime() - 86400000)
+      
+      const sinceDate = firstMonth.toISOString().slice(0, 10)
+      const endDate = lastDay.toISOString().slice(0, 10)
+      
+      // Get project number first
+      const { data: projectData } = await supabase
+        .from('projects')
+        .select('project_number')
+        .eq('id', projectId)
+        .single()
+      
+      if (!projectData?.project_number) return []
+      
+      // Get invoices for this project (excluding reimbursables and adjustments)
+      if (selectedPhaseFilter === 'all') {
+        // Get all invoice line items (not full invoices) to exclude reimbursables
+        var { data: lineItems } = await supabase
+          .from('invoice_line_items')
+          .select('invoice_date, amount, line_type')
+          .eq('project_number', projectData.project_number)
+          .gte('invoice_date', sinceDate)
+          .lte('invoice_date', endDate)
+        
+        // Group by date, excluding reimbursables and adjustments
+        const invoiceMap = new Map<string, number>()
+        ;(lineItems || []).forEach(line => {
+          if (!line.invoice_date) return
+          const lineType = (line.line_type || '').trim().toLowerCase()
+          if (lineType === 'reimbursable' || lineType === 'adjustment') return
+          invoiceMap.set(line.invoice_date, (invoiceMap.get(line.invoice_date) || 0) + (line.amount || 0))
+        })
+        
+        var invoices = Array.from(invoiceMap.entries()).map(([date, amount]) => ({
+          date_issued: date,
+          amount
+        }))
+      } else {
+        // Get invoice line items filtered by phase (excluding reimbursables)
+        var { data: lineItems } = await supabase
+          .from('invoice_line_items')
+          .select('invoice_date, amount, phase_name, line_type')
+          .eq('project_number', projectData.project_number)
+          .eq('phase_name', selectedPhaseFilter)
+          .gte('invoice_date', sinceDate)
+          .lte('invoice_date', endDate)
+        
+        // Group line items by invoice date and sum amounts (exclude reimbursables and adjustments)
+        const invoiceMap = new Map<string, number>()
+        ;(lineItems || []).forEach(line => {
+          if (!line.invoice_date) return
+          const lineType = (line.line_type || '').trim().toLowerCase()
+          if (lineType === 'reimbursable' || lineType === 'adjustment') return
+          const dateKey = line.invoice_date
+          invoiceMap.set(dateKey, (invoiceMap.get(dateKey) || 0) + (line.amount || 0))
+        })
+        
+        // Convert to invoice format
+        var invoices = Array.from(invoiceMap.entries()).map(([date, amount]) => ({
+          date_issued: date,
+          amount
+        }))
+      }
+      
+      const filteredInvoices = invoices
+      
+      // Get time entries for this project
+      let timeQuery = supabase
+        .from('time_entries')
+        .select('id, entry_date, hours, employee_id, phase_name')
+        .eq('project_id', projectId)
+        .gte('entry_date', sinceDate)
+        .lte('entry_date', endDate)
+      
+      if (selectedPhaseFilter !== 'all') {
+        timeQuery = timeQuery.eq('phase_name', selectedPhaseFilter)
+      }
+      
+      const { data: timeEntries } = await timeQuery
+      
+      if (!timeEntries) return []
+      
+      // Get bill rates for these entries
+      const entryIds = timeEntries.map(e => e.id)
+      const { data: rates } = entryIds.length > 0
+        ? await supabase
+            .from('time_entry_bill_rates')
+            .select('time_entry_id, resolved_hourly_rate')
+            .in('time_entry_id', entryIds)
+        : { data: [] }
+      
+      const rateMap = new Map()
+      ;(rates || []).forEach(r => {
+        rateMap.set(r.time_entry_id, r.resolved_hourly_rate || 0)
+      })
+      
+      // Create month buckets
+      const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      const months: string[] = []
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + i, 1)
+        months.push(monthKey(d))
+      }
+      
+      const invoiceBuckets = new Map<string, number>()
+      const billableBuckets = new Map<string, number>()
+      
+      // Bucket invoices by month (shift back 1 month to match work period)
+      ;(filteredInvoices || []).forEach(inv => {
+        if (!inv.date_issued) return
+        // Invoice date represents prior month's work
+        const issuedDate = new Date(inv.date_issued + 'T00:00:00')
+        const serviceMonth = new Date(issuedDate.getFullYear(), issuedDate.getMonth() - 1, 1)
+        const month = `${serviceMonth.getFullYear()}-${String(serviceMonth.getMonth() + 1).padStart(2, '0')}`
+        invoiceBuckets.set(month, (invoiceBuckets.get(month) || 0) + (inv.amount || 0))
+      })
+      
+      // Bucket billable amounts by month
+      timeEntries.forEach(entry => {
+        const rate = rateMap.get(entry.id) || 0
+        const amount = (entry.hours || 0) * rate
+        const month = (entry.entry_date || '').slice(0, 7)
+        if (month) {
+          billableBuckets.set(month, (billableBuckets.get(month) || 0) + amount)
+        }
+      })
+      
+      return months.map(month => {
+        const [year, monthNum] = month.split('-')
+        const date = new Date(parseInt(year), parseInt(monthNum) - 1, 1)
+        return {
+          month,
+          monthLabel: formatMonthLabel(date, 'MMM yy'),
+          invoiceAmount: invoiceBuckets.get(month) || 0,
+          billableAmount: billableBuckets.get(month) || 0,
+        }
+      })
     },
   })
 
@@ -4352,8 +4480,71 @@ export default function ProjectDetailPage() {
             </Card>
             </div>
 
-            {/* Performance Multiplier Over Time */}
-            <PerformanceHistoryChart projectId={projectId} />
+            {/* Project Performance Charts */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Project Performance Over Time</CardTitle>
+                    <CardDescription>Monthly performance and cumulative multiplier by phase</CardDescription>
+                  </div>
+                  <Select value={selectedPhaseFilter} onValueChange={setSelectedPhaseFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filter by phase" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Phases</SelectItem>
+                      {(phases || []).map((phase) => (
+                        <SelectItem key={phase.phase_code} value={phase.phase_name}>
+                          {phase.phase_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Monthly Performance Chart */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4">Monthly Invoiced Revenue & Billable Amounts</h3>
+                  {loadingPerformanceOverTime ? (
+                    <Skeleton className="h-[300px] w-full" />
+                  ) : (performanceOverTime && performanceOverTime.length > 0) ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <ComposedChart data={performanceOverTime} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="monthLabel" />
+                        <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                        <Tooltip
+                          formatter={(value: number) => formatCurrency(value)}
+                          labelFormatter={(label) => `Month: ${label}`}
+                        />
+                        <Legend />
+                        <Bar dataKey="invoiceAmount" fill="#000000" name="Invoiced" />
+                        <Line
+                          type="monotone"
+                          dataKey="billableAmount"
+                          stroke="#3b82f6"
+                          strokeWidth={2}
+                          name="Billable"
+                          dot={{ r: 4 }}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-8">
+                      No performance data available for the last 12 months
+                    </div>
+                  )}
+                </div>
+
+                {/* Performance Multiplier Chart */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4">Cumulative Performance Multiplier</h3>
+                  <PerformanceHistoryChartContent projectId={projectId} phaseFilter={selectedPhaseFilter} />
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 

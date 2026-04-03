@@ -1,15 +1,29 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { usePermissions } from '@/lib/auth/use-permissions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatCurrency } from '@/lib/utils/format'
+import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import { FileText, ArrowRight, DollarSign, Clock, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import type { Views } from '@/lib/types/database'
@@ -44,6 +58,117 @@ function formatMonthLabel(monthKey: string): string {
 export default function DashboardPage() {
   const supabase = createClient()
   const perms = usePermissions()
+  const [selectedPM, setSelectedPM] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<{
+    month: string
+    monthLabel: string
+    invoiceAmount: number
+    billableAmount: number
+  } | null>(null)
+
+  // Query for month breakdown details
+  const { data: monthBreakdown, isLoading: loadingBreakdown } = useQuery({
+    queryKey: ['month-breakdown', selectedMonth?.month, selectedPM],
+    queryFn: async () => {
+      if (!selectedMonth?.month) return null
+      
+      const [year, month] = selectedMonth.month.split('-')
+      const monthStart = `${year}-${month}-01`
+      const monthEnd = new Date(parseInt(year), parseInt(month), 0).toISOString().slice(0, 10)
+      
+      // For invoices, we need to get invoices issued in the NEXT month (which represent this month's work)
+      const invoiceMonthDate = new Date(parseInt(year), parseInt(month), 1) // Next month
+      const invoiceMonthStart = invoiceMonthDate.toISOString().slice(0, 10)
+      const invoiceMonthEnd = new Date(parseInt(year), parseInt(month) + 1, 0).toISOString().slice(0, 10)
+      
+      // Get PM-filtered projects if needed
+      let pmProjectIds: number[] | null = null
+      if (selectedPM !== 'all') {
+        const { data: pmProjects } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('pm_id', selectedPM)
+        pmProjectIds = (pmProjects || []).map(p => p.id)
+      }
+      
+      // Get invoices issued in the NEXT month (representing work from selected month)
+      let invoiceQuery = supabase
+        .from('invoices')
+        .select('project_id, project_number, project_name, amount, date_issued')
+        .gte('date_issued', invoiceMonthStart)
+        .lte('date_issued', invoiceMonthEnd)
+      
+      if (pmProjectIds !== null) {
+        invoiceQuery = invoiceQuery.in('project_id', pmProjectIds)
+      }
+      
+      const { data: invoices } = await invoiceQuery
+      
+      // Get time entries for this month
+      let timeQuery = supabase
+        .from('time_entries')
+        .select('id, project_id, project_number, hours')
+        .gte('entry_date', monthStart)
+        .lte('entry_date', monthEnd)
+      
+      if (pmProjectIds !== null) {
+        timeQuery = timeQuery.in('project_id', pmProjectIds)
+      }
+      
+      const { data: timeEntries } = await timeQuery
+      
+      // Get bill rates
+      const entryIds = (timeEntries || []).map((e: any) => e.id)
+      const { data: rates } = entryIds.length > 0
+        ? await supabase
+            .from('time_entry_bill_rates')
+            .select('time_entry_id, resolved_hourly_rate')
+            .in('time_entry_id', entryIds)
+        : { data: [] }
+      
+      const rateMap = new Map()
+      ;(rates || []).forEach((r: any) => {
+        rateMap.set(r.time_entry_id, r.resolved_hourly_rate || 0)
+      })
+      
+      // Group by project
+      const projectMap = new Map<string, { invoiced: number; billable: number; projectName: string }>()
+      
+      // Add invoices (already filtered to the correct month)
+      ;(invoices || []).forEach((inv: any) => {
+        const key = inv.project_number || 'Unknown'
+        const current = projectMap.get(key) || { invoiced: 0, billable: 0, projectName: inv.project_name || key }
+        current.invoiced += inv.amount || 0
+        projectMap.set(key, current)
+      })
+      
+      // Add time entries
+      ;(timeEntries || []).forEach((entry: any) => {
+        const key = entry.project_number || 'Unknown'
+        const current = projectMap.get(key) || { invoiced: 0, billable: 0, projectName: key }
+        const rate = rateMap.get(entry.id) || 0
+        current.billable += (entry.hours || 0) * rate
+        projectMap.set(key, current)
+      })
+      
+      // Filter out excluded sections
+      const excludedProjectSections = new Set(['paid', 'holiday', 'general', 'business', 'go', 'training'])
+      
+      return Array.from(projectMap.entries())
+        .map(([projectNumber, data]) => ({
+          projectNumber,
+          projectName: data.projectName,
+          invoiced: data.invoiced,
+          billable: data.billable,
+        }))
+        .filter(p => {
+          const key = p.projectNumber.toLowerCase().trim()
+          return key.length > 0 && !excludedProjectSections.has(key)
+        })
+        .sort((a, b) => (b.invoiced + b.billable) - (a.invoiced + a.billable))
+    },
+    enabled: !!selectedMonth,
+  })
 
   // Get current user and role
   const { data: currentUser, isLoading: loadingUser } = useQuery({
@@ -99,20 +224,45 @@ export default function DashboardPage() {
     },
   })
 
+  // Get list of project managers
+  const { data: projectManagers } = useQuery({
+    queryKey: ['project-managers-list'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name')
+        .in('role', ['project_manager', 'admin'])
+        .order('full_name')
+      if (error) throw error
+      return data as Array<{ id: string; full_name: string }>
+    },
+  })
+
   const { data: invoiceTrend, isLoading: loadingInvoiceTrend } = useQuery({
-    queryKey: ['dashboard-invoice-trend'],
+    queryKey: ['dashboard-invoice-trend', selectedPM],
     queryFn: async () => {
       const currentMonthStart = new Date()
       currentMonthStart.setDate(1)
       const nextMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1)
       const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
       const sinceDate = firstMonth.toISOString().slice(0, 10)
-      const nextMonthStartDate = nextMonthStart.toISOString().slice(0, 10)
+      const lastDayOfCurrentMonth = new Date(nextMonthStart.getTime() - 86400000)
+      const endDate = lastDayOfCurrentMonth.toISOString().slice(0, 10)
       const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
       const months = Array.from({ length: 12 }, (_, index) => {
         const monthDate = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1)
         return monthKey(monthDate)
       })
+
+      // Get PM-filtered projects if needed
+      let pmProjectIds: number[] | null = null
+      if (selectedPM !== 'all') {
+        const { data: pmProjects } = await supabase
+          .from('projects')
+          .select('id')
+          .eq('pm_id', selectedPM)
+        pmProjectIds = (pmProjects || []).map(p => p.id)
+      }
 
       const invoiceRows: Array<{ date_issued: string; amount: number | null }> = []
       const timeRows: Array<{
@@ -128,13 +278,19 @@ export default function DashboardPage() {
 
       let from = 0
       while (true) {
-        const { data, error } = await supabase
+        let query = supabase
           .from('invoices')
           .select('date_issued, amount')
           .gte('date_issued' as never, sinceDate as never)
-          .lt('date_issued' as never, nextMonthStartDate as never)
+          .lte('date_issued' as never, endDate as never)
           .order('date_issued', { ascending: true })
           .range(from, from + pageSize - 1)
+        
+        if (pmProjectIds !== null) {
+          query = query.in('project_id' as never, pmProjectIds as never)
+        }
+        
+        const { data, error } = await query
         if (error) throw error
         const batch = ((data || []) as Array<{ date_issued: string; amount: number | null }>)
         invoiceRows.push(...batch)
@@ -144,13 +300,19 @@ export default function DashboardPage() {
 
       from = 0
       while (true) {
-        const { data, error} = await supabase
+        let query = supabase
           .from('time_entries')
           .select('id, employee_id, employee_name, entry_date, project_number, project_id, hours')
           .gte('entry_date' as never, sinceDate as never)
-          .lt('entry_date' as never, nextMonthStartDate as never)
+          .lte('entry_date' as never, endDate as never)
           .order('entry_date', { ascending: true })
           .range(from, from + pageSize - 1)
+        
+        if (pmProjectIds !== null) {
+          query = query.in('project_id' as never, pmProjectIds as never)
+        }
+        
+        const { data, error} = await query
         if (error) throw error
         const batch = ((data || []) as Array<{
           id: number
@@ -349,7 +511,7 @@ export default function DashboardPage() {
         timelineByEmployeeId.set(row.employee_id, current)
       })
 
-      const excludedProjectSections = new Set(['paid', 'holiday', 'general', 'business'])
+      const excludedProjectSections = new Set(['paid', 'holiday', 'general', 'business', 'go', 'training'])
       const invoiceBuckets = new Map<string, number>()
       const billableBuckets = new Map<string, number>()
 
@@ -669,7 +831,7 @@ export default function DashboardPage() {
               .from('time_entries')
               .select('project_id, entry_date, hours')
               .gte('entry_date' as never, sinceDate as never)
-              .lt('entry_date' as never, nextMonthStartDate as never)
+              .lte('entry_date' as never, endDate as never)
               .in('project_id' as never, projectIds as never)
               .range(from, from + pageSize - 1)
             if (error) throw error
@@ -772,8 +934,25 @@ export default function DashboardPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Revenue Trend</CardTitle>
-            <CardDescription>Invoices vs billables by month (last 12 months). Invoice month represents prior month work.</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Revenue Trend</CardTitle>
+                <CardDescription>Invoices vs billables by month (last 12 months). Invoice month represents prior month work.</CardDescription>
+              </div>
+              <Select value={selectedPM} onValueChange={setSelectedPM}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue placeholder="Filter by PM" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {(projectManagers || []).map((pm) => (
+                    <SelectItem key={pm.id} value={pm.id}>
+                      {pm.full_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent className="h-[280px]">
             {loadingInvoiceTrend ? (
@@ -784,18 +963,33 @@ export default function DashboardPage() {
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={invoiceTrend || []}>
+                <ComposedChart 
+                  data={invoiceTrend || []}
+                  style={{ cursor: 'pointer' }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="monthLabel" />
                   <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
-                  <Bar dataKey="invoiceAmount" fill="#111827" radius={[4, 4, 0, 0]} name="Invoiced" />
+                  <Bar 
+                    dataKey="invoiceAmount" 
+                    fill="#111827" 
+                    radius={[4, 4, 0, 0]} 
+                    name="Invoiced"
+                    onClick={(data) => setSelectedMonth(data)}
+                    style={{ cursor: 'pointer' }}
+                  />
                   <Line
                     type="monotone"
                     dataKey="billableAmount"
                     stroke="#2563EB"
                     strokeWidth={2}
-                    dot={{ r: 2 }}
+                    dot={{ r: 4, cursor: 'pointer' }}
+                    activeDot={{ 
+                      r: 6, 
+                      cursor: 'pointer',
+                      onClick: (e: any, payload: any) => setSelectedMonth(payload.payload)
+                    }}
                     name="Billable"
                   />
                 </ComposedChart>
@@ -970,6 +1164,107 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Month Detail Modal */}
+      <Dialog open={!!selectedMonth} onOpenChange={(open) => !open && setSelectedMonth(null)}>
+        <DialogContent className="!max-w-none" style={{ width: '900px' }}>
+          <DialogHeader>
+            <DialogTitle>Revenue Breakdown - {selectedMonth?.monthLabel}</DialogTitle>
+            <DialogDescription>
+              Detailed breakdown of invoiced revenue and billable amounts for this month
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Invoiced Revenue</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {formatCurrency(selectedMonth?.invoiceAmount || 0)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Total amount invoiced for work performed in {selectedMonth?.monthLabel}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Billable Amount</CardDescription>
+                  <CardTitle className="text-2xl">
+                    {formatCurrency(selectedMonth?.billableAmount || 0)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Total billable time entries for {selectedMonth?.monthLabel}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+            <div className="border-t pt-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Billing Coverage</span>
+                <span className="text-sm">
+                  {selectedMonth?.billableAmount ? 
+                    formatPercent((selectedMonth.invoiceAmount / selectedMonth.billableAmount)) : 
+                    '—'}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Percentage of billable work that has been invoiced
+              </p>
+            </div>
+            
+            {/* Project Breakdown Table */}
+            <div className="border-t pt-4">
+              <h3 className="text-sm font-semibold mb-3">Breakdown by Project</h3>
+              {loadingBreakdown ? (
+                <Skeleton className="h-[200px] w-full" />
+              ) : monthBreakdown && monthBreakdown.length > 0 ? (
+                <div className="max-h-[400px] overflow-auto border rounded-lg">
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project</TableHead>
+                        <TableHead className="text-right">Invoiced</TableHead>
+                        <TableHead className="text-right">Billable</TableHead>
+                        <TableHead className="text-right">Coverage</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {monthBreakdown.map((project) => (
+                        <TableRow key={project.projectNumber}>
+                          <TableCell>
+                            <div className="font-medium">{project.projectNumber}</div>
+                            <div className="text-xs text-muted-foreground">{project.projectName}</div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(project.invoiced)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(project.billable)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {project.billable > 0 ? 
+                              formatPercent(project.invoiced / project.billable) : 
+                              '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground text-center py-4">
+                  No project data available
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

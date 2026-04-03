@@ -8,8 +8,8 @@ import { Toaster } from '@/components/ui/sonner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'BSE Management Portal',
-  description: 'Project management and billing portal for Blackstone Engineering',
+  title: 'IRIS',
+  description: 'Integrated Resource Intelligence System - Project management and billing portal for Blackstone Engineering',
 }
 
 export default function RootLayout({
