@@ -1,0 +1,46 @@
+<svg width="300" height="80" viewBox="0 0 300 80" xmlns="http://www.w3.org/2000/svg">
+  <!-- Icon (same as before) -->
+  <g transform="translate(10, 10)">
+    <!-- Outer circle -->
+    <circle cx="30" cy="30" r="28" fill="none" stroke="#1e40af" stroke-width="2"/>
+    
+    <!-- Inner geometric pattern -->
+    <circle cx="30" cy="30" r="4" fill="#1e40af"/>
+    
+    <!-- Radial lines -->
+    <line x1="30" y1="30" x2="30" y2="6" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="51" y2="15" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="54" y2="30" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="51" y2="45" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="30" y2="54" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="9" y2="45" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="6" y2="30" stroke="#1e40af" stroke-width="1.5"/>
+    <line x1="30" y1="30" x2="9" y2="15" stroke="#1e40af" stroke-width="1.5"/>
+    
+    <!-- Outer dots -->
+    <circle cx="30" cy="6" r="2.5" fill="#1e40af"/>
+    <circle cx="51" cy="15" r="2.5" fill="#1e40af"/>
+    <circle cx="54" cy="30" r="2.5" fill="#1e40af"/>
+    <circle cx="51" cy="45" r="2.5" fill="#1e40af"/>
+    <circle cx="30" cy="54" r="2.5" fill="#1e40af"/>
+    <circle cx="9" cy="45" r="2.5" fill="#1e40af"/>
+    <circle cx="6" cy="30" r="2.5" fill="#1e40af"/>
+    <circle cx="9" cy="15" r="2.5" fill="#1e40af"/>
+  </g>
+  
+  <!-- IRIS letters - spaced across the width -->
+  <!-- I -->
+  <text x="75" y="48" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#1e40af">I</text>
+  
+  <!-- R -->
+  <text x="125" y="48" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#1e40af">R</text>
+  
+  <!-- I -->
+  <text x="175" y="48" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#1e40af">I</text>
+  
+  <!-- S -->
+  <text x="225" y="48" font-family="Inter, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#1e40af">S</text>
+  
+  <!-- Tagline (smaller, below) -->
+  <text x="75" y="65" font-family="Inter, -apple-system, sans-serif" font-size="9" font-weight="400" fill="#64748b" letter-spacing="0.5">Integrated Resource Intelligence System</text>
+</svg>
