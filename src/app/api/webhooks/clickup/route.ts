@@ -37,13 +37,13 @@ export async function POST(request: NextRequest) {
       console.log(`   Task event: ${eventType}`)
     }
     
-    // Return 200 OK (ClickUp expects fast response)
-    return new NextResponse(null, { status: 200 })
+    // Return 200 OK with JSON body (ClickUp expects fast response)
+    return NextResponse.json({ status: 'ok', received: true }, { status: 200 })
     
   } catch (error) {
     console.error('ClickUp webhook error:', error)
     // Still return 200 to avoid webhook retries
-    return new NextResponse(null, { status: 200 })
+    return NextResponse.json({ status: 'error', message: 'Internal error' }, { status: 200 })
   }
 }
 
