@@ -3,10 +3,6 @@
     {
       "path": "/api/cron/data-quality-run",
       "schedule": "0 12 * * *"
-    },
-    {
-      "path": "/api/cron/qb-sync",
-      "schedule": "*/15 * * * *"
     }
   ]
 }
