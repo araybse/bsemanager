@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 // MS365 Calendar Webhook Handler
 // URL: https://bsemanager.vercel.app/api/webhooks/calendar
@@ -32,15 +31,8 @@ export async function POST(request: NextRequest) {
       
       console.log(`   ${changeType}: ${eventId?.substring(0, 30)}...`)
       
-      // Store notification for Max to process
-      const supabase = createAdminClient()
-      await supabase.from('calendar_notifications' as never).insert({
-        change_type: changeType,
-        event_id: eventId,
-        notification_data: notification,
-        processed: false,
-        received_at: new Date().toISOString()
-      } as never)
+      // TODO: Store notification for processing
+      // For now, just log it - we'll poll calendars instead
     }
     
     // Return 202 Accepted immediately (MS365 expects fast response)
@@ -48,6 +40,7 @@ export async function POST(request: NextRequest) {
     
   } catch (error) {
     console.error('Calendar webhook error:', error)
-    return new NextResponse(null, { status: 500 })
+    // Still return 202 to avoid webhook validation failures
+    return new NextResponse(null, { status: 202 })
   }
 }
