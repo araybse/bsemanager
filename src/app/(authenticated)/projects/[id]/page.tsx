@@ -1031,7 +1031,8 @@ export default function ProjectDetailPage() {
         .eq('id', projectId)
         .single()
       
-      if (!projectData?.project_number) return []
+      const typedProjectData = projectData as { project_number?: string } | null
+      if (!typedProjectData?.project_number) return []
       
       // Get invoices for this project (excluding reimbursables and adjustments)
       if (selectedPhaseFilter === 'all') {
@@ -1039,20 +1040,20 @@ export default function ProjectDetailPage() {
         var { data: lineItems } = await supabase
           .from('invoice_line_items')
           .select('invoice_date, amount, line_type')
-          .eq('project_number', projectData.project_number)
+          .eq('project_number', typedProjectData.project_number)
           .gte('invoice_date', sinceDate)
           .lte('invoice_date', endDate)
         
         // Group by date, excluding reimbursables and adjustments
         const invoiceMap = new Map<string, number>()
-        ;(lineItems || []).forEach(line => {
+        ;(lineItems as { invoice_date?: string; amount?: number; line_type?: string }[] || []).forEach(line => {
           if (!line.invoice_date) return
           const lineType = (line.line_type || '').trim().toLowerCase()
           if (lineType === 'reimbursable' || lineType === 'adjustment') return
           invoiceMap.set(line.invoice_date, (invoiceMap.get(line.invoice_date) || 0) + (line.amount || 0))
         })
         
-        var invoices = Array.from(invoiceMap.entries()).map(([date, amount]) => ({
+        var invoices: { date_issued: string; amount: number }[] = Array.from(invoiceMap.entries()).map(([date, amount]) => ({
           date_issued: date,
           amount
         }))
@@ -1061,14 +1062,14 @@ export default function ProjectDetailPage() {
         var { data: lineItems } = await supabase
           .from('invoice_line_items')
           .select('invoice_date, amount, phase_name, line_type')
-          .eq('project_number', projectData.project_number)
+          .eq('project_number', typedProjectData.project_number)
           .eq('phase_name', selectedPhaseFilter)
           .gte('invoice_date', sinceDate)
           .lte('invoice_date', endDate)
         
         // Group line items by invoice date and sum amounts (exclude reimbursables and adjustments)
         const invoiceMap = new Map<string, number>()
-        ;(lineItems || []).forEach(line => {
+        ;(lineItems as { invoice_date?: string; amount?: number; line_type?: string; phase_name?: string }[] || []).forEach(line => {
           if (!line.invoice_date) return
           const lineType = (line.line_type || '').trim().toLowerCase()
           if (lineType === 'reimbursable' || lineType === 'adjustment') return
@@ -1077,7 +1078,7 @@ export default function ProjectDetailPage() {
         })
         
         // Convert to invoice format
-        var invoices = Array.from(invoiceMap.entries()).map(([date, amount]) => ({
+        var invoices: { date_issued: string; amount: number }[] = Array.from(invoiceMap.entries()).map(([date, amount]) => ({
           date_issued: date,
           amount
         }))
@@ -1102,7 +1103,7 @@ export default function ProjectDetailPage() {
       if (!timeEntries) return []
       
       // Get bill rates for these entries
-      const entryIds = timeEntries.map(e => e.id)
+      const entryIds = (timeEntries as { id: number }[]).map(e => e.id)
       const { data: rates } = entryIds.length > 0
         ? await supabase
             .from('time_entry_bill_rates')
@@ -1111,7 +1112,8 @@ export default function ProjectDetailPage() {
         : { data: [] }
       
       const rateMap = new Map()
-      ;(rates || []).forEach(r => {
+      const ratesToMap = (rates as { time_entry_id: number; resolved_hourly_rate?: number }[] || [])
+      ratesToMap.forEach(r => {
         rateMap.set(r.time_entry_id, r.resolved_hourly_rate || 0)
       })
       
@@ -1127,17 +1129,17 @@ export default function ProjectDetailPage() {
       const billableBuckets = new Map<string, number>()
       
       // Bucket invoices by month (shift back 1 month to match work period)
-      ;(filteredInvoices || []).forEach(inv => {
-        if (!inv.date_issued) return
+      for (const inv of (filteredInvoices || [])) {
+        if (!inv.date_issued) continue
         // Invoice date represents prior month's work
         const issuedDate = new Date(inv.date_issued + 'T00:00:00')
         const serviceMonth = new Date(issuedDate.getFullYear(), issuedDate.getMonth() - 1, 1)
         const month = `${serviceMonth.getFullYear()}-${String(serviceMonth.getMonth() + 1).padStart(2, '0')}`
         invoiceBuckets.set(month, (invoiceBuckets.get(month) || 0) + (inv.amount || 0))
-      })
+      }
       
       // Bucket billable amounts by month
-      timeEntries.forEach(entry => {
+      (timeEntries as { id: number; hours?: number; entry_date?: string }[]).forEach(entry => {
         const rate = rateMap.get(entry.id) || 0
         const amount = (entry.hours || 0) * rate
         const month = (entry.entry_date || '').slice(0, 7)
@@ -4516,7 +4518,7 @@ export default function ProjectDetailPage() {
                         <XAxis dataKey="monthLabel" />
                         <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
                         <Tooltip
-                          formatter={(value: number) => formatCurrency(value)}
+                          formatter={(value) => formatCurrency(Number(value) || 0)}
                           labelFormatter={(label) => `Month: ${label}`}
                         />
                         <Legend />

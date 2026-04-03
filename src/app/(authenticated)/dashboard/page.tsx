@@ -88,7 +88,7 @@ export default function DashboardPage() {
           .from('projects')
           .select('id')
           .eq('pm_id', selectedPM)
-        pmProjectIds = (pmProjects || []).map(p => p.id)
+        pmProjectIds = (pmProjects as { id: number }[] || []).map(p => p.id)
       }
       
       // Get invoices issued in the NEXT month (representing work from selected month)
@@ -261,7 +261,7 @@ export default function DashboardPage() {
           .from('projects')
           .select('id')
           .eq('pm_id', selectedPM)
-        pmProjectIds = (pmProjects || []).map(p => p.id)
+        pmProjectIds = (pmProjects as { id: number }[] || []).map(p => p.id)
       }
 
       const invoiceRows: Array<{ date_issued: string; amount: number | null }> = []
@@ -831,7 +831,7 @@ export default function DashboardPage() {
               .from('time_entries')
               .select('project_id, entry_date, hours')
               .gte('entry_date' as never, sinceDate as never)
-              .lte('entry_date' as never, endDate as never)
+              .lte('entry_date' as never, nextMonthStartDate as never)
               .in('project_id' as never, projectIds as never)
               .range(from, from + pageSize - 1)
             if (error) throw error
@@ -976,7 +976,7 @@ export default function DashboardPage() {
                     fill="#111827" 
                     radius={[4, 4, 0, 0]} 
                     name="Invoiced"
-                    onClick={(data) => setSelectedMonth(data)}
+                    onClick={(data: any) => setSelectedMonth(data.payload)}
                     style={{ cursor: 'pointer' }}
                   />
                   <Line
