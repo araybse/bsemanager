@@ -43,6 +43,7 @@ import {
   ComposedChart,
   Bar,
   Line,
+  ReferenceLine,
 } from 'recharts'
 
 function formatMonthLabel(monthKey: string): string {
@@ -58,6 +59,7 @@ function formatMonthLabel(monthKey: string): string {
 export default function DashboardPage() {
   const supabase = createClient()
   const perms = usePermissions()
+  // Auto-filter PM to their own projects
   const [selectedPM, setSelectedPM] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<{
     month: string
@@ -190,13 +192,14 @@ export default function DashboardPage() {
 
   const userRole = currentUser?.role as 'admin' | 'project_manager' | 'employee' | 'client' | undefined
 
-  // Redirect employees away from dashboard
   const router = useRouter()
+  
+  // Auto-filter PM dashboard to their own projects
   useEffect(() => {
-    if (loadingUser === false && userRole === 'employee') {
-      router.replace('/timesheet')
+    if (userRole === 'project_manager' && currentUser?.id) {
+      setSelectedPM(currentUser.id)
     }
-  }, [userRole, loadingUser, router])
+  }, [userRole, currentUser?.id])
 
   // Fetch billing candidates
   const { data: billingCandidates, isLoading: loadingCandidates } = useQuery({
@@ -579,7 +582,7 @@ export default function DashboardPage() {
   })
 
   const { data: grossProfitVsExpenses, isLoading: loadingGrossProfitVsExpenses } = useQuery({
-    queryKey: ['dashboard-gross-profit-vs-expenses-cash'],
+    queryKey: ['dashboard-gross-profit-vs-expenses-cash', selectedPM],
     queryFn: async () => {
       const currentMonthStart = new Date()
       currentMonthStart.setDate(1)
@@ -689,9 +692,12 @@ export default function DashboardPage() {
 
   // Fetch monthly multipliers (C* phases only) for admin dashboard
   const { data: monthlyMultipliers, isLoading: loadingMonthlyMultipliers } = useQuery({
-    queryKey: ['dashboard-monthly-multipliers'],
+    queryKey: ['dashboard-monthly-multipliers', selectedPM],
     queryFn: async () => {
-      const response = await fetch('/api/dashboard/monthly-multipliers')
+      const url = selectedPM === 'all' 
+        ? '/api/dashboard/monthly-multipliers'
+        : `/api/dashboard/monthly-multipliers?pm_id=${selectedPM}`
+      const response = await fetch(url)
       if (!response.ok) throw new Error('Failed to fetch monthly multipliers')
       const data = await response.json()
       return data.monthlyMultipliers as Array<{
@@ -702,7 +708,7 @@ export default function DashboardPage() {
         multiplier: number | null
       }>
     },
-    enabled: userRole === 'admin', // Only fetch for admin users
+    enabled: userRole === 'admin' || userRole === 'project_manager', // Fetch for admin and PM
   })
 
   // Fetch summary metrics for 4-card dashboard
@@ -719,27 +725,11 @@ export default function DashboardPage() {
         performanceMultiplier: number | null
       }
     },
-    enabled: userRole === 'admin',
+    enabled: userRole === 'admin' || userRole === 'project_manager',
   })
 
-  // Show loading state while fetching user
-  if (loadingUser) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-32 w-full" />
-        <Skeleton className="h-64 w-full" />
-      </div>
-    )
-  }
-
-  // Role-based dashboard rendering using permissions system
-  // Admin sees the full dashboard
-  // PM sees filtered My Projects and Monthly Performance Multipliers
-  // Employee sees My Projects card
-  
-  // Employee dashboard - My Projects only
-  if (userRole === 'employee') {
-    const { data: employeeProjects } = useQuery({
+  // Move all hooks to top level (Rules of Hooks) - BEFORE any conditional returns
+  const { data: employeeProjects } = useQuery({
       queryKey: ['employee-my-projects'],
       queryFn: async () => {
         if (!currentUser?.id) return []
@@ -751,8 +741,49 @@ export default function DashboardPage() {
         return (data as any[])?.map(a => a.projects) || []
       },
     })
-    
+  
+  const { data: pmProjects } = useQuery({
+    queryKey: ['pm-my-projects', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return []
+      const { data, error } = await supabase
+        .from('project_team_assignments')
+        .select('projects(id, project_number, project_name)')
+        .eq('user_id', currentUser.id)
+      if (error) throw error
+      return (data as any[])?.map(a => a.projects) || []
+    },
+    enabled: userRole === 'project_manager',
+  })
+
+  const { data: pmPerformanceData, isLoading: loadingPerformance } = useQuery({
+    queryKey: ['pm-monthly-performance', pmProjects?.map(p => p.id).join(',') || ''],
+    queryFn: async () => {
+      if (!pmProjects?.length) return []
+      
+      const projectIds = pmProjects.map((p: any) => p.id)
+      const { data, error } = await supabase
+        .from('time_entries')
+        .select('project_id, hours, entry_date')
+        .in('project_id', projectIds)
+      if (error) throw error
+      return data || []
+    },
+    enabled: userRole === 'project_manager' && !!pmProjects?.length,
+  })
+
+  // Show loading state while fetching user (after all hooks)
+  if (loadingUser) {
     return (
+      <div className="space-y-6">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
+  
+  // Build role-specific views
+  const employeeView = (
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -781,87 +812,8 @@ export default function DashboardPage() {
         </Card>
       </div>
     )
-  }
-  // PM dashboard
-  if (userRole === 'project_manager') {
-    const { data: pmProjects } = useQuery({
-      queryKey: ['pm-my-projects', currentUser?.id],
-      queryFn: async () => {
-        if (!currentUser?.id) return []
-        const { data, error } = await supabase
-          .from('project_team_assignments')
-          .select('projects(id, project_number, project_name)')
-          .eq('user_id', currentUser.id)
-        if (error) throw error
-        return (data as any[])?.map(a => a.projects) || []
-      },
-    })
-
-    const { data: pmPerformanceData, isLoading: loadingPerformance } = useQuery({
-      queryKey: ['pm-monthly-performance', pmProjects?.map(p => p.id).join(',') || ''],
-      queryFn: async () => {
-        if (!pmProjects?.length) return []
-        
-        const projectIds = pmProjects.map((p: any) => p.id)
-        const currentMonthStart = new Date()
-        currentMonthStart.setDate(1)
-        const nextMonthStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() + 1, 1)
-        const firstMonth = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - 12, 1)
-        const sinceDate = firstMonth.toISOString().slice(0, 10)
-        const nextMonthStartDate = nextMonthStart.toISOString().slice(0, 10)
-        
-        const months = Array.from({ length: 12 }, (_, index) => {
-          const monthDate = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + index, 1)
-          const year = monthDate.getFullYear()
-          const month = String(monthDate.getMonth() + 1).padStart(2, '0')
-          return `${year}-${month}`
-        })
-
-        try {
-          const timeRows: Array<{
-            project_id: number | null
-            entry_date: string
-            hours: number
-          }> = []
-          const pageSize = 1000
-          let from = 0
-          
-          while (true) {
-            const { data, error } = await supabase
-              .from('time_entries')
-              .select('project_id, entry_date, hours')
-              .gte('entry_date' as never, sinceDate as never)
-              .lte('entry_date' as never, nextMonthStartDate as never)
-              .in('project_id' as never, projectIds as never)
-              .range(from, from + pageSize - 1)
-            if (error) throw error
-            const batch = (data || []) as typeof timeRows
-            timeRows.push(...batch)
-            if (batch.length < pageSize) break
-            from += pageSize
-          }
-
-          // Calculate performance per month
-          const result = months.map(month => {
-            const monthEntries = timeRows.filter(row => row.entry_date?.startsWith(month))
-            const totalHours = monthEntries.reduce((sum, e) => sum + (e.hours || 0), 0)
-            return {
-              month,
-              hours: totalHours,
-              multiplier: 0.85, // Placeholder - actual calculation would be revenue/cost
-            }
-          })
-          
-          return result
-        } catch (error) {
-          console.error('Error fetching PM performance data:', error)
-          return []
-        }
-      },
-      enabled: !!pmProjects?.length,
-    })
-
-    return (
+  
+  const pmView = (
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -915,7 +867,7 @@ export default function DashboardPage() {
                       return value
                     }}
                   />
-                  <Bar yAxisId="left" dataKey="hours" fill="#3b82f6" name="Hours" />
+                  <Bar yAxisId="left" dataKey="hours" fill="#384eaa" name="Hours" />
                   <Line yAxisId="right" type="monotone" dataKey="multiplier" stroke="#10b981" name="Multiplier" strokeWidth={2} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -926,33 +878,33 @@ export default function DashboardPage() {
         </Card>
       </div>
     )
-  }
 
-  // Admin dashboard (current view, minus backlog card)
-  return (
+  const adminView = (
     <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-2">
+      {/* Page Header with Global PM Filter (admins only) */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        {userRole === 'admin' && (
+          <Select value={selectedPM} onValueChange={setSelectedPM}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filter by PM" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Projects</SelectItem>
+              {(projectManagers || []).map((pm) => (
+                <SelectItem key={pm.id} value={pm.id}>
+                  {pm.full_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
+      <div className={userRole === 'admin' ? "grid gap-4 lg:grid-cols-2" : "grid gap-4"}>
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Revenue Trend</CardTitle>
-                <CardDescription>Invoices vs billables by month (last 12 months). Invoice month represents prior month work.</CardDescription>
-              </div>
-              <Select value={selectedPM} onValueChange={setSelectedPM}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by PM" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Projects</SelectItem>
-                  {(projectManagers || []).map((pm) => (
-                    <SelectItem key={pm.id} value={pm.id}>
-                      {pm.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <CardTitle>Revenue Trend</CardTitle>
+            <CardDescription>Invoices vs billables by month (last 12 months). Invoice month represents prior month work.</CardDescription>
           </CardHeader>
           <CardContent className="h-[280px]">
             {loadingInvoiceTrend ? (
@@ -982,7 +934,7 @@ export default function DashboardPage() {
                   <Line
                     type="monotone"
                     dataKey="billableAmount"
-                    stroke="#2563EB"
+                    stroke="#384eaa"
                     strokeWidth={2}
                     dot={{ r: 4, cursor: 'pointer' }}
                     activeDot={{ 
@@ -998,17 +950,18 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Cash Basis: Gross Profit vs Expenses</CardTitle>
-            <CardDescription>Monthly snapshots from QuickBooks (last 12 months, excluding current)</CardDescription>
+        {userRole === 'admin' && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Cash Basis: Gross Profit vs Expenses</CardTitle>
+              <CardDescription>Monthly snapshots from QuickBooks (last 12 months, excluding current)</CardDescription>
             <div className="flex items-center gap-4 text-xs text-muted-foreground pt-1">
               <span className="inline-flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-sm bg-[#111827]" />
+                <span className="h-2.5 w-2.5 rounded-sm bg-[#384eaa]" />
                 Gross Profit
               </span>
               <span className="inline-flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-sm bg-[#6B7280]" />
+                <span className="h-2.5 w-2.5 rounded-sm bg-[#111827]" />
                 Expenses
               </span>
             </div>
@@ -1027,13 +980,14 @@ export default function DashboardPage() {
                   <XAxis dataKey="monthLabel" />
                   <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
-                  <Bar dataKey="grossProfit" fill="#111827" radius={[4, 4, 0, 0]} name="Gross Profit" />
-                  <Bar dataKey="totalExpenses" fill="#6B7280" radius={[4, 4, 0, 0]} name="Expenses" />
+                  <Bar dataKey="grossProfit" fill="#384eaa" radius={[4, 4, 0, 0]} name="Gross Profit" />
+                  <Bar dataKey="totalExpenses" fill="#111827" radius={[4, 4, 0, 0]} name="Expenses" />
                 </ComposedChart>
               </ResponsiveContainer>
             )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Monthly Multipliers Chart (Admin Only) */}
@@ -1044,7 +998,7 @@ export default function DashboardPage() {
             Project multiplier by month (last 12 months). C-phase revenue ÷ C-phase labor cost.
           </CardDescription>
         </CardHeader>
-        <CardContent className="h-[280px]">
+        <CardContent className="h-[420px]">
           {loadingMonthlyMultipliers ? (
             <Skeleton className="h-full w-full" />
           ) : (monthlyMultipliers?.length || 0) === 0 ? (
@@ -1056,7 +1010,16 @@ export default function DashboardPage() {
               <ComposedChart data={monthlyMultipliers || []}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="monthLabel" />
-                <YAxis tickFormatter={(value) => `${Number(value).toFixed(1)}x`} />
+                <YAxis 
+                  tickFormatter={(value) => `${Math.round(value)}x`}
+                  domain={[0, (dataMax: number) => Math.ceil(dataMax)]}
+                  ticks={(() => {
+                    const maxMultiplier = Math.max(...(monthlyMultipliers || []).map((m: any) => m.multiplier || 0))
+                    const maxY = Math.ceil(maxMultiplier)
+                    return Array.from({ length: maxY + 1 }, (_, i) => i)
+                  })()}
+                />
+                <ReferenceLine y={3} stroke="#9ca3af" strokeDasharray="5 5" strokeWidth={2} label={{ value: '3.0x Target', position: 'right', fill: '#6b7280' }} />
                 <Tooltip 
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
@@ -1087,7 +1050,7 @@ export default function DashboardPage() {
                 <Line
                   type="monotone"
                   dataKey="multiplier"
-                  stroke="#2563EB"
+                  stroke="#384eaa"
                   strokeWidth={3}
                   dot={{ r: 4 }}
                   name="Multiplier"
@@ -1098,8 +1061,8 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Billing Candidates */}
-      <Card>
+      {/* Billing Candidates - HIDDEN */}
+      {/* <Card>
         <CardHeader>
           <CardTitle>Projects Ready to Bill</CardTitle>
           <CardDescription>
@@ -1163,7 +1126,7 @@ export default function DashboardPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
 
       {/* Month Detail Modal */}
       <Dialog open={!!selectedMonth} onOpenChange={(open) => !open && setSelectedMonth(null)}>
@@ -1267,4 +1230,9 @@ export default function DashboardPage() {
       </Dialog>
     </div>
   )
+
+  // Single return - select view based on role
+  if (userRole === 'employee') return employeeView
+  if (userRole === 'project_manager') return adminView // PM sees admin dashboard filtered to their projects
+  return adminView
 }

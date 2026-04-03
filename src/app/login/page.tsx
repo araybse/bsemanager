@@ -46,7 +46,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src="/logos/iris-logo-spaced.svg" alt="IRIS" className="mx-auto mb-6 h-20" />
+          <img src="/logos/iris-logo-horizontal.svg" alt="IRIS" className="mx-auto mb-6 h-24" />
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">

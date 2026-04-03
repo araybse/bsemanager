@@ -76,6 +76,7 @@ import {
   LineChart,
   Line,
   ComposedChart,
+  ReferenceLine,
 } from 'recharts'
 
 type ProjectWithRelations = Tables<'projects'> & {
@@ -281,15 +282,15 @@ type ApplicationRunRow = {
 }
 
 const PIE_COLORS = [
-  '#3B82F6', // Blue
-  '#10B981', // Green
-  '#F59E0B', // Amber
-  '#EF4444', // Red
-  '#8B5CF6', // Purple
-  '#EC4899', // Pink
-  '#14B8A6', // Teal
-  '#F97316', // Orange
-  '#6366F1', // Indigo
+  '#384eaa', // IRIS Blue (primary)
+  '#111827', // Black
+  '#0891b2', // Cyan (cool, professional)
+  '#475569', // Slate Gray
+  '#7c3aed', // Deep Purple (royal, sophisticated)
+  '#0f766e', // Teal (complements blue)
+  '#581c87', // Dark Purple
+  '#334155', // Dark Slate
+  '#8b5cf6', // Violet (softer purple)
   '#84CC16', // Lime
   '#06B6D4', // Cyan
   '#A855F7', // Violet
@@ -721,9 +722,11 @@ function PerformanceHistoryChartContent({ projectId, phaseFilter }: { projectId:
               tick={{ fontSize: 11 }}
             />
             <YAxis 
-              tickFormatter={(value) => `${Number(value).toFixed(1)}x`}
+              tickFormatter={(value) => `${Math.round(Number(value))}x`}
+              allowDecimals={false}
               label={{ value: 'Multiplier', angle: -90, position: 'insideLeft' }}
             />
+            <ReferenceLine y={3} stroke="#ef4444" strokeDasharray="3 3" label="Target: 3x" />
             <Tooltip
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
@@ -756,7 +759,7 @@ function PerformanceHistoryChartContent({ projectId, phaseFilter }: { projectId:
             <Line
               type="monotone"
               dataKey="multiplier"
-              stroke="#2563EB"
+              stroke="#384eaa"
               strokeWidth={3}
               dot={{ r: 4 }}
               name="Performance Multiplier"
@@ -1017,11 +1020,11 @@ export default function ProjectDetailPage() {
       if (!projectId) return []
       
       const currentDate = new Date()
-      const firstMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 12, 1)
       const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1)
       const lastDay = new Date(nextMonth.getTime() - 86400000)
       
-      const sinceDate = firstMonth.toISOString().slice(0, 10)
+      // Show all data from the beginning of the project (no 12-month limit)
+      const sinceDate = '2000-01-01' // Far past date to capture all project data
       const endDate = lastDay.toISOString().slice(0, 10)
       
       // Get project number first
@@ -1117,13 +1120,9 @@ export default function ProjectDetailPage() {
         rateMap.set(r.time_entry_id, r.resolved_hourly_rate || 0)
       })
       
-      // Create month buckets
+      // Create month buckets from actual data (no fixed range)
       const monthKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      const months: string[] = []
-      for (let i = 0; i < 12; i++) {
-        const d = new Date(firstMonth.getFullYear(), firstMonth.getMonth() + i, 1)
-        months.push(monthKey(d))
-      }
+      const allMonths = new Set<string>()
       
       const invoiceBuckets = new Map<string, number>()
       const billableBuckets = new Map<string, number>()
@@ -1136,6 +1135,7 @@ export default function ProjectDetailPage() {
         const serviceMonth = new Date(issuedDate.getFullYear(), issuedDate.getMonth() - 1, 1)
         const month = `${serviceMonth.getFullYear()}-${String(serviceMonth.getMonth() + 1).padStart(2, '0')}`
         invoiceBuckets.set(month, (invoiceBuckets.get(month) || 0) + (inv.amount || 0))
+        allMonths.add(month)
       }
       
       // Bucket billable amounts by month
@@ -1145,8 +1145,12 @@ export default function ProjectDetailPage() {
         const month = (entry.entry_date || '').slice(0, 7)
         if (month) {
           billableBuckets.set(month, (billableBuckets.get(month) || 0) + amount)
+          allMonths.add(month)
         }
       })
+      
+      // Sort months chronologically
+      const months = Array.from(allMonths).sort()
       
       return months.map(month => {
         const [year, monthNum] = month.split('-')
@@ -4104,10 +4108,12 @@ export default function ProjectDetailPage() {
             </Badge>
           </div>
         </div>
-        <Button onClick={() => setIsEditOpen(true)}>
-          <Pencil className="mr-2 h-4 w-4" />
-          Edit Project
-        </Button>
+        {perms.isAdmin() && (
+          <Button onClick={() => setIsEditOpen(true)}>
+            <Pencil className="mr-2 h-4 w-4" />
+            Edit Project
+          </Button>
+        )}
       </div>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -4526,7 +4532,7 @@ export default function ProjectDetailPage() {
                         <Line
                           type="monotone"
                           dataKey="billableAmount"
-                          stroke="#3b82f6"
+                          stroke="#384eaa"
                           strokeWidth={2}
                           name="Billable"
                           dot={{ r: 4 }}
@@ -4535,7 +4541,7 @@ export default function ProjectDetailPage() {
                     </ResponsiveContainer>
                   ) : (
                     <div className="text-sm text-muted-foreground text-center py-8">
-                      No performance data available for the last 12 months
+                      No performance data available for this project
                     </div>
                   )}
                 </div>

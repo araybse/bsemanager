@@ -36,11 +36,15 @@ async function fetchAllPages<T>(
  * 
  * Returns: Array<{ month: string, revenue: number, cost: number, multiplier: number | null }>
  */
-export async function GET() {
+export async function GET(request: Request) {
   const auth = await requireApiRoles(['admin', 'project_manager'])
   if (!auth.ok) return auth.response
 
   const supabase = createAdminClient()
+  
+  // Get PM filter from query params
+  const { searchParams } = new URL(request.url)
+  const pmId = searchParams.get('pm_id')
 
   // Calculate date range: last 12 months including current month
   // We need current month invoices because they represent prior-month work
@@ -58,11 +62,27 @@ export async function GET() {
   })
 
   try {
+    // Get PM-filtered project IDs if pm_id is provided
+    let pmProjectIds: number[] | null = null
+    if (pmId) {
+      const { data: pmProjects } = await supabase
+        .from('projects')
+        .select('id')
+        .eq('pm_id', pmId)
+      pmProjectIds = (pmProjects || []).map((p: { id: number }) => p.id)
+    }
+
     // Fetch all contract phases to build a map of project_id + phase_name → phase_code
-    const { data: contractPhases, error: phasesError } = await supabase
+    let phasesQuery = supabase
       .from('contract_phases')
       .select('id, project_id, phase_code, phase_name')
+    
+    // Filter by PM's projects if specified
+    if (pmProjectIds !== null) {
+      phasesQuery = phasesQuery.in('project_id', pmProjectIds)
+    }
 
+    const { data: contractPhases, error: phasesError } = await phasesQuery
     if (phasesError) throw phasesError
 
     // Build map: "projectId::phaseName" → phase_code
@@ -95,13 +115,20 @@ export async function GET() {
 
     // Fetch time entries for the date range (including current month) with pagination
     const { data: timeEntries, error: timeError } = await fetchAllPages(async (from, to) => {
-      const result = await supabase
+      let timeQuery = supabase
         .from('time_entries')
         .select('project_id, project_number, phase_name, labor_cost, entry_date')
         .gte('entry_date', sinceDate)
         .lt('entry_date', nextMonthStartDate)
         .order('entry_date', { ascending: true })
         .range(from, to)
+      
+      // Filter by PM's projects if specified
+      if (pmProjectIds !== null) {
+        timeQuery = timeQuery.in('project_id', pmProjectIds)
+      }
+      
+      const result = await timeQuery
       return { data: result.data, error: result.error }
     })
 

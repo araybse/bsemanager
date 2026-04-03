@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils/format'
 
@@ -70,6 +72,7 @@ export function ScheduleOfRatesSection() {
   const [cloneFromYear, setCloneFromYear] = useState<string>('')
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
+  const [collapsedYears, setCollapsedYears] = useState<Set<string>>(new Set())
   const [newOverride, setNewOverride] = useState({
     position_id: '',
     hourly_rate: '',
@@ -566,13 +569,17 @@ export function ScheduleOfRatesSection() {
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Schedule of Rates</CardTitle>
-          <CardDescription>Manage annual schedule rates by position.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <Tabs defaultValue="schedules" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="schedules">Schedules</TabsTrigger>
+        <TabsTrigger value="project-assignments">Project Assignments</TabsTrigger>
+        <TabsTrigger value="project-overrides">Project Overrides</TabsTrigger>
+        <TabsTrigger value="employee-timeline">Employee Timeline</TabsTrigger>
+        <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>
+        <TabsTrigger value="duplicates">Duplicates</TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="schedules" className="space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-2">
               <Label>Year</Label>
@@ -661,15 +668,9 @@ export function ScheduleOfRatesSection() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
+      </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Schedule Assignment</CardTitle>
-          <CardDescription>Bind each project to proposal and effective schedule year.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <TabsContent value="project-assignments" className="space-y-3">
           <div className="flex gap-2">
             <Badge variant="secondary">Needs Assignment: {unresolvedCounts.assignmentMissing}</Badge>
             <Badge variant="secondary">Missing Timeline: {unresolvedCounts.timelineMissing}</Badge>
@@ -687,11 +688,62 @@ export function ScheduleOfRatesSection() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(projects || []).map((project) => {
-                const assignment = assignmentByProjectId.get(project.id)
-                const proposalYear = project.proposals?.date_submitted?.slice(0, 4) || '—'
-                return (
-                  <TableRow key={project.id}>
+              {(() => {
+                // Filter out QB projects (overhead) and group by year
+                const realProjects = (projects || []).filter(p => !p.project_number.startsWith('QB'))
+                const projectsByYear = new Map<string, typeof projects>()
+                realProjects.forEach((project) => {
+                  const year = project.project_number.slice(0, 2)
+                  if (!projectsByYear.has(year)) {
+                    projectsByYear.set(year, [])
+                  }
+                  projectsByYear.get(year)!.push(project)
+                })
+                
+                // Sort years descending (26, 25, 24, 23...)
+                const sortedYears = Array.from(projectsByYear.keys()).sort((a, b) => b.localeCompare(a))
+                
+                // Initialize all years as collapsed
+                if (collapsedYears.size === 0 && sortedYears.length > 0) {
+                  setCollapsedYears(new Set(sortedYears))
+                }
+                
+                const toggleYear = (year: string) => {
+                  setCollapsedYears(prev => {
+                    const next = new Set(prev)
+                    if (next.has(year)) {
+                      next.delete(year)
+                    } else {
+                      next.add(year)
+                    }
+                    return next
+                  })
+                }
+                
+                return sortedYears.flatMap((year) => {
+                  const yearProjects = projectsByYear.get(year) || []
+                  const isCollapsed = collapsedYears.has(year)
+                  return [
+                    // Year header row (clickable)
+                    <TableRow 
+                      key={`year-${year}`} 
+                      className="bg-muted/50 cursor-pointer hover:bg-muted/70"
+                      onClick={() => toggleYear(year)}
+                    >
+                      <TableCell colSpan={6} className="font-semibold">
+                        <div className="flex items-center gap-2">
+                          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          20{year} Projects ({yearProjects.length})
+                        </div>
+                      </TableCell>
+                    </TableRow>,
+                    // Project rows for this year (only if expanded)
+                    ...(isCollapsed ? [] :
+                    yearProjects.map((project) => {
+                      const assignment = assignmentByProjectId.get(project.id)
+                      const proposalYear = project.proposals?.date_submitted?.slice(0, 4) || '—'
+                      return (
+                        <TableRow key={project.id}>
                     <TableCell className="font-mono">{project.project_number}</TableCell>
                     <TableCell>{project.name}</TableCell>
                     <TableCell>
@@ -739,20 +791,17 @@ export function ScheduleOfRatesSection() {
                         <Badge variant="destructive">Needs Assignment</Badge>
                       )}
                     </TableCell>
-                  </TableRow>
-                )
-              })}
+                        </TableRow>
+                      )
+                    }))
+                  ]
+                })
+              })()}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Manual Position Overrides</CardTitle>
-          <CardDescription>Set position-specific project exceptions with optional date windows.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <TabsContent value="project-overrides" className="space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-2">
               <Label>Project</Label>
@@ -862,17 +911,9 @@ export function ScheduleOfRatesSection() {
               ) : null}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Employee Position Timeline</CardTitle>
-          <CardDescription>
-            Track hire and promotion windows; the sync engine resolves position by entry date.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <TabsContent value="employee-timeline" className="space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-2">
               <Label>Employee</Label>
@@ -955,15 +996,9 @@ export function ScheduleOfRatesSection() {
               ) : null}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+      </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Rate Source Diagnostics</CardTitle>
-          <CardDescription>Quick status for unresolved assignment and timeline coverage.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+      <TabsContent value="diagnostics" className="flex flex-wrap gap-2">
           <Badge variant={unresolvedCounts.assignmentMissing === 0 ? 'outline' : 'destructive'}>
             Missing Project Schedules: {unresolvedCounts.assignmentMissing}
           </Badge>
@@ -973,17 +1008,9 @@ export function ScheduleOfRatesSection() {
           <Badge variant={unresolvedCounts.scheduleRateMissing === 0 ? 'outline' : 'destructive'}>
             Missing Position Rates (Selected Year): {unresolvedCounts.scheduleRateMissing}
           </Badge>
-        </CardContent>
-      </Card>
+      </TabsContent>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Duplicate Entry Observability</CardTitle>
-          <CardDescription>
-            Duplicate clusters are flagged by content match and repeated QuickBooks time IDs.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <TabsContent value="duplicates" className="space-y-3">
           <div className="flex flex-wrap gap-2">
             <Badge variant={duplicateDiagnostics.strictClusters.length === 0 ? 'outline' : 'destructive'}>
               Strict Duplicate Clusters: {duplicateDiagnostics.strictClusters.length}
@@ -1027,8 +1054,7 @@ export function ScheduleOfRatesSection() {
               ) : null}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-    </div>
+      </TabsContent>
+    </Tabs>
   )
 }

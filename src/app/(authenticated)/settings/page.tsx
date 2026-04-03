@@ -55,6 +55,7 @@ import { DataQualityReviewSection } from '@/components/settings/data-quality-rev
 import { CamUtilitiesInputsSection } from '@/components/settings/cam-utilities-inputs-section'
 import { CamReconciliationSection } from '@/components/settings/cam-reconciliation-section'
 import { ScheduleOfRatesSection } from '@/components/settings/schedule-of-rates-section'
+import { ClientContactsDialog } from '@/components/settings/client-contacts-dialog'
 import {
   freshnessBadgeVariant,
   freshnessLabel,
@@ -432,6 +433,7 @@ function SettingsContent() {
   const [expenseProjectSelections, setExpenseProjectSelections] = useState<Record<number, string>>({})
   const [isClientDialogOpen, setIsClientDialogOpen] = useState(false)
   const [editingClient, setEditingClient] = useState<ClientRow | null>(null)
+  const [contactsDialogClient, setContactsDialogClient] = useState<{ id: number; name: string } | null>(null)
   const [clientFormData, setClientFormData] = useState({
     name: '',
     address_line_1: '',
@@ -2056,7 +2058,7 @@ function SettingsContent() {
           {perms.isAdmin() && (
             <>
               <TabsTrigger value="users">Users</TabsTrigger>
-              <TabsTrigger value="qbo">QBO</TabsTrigger>
+              <TabsTrigger value="qbo">Sync</TabsTrigger>
               <TabsTrigger value="schedule-of-rates">Schedule of Rates</TabsTrigger>
               <TabsTrigger value="clients">Clients</TabsTrigger>
               <TabsTrigger value="data-quality">Data Quality</TabsTrigger>
@@ -2067,25 +2069,16 @@ function SettingsContent() {
         </TabsList>
         {perms.isAdmin() && (
           <TabsContent value="users" className="space-y-6">
-
-            {/* User Management */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              <CardTitle>User Management</CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                <h3 className="text-lg font-medium">User Management</h3>
+              </div>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add User
+              </Button>
             </div>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
-          </div>
-          <CardDescription>
-            Manage user accounts and their roles
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
           {isLoading ? (
             <div className="space-y-4">
               {[1, 2, 3].map((i) => (
@@ -2138,8 +2131,6 @@ function SettingsContent() {
               </TableBody>
             </Table>
           )}
-        </CardContent>
-      </Card>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent>
@@ -2236,18 +2227,11 @@ function SettingsContent() {
         {perms.isAdmin() && (
           <>
             {/* QuickBooks Integration */}
-            <TabsContent value="qbo">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            <CardTitle>QuickBooks Online Integration</CardTitle>
-          </div>
-          <CardDescription>
-            Sync customers, projects, invoices, and time entries from QuickBooks Online
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
+            <TabsContent value="qbo" className="space-y-4">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-5 w-5" />
+                <h3 className="text-lg font-medium">QuickBooks Online Integration</h3>
+              </div>
           {loadingQB ? (
             <Skeleton className="h-20 w-full" />
           ) : (
@@ -2752,9 +2736,7 @@ function SettingsContent() {
               </p>
             )}
           </div>
-        </CardContent>
-      </Card>
-      </TabsContent>
+            </TabsContent>
 
       <TabsContent value="schedule-of-rates" className="space-y-4">
         <ScheduleOfRatesSection />
@@ -2792,7 +2774,11 @@ function SettingsContent() {
                 </TableHeader>
                 <TableBody>
                   {(clients || []).map((client) => (
-                    <TableRow key={client.id}>
+                    <TableRow 
+                      key={client.id} 
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setContactsDialogClient({ id: client.id, name: client.name })}
+                    >
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>
                         {client.address_line_1 ? (
@@ -2803,7 +2789,7 @@ function SettingsContent() {
                         ) : null}
                       </TableCell>
                       <TableCell>{client.email || '—'}</TableCell>
-                      <TableCell>
+                      <TableCell onClick={(e) => e.stopPropagation()}>
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => openEditClientDialog(client)}>
                             <Pencil className="h-4 w-4" />
@@ -2898,6 +2884,13 @@ function SettingsContent() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <ClientContactsDialog
+          clientId={contactsDialogClient?.id || null}
+          clientName={contactsDialogClient?.name || ''}
+          open={!!contactsDialogClient}
+          onOpenChange={(open) => !open && setContactsDialogClient(null)}
+        />
       </TabsContent>
 
       <TabsContent value="data-quality" className="space-y-4">
@@ -2925,14 +2918,14 @@ function SettingsContent() {
         )}
 
         <TabsContent value="project-info" className="space-y-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Project Info Schema</CardTitle>
-            <CardDescription>
-              Manage global sections and fields for Project Info across all projects.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-lg font-medium">Project Info Schema</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage global sections and fields for Project Info across all projects.
+              </p>
+            </div>
+            
             <div className="grid gap-2 md:grid-cols-[1fr_auto]">
               <Input
                 placeholder="New section title"
@@ -2944,28 +2937,21 @@ function SettingsContent() {
                 Add Section
               </Button>
             </div>
+          </div>
+
+          <Tabs defaultValue={projectInfoSections[0]?.id.toString()} className="space-y-4">
+            <TabsList>
+              {projectInfoSections.map((section) => (
+                <TabsTrigger key={section.id} value={section.id.toString()}>
+                  {section.title}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
             {projectInfoSections.map((section) => {
               const sectionFields = projectInfoFieldsBySection.get(section.id) || []
-              const isExpanded = expandedProjectInfoSections[section.id] ?? true
               return (
-                <div key={section.id} className="rounded-md border p-3 space-y-3">
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between text-sm font-semibold text-left"
-                    onClick={() =>
-                      setExpandedProjectInfoSections((prev) => ({
-                        ...prev,
-                        [section.id]: !isExpanded,
-                      }))
-                    }
-                  >
-                    <span>{section.title}</span>
-                    <ChevronDown className={`size-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                  </button>
-
-                  {isExpanded ? (
-                    <>
+                <TabsContent key={section.id} value={section.id.toString()} className="space-y-3">
                       <div className="grid gap-2 md:grid-cols-[1fr_120px_120px]">
                         <Input
                           defaultValue={section.title}
@@ -3360,13 +3346,10 @@ function SettingsContent() {
                             </div>
                           )
                         })}
-                    </>
-                  ) : null}
-                </div>
+                </TabsContent>
               )
             })}
-          </CardContent>
-        </Card>
+          </Tabs>
 
         <Dialog
           open={moveFieldDialogOpen}
@@ -3436,15 +3419,13 @@ function SettingsContent() {
             <TabsTrigger className="flex-1 justify-center" value="permit-documents">Permit Documents</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="agencies">
-        <Card>
-          <CardHeader>
-            <CardTitle>Agencies</CardTitle>
-            <CardDescription>
-              Manage global agencies used by all users across projects and workflows.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+          <TabsContent value="agencies" className="space-y-3">
+            <div>
+              <h3 className="text-lg font-medium">Agencies</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage global agencies used by all users across projects and workflows.
+              </p>
+            </div>
             <div className="space-y-2">
               <Input
                 placeholder="New agency name"
@@ -3503,172 +3484,175 @@ function SettingsContent() {
             {updatingAgencyId ? (
               <p className="text-xs text-muted-foreground">Saving agency changes...</p>
             ) : null}
-          </CardContent>
-        </Card>
           </TabsContent>
 
-          <TabsContent value="permits">
-        <Card>
-          <CardHeader>
-            <CardTitle>Permits</CardTitle>
-            <CardDescription>
-              Manage permits for the selected agency.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid gap-2 md:grid-cols-[260px_1fr_auto]">
-              <Select
-                value={selectedAgencyId ? String(selectedAgencyId) : ''}
-                onValueChange={(value) => setSelectedAgencyId(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select agency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(agencyCatalog || []).map((agency) => (
-                    <SelectItem key={agency.id} value={String(agency.id)}>
-                      {agency.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                placeholder="New permit name"
-                value={newPermitName}
-                onChange={(event) => setNewPermitName(event.target.value)}
-              />
-              <Button className="w-fit justify-self-start" onClick={() => void addPermit()}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Permit
-              </Button>
+          <TabsContent value="permits" className="space-y-4">
+            <div>
+              <h3 className="text-lg font-medium">Permits</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage permits for each agency.
+              </p>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="w-[130px] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedAgencyPermits.map((permit) => (
-                  <TableRow
-                    key={permit.id}
-                    className={selectedPermitId === permit.id ? 'bg-muted/40' : undefined}
-                  >
-                    <TableCell>
-                      <Input
-                        value={permitNameDrafts[permit.id] ?? permit.name}
-                        onFocus={() => setSelectedPermitId(permit.id)}
-                        onChange={(event) => {
-                          const value = event.target.value
-                          setPermitNameDrafts((prev) => ({ ...prev, [permit.id]: value }))
-                          schedulePermitNameSave(permit.id, value)
-                        }}
-                        onBlur={() => void persistPermit(permit.id, { name: permitNameDrafts[permit.id] ?? '' })}
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() =>
-                          setPendingCatalogDelete({
-                            kind: 'permit',
-                            id: permit.id,
-                            label: permit.name,
-                          })
-                        }
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
+
+            <Tabs 
+              value={selectedAgencyId ? String(selectedAgencyId) : (agencyCatalog && agencyCatalog.length > 0 ? String(agencyCatalog[0].id) : '')} 
+              onValueChange={(value) => setSelectedAgencyId(Number(value))}
+              className="space-y-4"
+            >
+              <TabsList>
+                {(agencyCatalog || []).map((agency) => (
+                  <TabsTrigger key={agency.id} value={String(agency.id)}>
+                    {agency.name}
+                  </TabsTrigger>
                 ))}
-              </TableBody>
-            </Table>
-            {updatingPermitId ? (
-              <p className="text-xs text-muted-foreground">Saving permit changes...</p>
-            ) : null}
-          </CardContent>
-        </Card>
+              </TabsList>
+
+              {(agencyCatalog || []).map((agency) => (
+                <TabsContent key={agency.id} value={String(agency.id)} className="space-y-3">
+                  <div className="grid gap-2 md:grid-cols-[1fr_auto]">
+                    <Input
+                      placeholder="New permit name"
+                      value={newPermitName}
+                      onChange={(event) => setNewPermitName(event.target.value)}
+                    />
+                    <Button className="w-fit justify-self-start" onClick={() => void addPermit()}>
+                      <Plus className="mr-2 h-4 w-4" />
+                      Add Permit
+                    </Button>
+                  </div>
+                  
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead className="w-[130px] text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(permitCatalog || []).filter(p => p.agency_id === agency.id).map((permit) => (
+                        <TableRow
+                          key={permit.id}
+                          className={selectedPermitId === permit.id ? 'bg-muted/40' : undefined}
+                        >
+                          <TableCell>
+                            <Input
+                              value={permitNameDrafts[permit.id] ?? permit.name}
+                              onFocus={() => setSelectedPermitId(permit.id)}
+                              onChange={(event) => {
+                                const value = event.target.value
+                                setPermitNameDrafts((prev) => ({ ...prev, [permit.id]: value }))
+                                schedulePermitNameSave(permit.id, value)
+                              }}
+                              onBlur={() => void persistPermit(permit.id, { name: permitNameDrafts[permit.id] ?? '' })}
+                            />
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() =>
+                                setPendingCatalogDelete({
+                                  kind: 'permit',
+                                  id: permit.id,
+                                  label: permit.name,
+                                })
+                              }
+                            >
+                              Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  
+                  {updatingPermitId ? (
+                    <p className="text-xs text-muted-foreground">Saving permit changes...</p>
+                  ) : null}
+                </TabsContent>
+              ))}
+            </Tabs>
           </TabsContent>
 
-          <TabsContent value="permit-documents">
-        <Card>
-          <CardHeader>
-            <CardTitle>Permit Documents</CardTitle>
-            <CardDescription>
-              Manage required documents for the selected permit.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="space-y-2">
-              <Select
-                value={selectedDocumentAgencyId ? String(selectedDocumentAgencyId) : ''}
-                onValueChange={(value) => setSelectedDocumentAgencyId(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select agency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(agencyCatalog || []).map((agency) => (
-                    <SelectItem key={agency.id} value={String(agency.id)}>
-                      {agency.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                value={selectedPermitId ? String(selectedPermitId) : ''}
-                onValueChange={(value) => setSelectedPermitId(Number(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select permit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {selectedDocumentAgencyPermits.map((permit) => (
-                    <SelectItem key={permit.id} value={String(permit.id)}>
-                      {permit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
-              <Input
-                placeholder="New permit document"
-                value={newDocumentName}
-                onChange={(event) => setNewDocumentName(event.target.value)}
-              />
-              <Select
-                value={newDocumentType}
-                onValueChange={(value) => setNewDocumentType(value as 'application' | 'document' | 'plan')}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="application">Application</SelectItem>
-                  <SelectItem value="document">Document</SelectItem>
-                  <SelectItem value="plan">Plan</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button className="w-fit justify-self-start" onClick={() => void addPermitDocument()}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Document
-              </Button>
-              </div>
+          <TabsContent value="permit-documents" className="space-y-3">
+            <div>
+              <h3 className="text-lg font-medium">Permit Documents</h3>
+              <p className="text-sm text-muted-foreground">
+                Manage required documents for each permit.
+              </p>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">#</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="w-[160px]">Type</TableHead>
-                  <TableHead className="w-[260px] text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedPermitDocuments.map((doc) => (
+
+            <Tabs
+              value={selectedDocumentAgencyId ? String(selectedDocumentAgencyId) : (agencyCatalog && agencyCatalog.length > 0 ? String(agencyCatalog[0].id) : '')}
+              onValueChange={(value) => setSelectedDocumentAgencyId(Number(value))}
+              className="space-y-4"
+            >
+              <TabsList>
+                {(agencyCatalog || []).map((agency) => (
+                  <TabsTrigger key={agency.id} value={String(agency.id)}>
+                    {agency.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {(agencyCatalog || []).map((agency) => {
+                const agencyPermits = (permitCatalog || []).filter(p => p.agency_id === agency.id)
+                return (
+                  <TabsContent key={agency.id} value={String(agency.id)} className="space-y-4">
+                    {agencyPermits.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No permits found for this agency.</p>
+                    ) : (
+                      <Tabs
+                        value={selectedPermitId && agencyPermits.some(p => p.id === selectedPermitId) ? String(selectedPermitId) : (agencyPermits.length > 0 ? String(agencyPermits[0].id) : '')}
+                        onValueChange={(value) => setSelectedPermitId(Number(value))}
+                        className="space-y-3"
+                      >
+                        <TabsList>
+                          {agencyPermits.map((permit) => (
+                            <TabsTrigger key={permit.id} value={String(permit.id)}>
+                              {permit.name}
+                            </TabsTrigger>
+                          ))}
+                        </TabsList>
+
+                        {agencyPermits.map((permit) => (
+                          <TabsContent key={permit.id} value={String(permit.id)} className="space-y-3">
+                            <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
+                              <Input
+                                placeholder="New permit document"
+                                value={newDocumentName}
+                                onChange={(event) => setNewDocumentName(event.target.value)}
+                              />
+                              <Select
+                                value={newDocumentType}
+                                onValueChange={(value) => setNewDocumentType(value as 'application' | 'document' | 'plan')}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="application">Application</SelectItem>
+                                  <SelectItem value="document">Document</SelectItem>
+                                  <SelectItem value="plan">Plan</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button className="w-fit justify-self-start" onClick={() => void addPermitDocument()}>
+                                <Plus className="mr-2 h-4 w-4" />
+                                Add Document
+                              </Button>
+                            </div>
+
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-[80px]">#</TableHead>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead className="w-[160px]">Type</TableHead>
+                                  <TableHead className="w-[260px] text-right">Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {(permitRequiredItemCatalog || []).filter(d => d.permit_id === permit.id).map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell className="font-mono text-xs">{doc.sort_order ?? '-'}</TableCell>
                     <TableCell>
@@ -3766,20 +3750,27 @@ function SettingsContent() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {selectedPermitDocuments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
-                      No permit documents found for the selected permit.
-                    </TableCell>
-                  </TableRow>
-                ) : null}
-              </TableBody>
-            </Table>
-            {updatingDocumentId ? (
-              <p className="text-xs text-muted-foreground">Saving document changes...</p>
-            ) : null}
-          </CardContent>
-        </Card>
+                                {(permitRequiredItemCatalog || []).filter(d => d.permit_id === permit.id).length === 0 ? (
+                                  <TableRow>
+                                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6">
+                                      No documents found for this permit.
+                                    </TableCell>
+                                  </TableRow>
+                                ) : null}
+                              </TableBody>
+                            </Table>
+                            
+                            {updatingDocumentId ? (
+                              <p className="text-xs text-muted-foreground">Saving document changes...</p>
+                            ) : null}
+                          </TabsContent>
+                        ))}
+                      </Tabs>
+                    )}
+                  </TabsContent>
+                )
+              })}
+            </Tabs>
           </TabsContent>
         </Tabs>
 

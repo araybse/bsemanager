@@ -15,7 +15,7 @@ export type DataVisibility = 'visible' | 'hidden'
  * Determines which pages appear in navigation and are accessible
  */
 export const PAGE_VISIBILITY: Record<string, Record<UserRole, PageVisibility>> = {
-  'dashboard': { admin: 'visible', project_manager: 'visible', employee: 'hidden', client: 'hidden' },
+  'dashboard': { admin: 'visible', project_manager: 'visible', employee: 'visible', client: 'hidden' },
   'proposals': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
   'projects': { admin: 'visible', project_manager: 'visible', employee: 'visible', client: 'hidden' },
   'time-entries': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },

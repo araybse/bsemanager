@@ -311,37 +311,6 @@ export default function CashFlowPage() {
         rawEndingBankBalanceByMonth.set(month, sum)
       })
 
-      // Calculate historical distributions from Balance Sheet changes
-      const historicalDistributionsByMonth = new Map<string, number>()
-      const distributionsBalanceByMonth = new Map<string, number>()
-      
-      balanceMonthsToBuild.forEach((month) => {
-        const snapshotId = balanceSnapshotByMonth.get(month)?.id
-        if (!snapshotId) return
-        const linesForMonth = allBalanceLines.filter((line) => line.snapshot_id === snapshotId)
-        const distributionsLine = linesForMonth.find((line) => 
-          normalize(line.account_name) === 'distributions'
-        )
-        if (distributionsLine) {
-          distributionsBalanceByMonth.set(month, Number(distributionsLine.amount) || 0)
-        }
-      })
-
-      // Calculate monthly change in distributions (negative balance change = distribution paid out)
-      const sortedMonths = Array.from(distributionsBalanceByMonth.keys()).sort()
-      sortedMonths.forEach((month, idx) => {
-        if (idx === 0) return // Skip first month (no prior to compare)
-        const currentBalance = distributionsBalanceByMonth.get(month) || 0
-        const priorMonth = sortedMonths[idx - 1]
-        const priorBalance = distributionsBalanceByMonth.get(priorMonth) || 0
-        const change = currentBalance - priorBalance
-        // Distributions account is negative equity, so a more negative value = distribution paid
-        // Change will be negative when distributions are paid out
-        if (change !== 0) {
-          historicalDistributionsByMonth.set(month, Math.abs(change))
-        }
-      })
-
       const lineSortByAccount = new Map<string, number>()
       allLines.forEach((line) => {
         const key = normalize(line.account_name)
@@ -498,12 +467,6 @@ export default function CashFlowPage() {
         .gte('forecast_month' as never, `${COMPANY_START_YEAR}-05` as never)
       if (expenseLineForecastError) throw expenseLineForecastError
 
-      const { data: distributionsRows, error: distributionsError } = await supabase
-        .from('cash_flow_distributions' as never)
-        .select('month, amount')
-        .gte('month' as never, `${COMPANY_START_YEAR}-05` as never)
-      if (distributionsError) throw distributionsError
-
       const { data: contractLaborExpenseRows, error: contractLaborExpenseError } = await supabase
         .from('project_expenses' as never)
         .select('expense_date, fee_amount, subcontract_contract_id, project_number, vendor_name')
@@ -553,23 +516,6 @@ export default function CashFlowPage() {
         const accountKey = normalize(row.account_key || row.account_name || '')
         if (!month || !accountKey) return
         manualExpenseLineByMonthAndAccount.set(`${month}::${accountKey}`, Number(row.amount) || 0)
-      })
-
-      const distributionsByMonth = new Map<string, number>()
-      
-      // Start with historical data from QuickBooks Balance Sheet
-      historicalDistributionsByMonth.forEach((amount, month) => {
-        distributionsByMonth.set(month, amount)
-      })
-      
-      // Override/add manual forecasts for current and future months
-      ;((distributionsRows as { month: string; amount: number }[] | null) || []).forEach((row) => {
-        const month = (row.month || '').slice(0, 7)
-        if (!month) return
-        // Manual data takes precedence for current/future months
-        if (month >= currentMonthKey) {
-          distributionsByMonth.set(month, Number(row.amount) || 0)
-        }
       })
 
       const contractLaborScheduleByMonth = new Map<string, number>()
@@ -1077,11 +1023,10 @@ export default function CashFlowPage() {
       months.forEach((month) => {
         const starting = previousEnding
         const netIncome = hybridNetByMonth.get(month) || 0
-        const distributions = distributionsByMonth.get(month) || 0
         const isCompletedMonth = month < currentMonthKey
         const hasActualEnding = rawEndingBankBalanceByMonth.has(month)
         const actualEnding = hasActualEnding ? (rawEndingBankBalanceByMonth.get(month) || 0) : null
-        const ending = isCompletedMonth && hasActualEnding ? actualEnding! : starting + netIncome - distributions
+        const ending = isCompletedMonth && hasActualEnding ? actualEnding! : starting + netIncome
         startingBankBalanceByMonth.set(month, starting)
         endingBankBalanceByMonth.set(month, ending)
         if (isCompletedMonth && actualEnding !== null) {
@@ -1118,7 +1063,6 @@ export default function CashFlowPage() {
         monthlyIncomeProjection,
         manualExpenseLineByMonthAndAccount,
         contractLaborScheduleByMonth,
-        distributionsByMonth,
         remainingBacklog,
         serviceProjects,
         phaseCellContributions,
@@ -1648,7 +1592,22 @@ export default function CashFlowPage() {
 
   return (
     <div className="space-y-6">
-      <div className="mb-4 flex items-center gap-3">
+      <div>
+        <h2 className="text-lg font-medium">Cash Flow</h2>
+        <p className="text-sm text-muted-foreground">
+          Cash-basis monthly matrix (history from QuickBooks, future projected from backlog)
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cash Flow Table</CardTitle>
+          <CardDescription>
+            Rows mirror Profit &amp; Loss totals; columns run from May 2023 through projected future months.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4 flex items-center gap-3">
             <span className="text-sm text-muted-foreground">Table view</span>
             <Select
               value={tableGranularity}
@@ -1692,15 +1651,40 @@ export default function CashFlowPage() {
                 Collapse All
               </Button>
             </div>
-      </div>
+          </div>
 
-      {isLoading ? (
+          {isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : error ? (
             <div className="py-8 text-center text-destructive">Error loading cash flow: {(error as Error).message}</div>
-      ) : (
-        <div className="space-y-3">
-          <div className="overflow-x-auto border rounded-md">
+          ) : (
+            <div className="space-y-3">
+              <div className="text-xs text-muted-foreground">
+                Projection method (initial): future income uses remaining contract backlog spread across the next 12
+                months; future expense line items are manual inputs.
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Remaining backlog: {formatCurrency(cashFlowData?.remainingBacklog || 0)} | Monthly projected income:{' '}
+                {formatCurrency(cashFlowData?.monthlyIncomeProjection || 0)}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Bank accounts tracked from Balance Sheet:{' '}
+                {(cashFlowData?.bankAccountNames || []).length > 0
+                  ? (cashFlowData?.bankAccountNames || []).join(', ')
+                  : 'none detected yet (sync monthly Balance Sheet snapshots)'}
+              </div>
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <span>
+                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-600 mr-1" />
+                  Actual months: completed months
+                </span>
+                <span>
+                  <span className="inline-block h-2 w-2 rounded-full bg-amber-500 mr-1" />
+                  Projected months: current + future
+                </span>
+              </div>
+
+              <div className="overflow-x-auto border rounded-md">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -1726,7 +1710,7 @@ export default function CashFlowPage() {
                   </TableHeader>
                   <TableBody>
                     <TableRow className="bg-muted/10">
-                      <TableCell className="sticky left-0 bg-background font-semibold border-r z-10">
+                      <TableCell className="sticky left-0 bg-muted/10 font-semibold border-r z-10">
                         Starting Bank Balance
                       </TableCell>
                       {metricEmptyCells}
@@ -2195,7 +2179,7 @@ export default function CashFlowPage() {
                         )}
 
                     <TableRow className="bg-muted/20">
-                      <TableCell className="sticky left-0 bg-background font-semibold border-r z-10">Net Income</TableCell>
+                      <TableCell className="sticky left-0 bg-muted/20 font-semibold border-r z-10">Net Income</TableCell>
                       {metricEmptyCells}
                       {tableColumns.map((column) => {
                         const value = getNetIncomeValue(column.key)
@@ -2211,8 +2195,8 @@ export default function CashFlowPage() {
                     </TableRow>
 
                     <TableRow className="bg-muted/5">
-                      <TableCell className="sticky left-0 bg-background font-semibold border-r z-10">
-                        Non-P&amp;L Cash Movement
+                      <TableCell className="sticky left-0 bg-muted/5 font-semibold border-r z-10">
+                        Non-P&amp;L Cash Movement (actual months)
                       </TableCell>
                       {metricEmptyCells}
                       {tableColumns.map((column) => {
@@ -2228,63 +2212,8 @@ export default function CashFlowPage() {
                       })}
                     </TableRow>
 
-                    <TableRow>
-                      <TableCell className="sticky left-0 bg-background pl-8 border-r z-10">
-                        Distributions
-                      </TableCell>
-                      {metricEmptyCells}
-                      {tableColumns.map((column) => {
-                        const month = column.key
-                        const isHistorical = month < (cashFlowData?.currentMonthKey || '')
-                        const currentValue = cashFlowData?.distributionsByMonth?.get(month) || 0
-                        const cellId = `distribution::${month}`
-                        const manualValue = manualEdits[cellId]
-                        const displayValue = manualValue !== undefined ? (manualValue === '' ? 0 : parseFloat(manualValue)) : currentValue
-
-                        return (
-                          <TableCell
-                            key={cellId}
-                            className={`text-right font-mono ${currentBoundaryClass(month)}`}
-                          >
-                            {isHistorical ? (
-                              <span className={displayValue < 0 ? 'text-red-600' : ''}>{formatCurrency(displayValue)}</span>
-                            ) : (
-                              <Input
-                                type="number"
-                                step="0.01"
-                                value={displayValue}
-                                onChange={(e) => {
-                                  setManualEdits((prev) => ({ ...prev, [cellId]: e.target.value }))
-                                }}
-                                onBlur={async () => {
-                                  const val = manualEdits[cellId]
-                                  if (val === undefined) return
-                                  const numVal = val === '' ? 0 : parseFloat(val)
-                                  try {
-                                    const { error } = await supabase
-                                      .from('cash_flow_distributions' as never)
-                                      .upsert(
-                                        { month, amount: numVal } as never,
-                                        { onConflict: 'month' as never }
-                                      )
-                                    if (error) throw error
-                                    queryClient.invalidateQueries({ queryKey: ['cash-flow-table'] })
-                                    toast.success('Distribution saved')
-                                  } catch (err) {
-                                    toast.error('Failed to save distribution')
-                                    console.error(err)
-                                  }
-                                }}
-                                className="h-7 w-24 text-right font-mono"
-                              />
-                            )}
-                          </TableCell>
-                        )
-                      })}
-                    </TableRow>
-
                     <TableRow className="bg-muted/10">
-                      <TableCell className="sticky left-0 bg-background font-semibold border-r z-10">
+                      <TableCell className="sticky left-0 bg-muted/10 font-semibold border-r z-10">
                         Ending Bank Balance
                       </TableCell>
                       {metricEmptyCells}
@@ -2310,19 +2239,21 @@ export default function CashFlowPage() {
                     )}
                   </TableBody>
                 </Table>
-          </div>
-          <div className="flex items-center justify-end gap-3 pt-2">
-            <Button
-              variant="outline"
-              disabled={Object.keys(manualEdits).length === 0}
-              onClick={() => setManualEdits({})}
-            >
-              Reset forecast edits
-            </Button>
-            <span className="text-xs text-muted-foreground">Future forecast values auto-save when you leave a cell.</span>
-          </div>
-        </div>
-      )}
+              </div>
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button
+                  variant="outline"
+                  disabled={Object.keys(manualEdits).length === 0}
+                  onClick={() => setManualEdits({})}
+                >
+                  Reset forecast edits
+                </Button>
+                <span className="text-xs text-muted-foreground">Future forecast values auto-save when you leave a cell.</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card className="min-w-0">

@@ -1,27 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
-import fs from 'fs'
-import path from 'path'
+import * as dotenv from 'dotenv'
 
-const envPath = path.join(process.cwd(), '.env.local')
-const envContent = fs.readFileSync(envPath, 'utf8')
-const env = {}
-envContent.split('\n').forEach(line => {
-  const match = line.match(/^([^=]+)=(.*)$/)
-  if (match) env[match[1].trim()] = match[2].trim()
-})
+// Load .env.local
+dotenv.config({ path: '.env.local' })
 
 const supabase = createClient(
-  env.NEXT_PUBLIC_SUPABASE_URL,
-  env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
-const { error } = await supabase
+console.log('Deleting invoice 27-xx-xx (ID 923)...')
+
+// Delete line items first
+const { error: lineError } = await supabase
+  .from('invoice_line_items')
+  .delete()
+  .eq('invoice_id', 923)
+
+if (lineError) {
+  console.error('Error deleting line items:', lineError)
+  process.exit(1)
+}
+console.log('✓ Deleted invoice line items')
+
+// Delete invoice
+const { error: invError } = await supabase
   .from('invoices')
   .delete()
-  .eq('invoice_number', '27-xx-xx')
+  .eq('id', 923)
 
-if (error) {
-  console.log('❌ Error:', error.message)
-} else {
-  console.log('✅ Test invoice 27-xx-xx deleted')
+if (invError) {
+  console.error('Error deleting invoice:', invError)
+  process.exit(1)
 }
+console.log('✓ Deleted invoice 27-xx-xx')
+console.log('✅ Test invoice successfully removed!')

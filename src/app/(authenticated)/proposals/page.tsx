@@ -801,7 +801,7 @@ export default function ProposalsPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} domain={[0, 'auto']} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Bar dataKey="total" fill="#555555" radius={[4, 4, 0, 0]} barSize={18} />
+                <Bar dataKey="total" fill="#111827" radius={[4, 4, 0, 0]} barSize={18} />
                 <Line type="natural" dataKey="trend" stroke="#111111" strokeWidth={2} dot={false} strokeDasharray="6 4" />
               </BarChart>
             </ResponsiveContainer>
@@ -835,7 +835,7 @@ export default function ProposalsPage() {
                 <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} domain={[0, 'auto']} />
                 <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                <Bar dataKey="total" fill="#000000" radius={[4, 4, 0, 0]} barSize={18} />
+                <Bar dataKey="total" fill="#384eaa" radius={[4, 4, 0, 0]} barSize={18} />
                 <Line type="natural" dataKey="trend" stroke="#111111" strokeWidth={2} dot={false} strokeDasharray="6 4" />
               </BarChart>
             </ResponsiveContainer>

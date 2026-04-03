@@ -122,6 +122,7 @@ export async function POST(request: NextRequest) {
     const queryType = request.nextUrl?.searchParams?.get('type')
     const queryYear = request.nextUrl?.searchParams?.get('year')
     const queryMonth = request.nextUrl?.searchParams?.get('month')
+    const queryTrigger = request.nextUrl?.searchParams?.get('trigger')
     if (queryType) {
       syncType = queryType as SyncType
       if (queryYear) {
@@ -150,7 +151,7 @@ export async function POST(request: NextRequest) {
     const results: Record<string, unknown> = {}
     const syncTimestamp = new Date().toISOString()
     const runFailures: Array<{ domain: string; category: string; message: string }> = []
-    const triggerMode = isInternalSync ? 'webhook' : 'manual'
+    const triggerMode = (queryTrigger === 'scheduled' ? 'scheduled' : (isInternalSync ? 'webhook' : 'manual')) as 'manual' | 'webhook' | 'scheduled'
 
     if (syncType === 'all' || syncType === 'time') {
       const staleCutoffIso = new Date(Date.now() - 90 * 60 * 1000).toISOString()
