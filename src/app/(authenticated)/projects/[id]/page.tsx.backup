@@ -52,24 +52,8 @@ import {
 import Link from 'next/link'
 import type { Tables } from '@/lib/types/database'
 import { toast } from 'sonner'
-import { TeamTab } from './tabs/TeamTab'
-import { InvoicesTab } from './tabs/InvoicesTab'
-import { ExpensesTab } from './tabs/ExpensesTab'
-import { ApplicationsTab } from './tabs/ApplicationsTab'
-import { DashboardTab } from './tabs/DashboardTab'
+import { OverviewTab } from './tabs/OverviewTab'
 import { TimeTab } from './tabs/TimeTab'
-import { PhasesTab } from './tabs/PhasesTab'
-import { ContractsTab } from './tabs/ContractsTab'
-import { BillablesTab } from './tabs/BillablesTab'
-import { PerformanceMultiplierCard } from './components/PerformanceMultiplierCard'
-import { PerformanceHistoryChartContent } from './components/PerformanceHistoryChartContent'
-import {
-  PROJECT_INFO_EXTRA_FIELDS,
-  PROJECT_INFO_EXTRA_PHONE_COLUMNS,
-  PROJECT_INFO_GROUPS,
-  buildEmptyExtraProjectInfoForm,
-  type ProjectInfoGroupedField,
-} from './lib/constants'
 import {
   Dialog,
   DialogContent,
@@ -299,6 +283,496 @@ type ApplicationRunRow = {
   error_message: string | null
 }
 
+const PIE_COLORS = [
+  '#384eaa', // IRIS Blue (primary)
+  '#111827', // Black
+  '#0891b2', // Cyan (cool, professional)
+  '#475569', // Slate Gray
+  '#7c3aed', // Deep Purple (royal, sophisticated)
+  '#0f766e', // Teal (complements blue)
+  '#581c87', // Dark Purple
+  '#334155', // Dark Slate
+  '#8b5cf6', // Violet (softer purple)
+  '#84CC16', // Lime
+  '#06B6D4', // Cyan
+  '#A855F7', // Violet
+]
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+const PROJECT_INFO_EXTRA_FIELDS = [
+  { column: 'pe_number', label: 'PE #' },
+  { column: 'engineer_email', label: 'Engineer Email' },
+  { column: 'engineer_phone', label: 'Engineer Phone' },
+  { column: 'engineer_date', label: 'Date' },
+  { column: 'developer_name', label: 'Developer Name' },
+  { column: 'owner_name', label: 'Owner Name' },
+  { column: 'corporate_title', label: 'Corporate Title' },
+  { column: 'owner_address', label: 'Owner Address' },
+  { column: 'owner_number_and_street', label: 'Owner # and Street' },
+  { column: 'owner_city_state_zip', label: 'Owner City, State, Zip' },
+  { column: 'owner_city_state', label: 'Owner City, State' },
+  { column: 'owner_city', label: 'Owner City' },
+  { column: 'owner_state', label: 'Owner State' },
+  { column: 'owner_zip', label: 'Owner Zip' },
+  { column: 'owner_email', label: 'Owner Email' },
+  { column: 'owner_phone', label: 'Owner Phone' },
+  { column: 'project_address', label: 'Project Address' },
+  { column: 'project_ref_number', label: 'Project #' },
+  { column: 'project_number_and_street', label: 'Project # and Street' },
+  { column: 'project_city_state_zip', label: 'Project City, State, Zip' },
+  { column: 'project_street_city_state_zip', label: 'Project Street, City, State, Zip' },
+  { column: 'section', label: 'Section' },
+  { column: 'township', label: 'Township' },
+  { column: 'range', label: 'Range' },
+  { column: 'between_streets', label: 'Between Streets' },
+  { column: 'council_district', label: 'Council District' },
+  { column: 'planning_district', label: 'Planning District' },
+  { column: 'census_tract', label: 'Census Tract' },
+  { column: 'zoning', label: 'Zoning' },
+  { column: 'pud_ordinance', label: 'PUD Ordinance' },
+  { column: 'mobility_zone', label: 'Mobility Zone' },
+  { column: 'panel_number', label: 'Panel Number' },
+  { column: 're_numbers', label: 'RE Numbers' },
+  { column: 'transportation_land_use_code', label: 'Transportation Land Use Code' },
+  { column: 'previous_land_use_code', label: 'Previous Land Use Code' },
+  { column: 'total_land_area', label: 'Total Land Area' },
+  { column: 'developed_land_area', label: 'Developed Land Area' },
+  { column: 'total_units', label: 'Total Units' },
+  { column: 'single_family_units', label: 'Single Family Units' },
+  { column: 'duplex_units', label: 'Duplex Units' },
+  { column: 'apartment_units', label: 'Apartment Units' },
+  { column: 'mobile_home_units', label: 'Mobile Home Units' },
+  { column: 'condo_units', label: 'Condo Units' },
+  { column: 'number_of_parking_spaces', label: 'Number of Parking Spaces' },
+  { column: 'jea_water_construction_permit_number', label: 'JEA Water Construction Permit #' },
+  { column: 'jea_wastewater_construction_permit_number', label: 'JEA Wastewater Construction Permit #' },
+  { column: 'jea_water_construction_permit_date', label: 'JEA Water Construction Permit Date' },
+  {
+    column: 'jea_wastewater_construction_permit_date',
+    label: 'JEA Wastewater Construction Permit Date',
+  },
+  { column: 'contractor_name', label: 'Contractor Name' },
+  { column: 'contractor_phone', label: 'Contractor Phone' },
+  { column: 'lift_station_address', label: 'Lift Station Address' },
+  { column: 'lift_station_meter_number', label: 'Lift Station Meter Number' },
+  { column: 'major_access', label: 'Major Access' },
+  { column: 'future_land_use', label: 'Future Land Use' },
+  { column: 'present_use_of_property', label: 'Present Use of Property' },
+  { column: 'building_sqft', label: 'Building SQFT' },
+  { column: 'project_description', label: 'Project Description' },
+  { column: 'permit_number', label: 'Permit No.' },
+  { column: 'section_number', label: 'Section No.' },
+  { column: 'state_road', label: 'State Road' },
+  { column: 'county', label: 'County' },
+  { column: 'government_development_review', label: 'Government Development Review' },
+  { column: 'reviewer_name', label: 'Reviewer Name' },
+  { column: 'reviewer_phone', label: 'Reviewer Phone' },
+  { column: 'reviewer_position', label: 'Reviewer Position' },
+  { column: 'business_type', label: 'Business Type' },
+  { column: 'commercial_sqft', label: 'Commercial SQFT' },
+  { column: 'residential_type', label: 'Residential Type' },
+  { column: 'number_of_units', label: 'Number of Units' },
+  { column: 'daily_traffic_estimate', label: 'Daily Traffic Estimate' },
+  { column: 'ite_land_use_code', label: 'ITE Land Use Code' },
+  { column: 'independent_variables', label: 'Independent Variables' },
+  { column: 'ite_report_page_reference', label: 'ITE Report page # reference' },
+  { column: 'street_name', label: 'Street Name' },
+  { column: 'state_road_number', label: 'State Road #' },
+  { column: 'us_highway_number', label: 'US Highway #' },
+  { column: 'latitude', label: 'Latitude' },
+  { column: 'longitude', label: 'Longitude' },
+  { column: 'benchmark_hor_datum', label: 'Benchmark Hor Datum' },
+  { column: 'state_plane_northing', label: 'State Plane Northing' },
+  { column: 'state_plane_easting', label: 'State Plane Easting' },
+  { column: 'desc_of_facility_and_connection', label: 'Desc Of Facility and Connection' },
+  { column: 'desc_for_needing_permit', label: 'Desc For needing permit' },
+] as const
+
+const PROJECT_INFO_EXTRA_PHONE_COLUMNS = new Set([
+  'engineer_phone',
+  'owner_phone',
+  'contractor_phone',
+  'reviewer_phone',
+])
+
+type ProjectInfoGroupedField = {
+  label: string
+  key: string
+}
+
+const PROJECT_INFO_GROUPS: Array<{ title: string; fields: ProjectInfoGroupedField[] }> = [
+  {
+    title: 'General',
+    fields: [
+      { label: 'Project Number', key: 'core.projectNumber' },
+      { label: 'Project Name', key: 'core.projectName' },
+      { label: 'Project Manager', key: 'core.projectManager' },
+      { label: 'Engineer Name', key: 'core.projectEngineer' },
+      { label: 'Client', key: 'core.client' },
+      { label: 'Developer Address (Line 1)', key: 'core.clientAddressLine1' },
+      { label: 'Developer Address (Line 2)', key: 'core.clientAddressLine2' },
+      { label: 'Developer Phone', key: 'core.clientPhone' },
+      { label: 'Project Date', key: 'core.projectDate' },
+      { label: 'Availability #', key: 'core.availabilityNumber' },
+      { label: 'City/County', key: 'core.cityCounty' },
+      { label: 'PE #', key: 'extra.pe_number' },
+      { label: 'Engineer Email', key: 'extra.engineer_email' },
+      { label: 'Engineer Phone', key: 'extra.engineer_phone' },
+      { label: 'Date', key: 'extra.engineer_date' },
+      { label: 'Major Access', key: 'extra.major_access' },
+      { label: 'Future Land Use', key: 'extra.future_land_use' },
+      { label: 'Present Use of Property', key: 'extra.present_use_of_property' },
+      { label: 'Building SQFT', key: 'extra.building_sqft' },
+      { label: 'Project Description', key: 'extra.project_description' },
+    ],
+  },
+  {
+    title: 'COJ',
+    fields: [
+      { label: 'Developer Name', key: 'extra.developer_name' },
+      { label: 'Owner Name', key: 'extra.owner_name' },
+      { label: 'Corporate Title', key: 'extra.corporate_title' },
+      { label: 'Owner Address', key: 'extra.owner_address' },
+      { label: 'Owner # and Street', key: 'extra.owner_number_and_street' },
+      { label: 'Owner City, State, Zip', key: 'extra.owner_city_state_zip' },
+      { label: 'Owner City, State', key: 'extra.owner_city_state' },
+      { label: 'Owner City', key: 'extra.owner_city' },
+      { label: 'Owner State', key: 'extra.owner_state' },
+      { label: 'Owner Zip', key: 'extra.owner_zip' },
+      { label: 'Owner Email', key: 'extra.owner_email' },
+      { label: 'Owner Phone', key: 'extra.owner_phone' },
+      { label: 'Project Address', key: 'extra.project_address' },
+      { label: 'Project #', key: 'extra.project_ref_number' },
+      { label: 'Project # and Street', key: 'extra.project_number_and_street' },
+      { label: 'Project City, State, Zip', key: 'extra.project_city_state_zip' },
+      { label: 'Project Street, City, State, Zip', key: 'extra.project_street_city_state_zip' },
+      { label: 'Section', key: 'extra.section' },
+      { label: 'Township', key: 'extra.township' },
+      { label: 'Range', key: 'extra.range' },
+      { label: 'Between Streets', key: 'extra.between_streets' },
+      { label: 'Council District', key: 'extra.council_district' },
+      { label: 'Planning District', key: 'extra.planning_district' },
+      { label: 'Census Tract', key: 'extra.census_tract' },
+      { label: 'Zoning', key: 'extra.zoning' },
+      { label: 'PUD Ordinance', key: 'extra.pud_ordinance' },
+      { label: 'Mobility Zone', key: 'extra.mobility_zone' },
+      { label: 'Panel Number', key: 'extra.panel_number' },
+      { label: 'RE Numbers', key: 'extra.re_numbers' },
+      { label: 'Transportation Land Use Code', key: 'extra.transportation_land_use_code' },
+      { label: 'Previous Land Use Code', key: 'extra.previous_land_use_code' },
+      { label: 'Total Land Area', key: 'extra.total_land_area' },
+      { label: 'Developed Land Area', key: 'extra.developed_land_area' },
+      { label: 'Total Units', key: 'extra.total_units' },
+      { label: 'Single Family Units', key: 'extra.single_family_units' },
+      { label: 'Duplex Units', key: 'extra.duplex_units' },
+      { label: 'Apartment Units', key: 'extra.apartment_units' },
+      { label: 'Mobile Home Units', key: 'extra.mobile_home_units' },
+      { label: 'Condo Units', key: 'extra.condo_units' },
+      { label: 'Number of Parking Spaces', key: 'extra.number_of_parking_spaces' },
+    ],
+  },
+  {
+    title: 'JEA',
+    fields: [
+      { label: 'JEA Water Construction Permit #', key: 'extra.jea_water_construction_permit_number' },
+      {
+        label: 'JEA Wastewater Construction Permit #',
+        key: 'extra.jea_wastewater_construction_permit_number',
+      },
+      { label: 'JEA Water Construction Permit Date', key: 'extra.jea_water_construction_permit_date' },
+      {
+        label: 'JEA Wastewater Construction Permit Date',
+        key: 'extra.jea_wastewater_construction_permit_date',
+      },
+      { label: 'Contractor Name', key: 'extra.contractor_name' },
+      { label: 'Contractor Phone', key: 'extra.contractor_phone' },
+      { label: 'Lift Station Address', key: 'extra.lift_station_address' },
+      { label: 'Lift Station Meter Number', key: 'extra.lift_station_meter_number' },
+    ],
+  },
+  {
+    title: 'FDOT',
+    fields: [
+      { label: 'Permit No.', key: 'extra.permit_number' },
+      { label: 'Section No.', key: 'extra.section_number' },
+      { label: 'State Road', key: 'extra.state_road' },
+      { label: 'County', key: 'extra.county' },
+      { label: 'Government Development Review', key: 'extra.government_development_review' },
+      { label: 'Reviewer Name', key: 'extra.reviewer_name' },
+      { label: 'Reviewer Phone', key: 'extra.reviewer_phone' },
+      { label: 'Reviewer Position', key: 'extra.reviewer_position' },
+      { label: 'Business Type', key: 'extra.business_type' },
+      { label: 'Commercial SQFT', key: 'extra.commercial_sqft' },
+      { label: 'Residential Type', key: 'extra.residential_type' },
+      { label: 'Number of Units', key: 'extra.number_of_units' },
+      { label: 'Daily Traffic Estimate', key: 'extra.daily_traffic_estimate' },
+      { label: 'ITE Land Use Code', key: 'extra.ite_land_use_code' },
+      { label: 'Independent Variables', key: 'extra.independent_variables' },
+      { label: 'ITE Report page # reference', key: 'extra.ite_report_page_reference' },
+      { label: 'Street Name', key: 'extra.street_name' },
+      { label: 'State Road #', key: 'extra.state_road_number' },
+      { label: 'US Highway #', key: 'extra.us_highway_number' },
+      { label: 'Latitude', key: 'extra.latitude' },
+      { label: 'Longitude', key: 'extra.longitude' },
+      { label: 'Benchmark Hor Datum', key: 'extra.benchmark_hor_datum' },
+      { label: 'State Plane Northing', key: 'extra.state_plane_northing' },
+      { label: 'State Plane Easting', key: 'extra.state_plane_easting' },
+      { label: 'Desc Of Facility and Connection', key: 'extra.desc_of_facility_and_connection' },
+      { label: 'Desc For needing permit', key: 'extra.desc_for_needing_permit' },
+    ],
+  },
+]
+
+const buildEmptyExtraProjectInfoForm = () =>
+  Object.fromEntries(PROJECT_INFO_EXTRA_FIELDS.map((field) => [field.column, ''])) as Record<
+    string,
+    string
+  >
+
+// Performance Multiplier Card Component
+function PerformanceMultiplierCard({ projectId, phases }: { projectId: number; phases: any[] }) {
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [selectedPhaseIds, setSelectedPhaseIds] = useState<number[]>([])
+  const queryClient = useQueryClient()
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['performance-multiplier', projectId],
+    queryFn: async () => {
+      const res = await fetch(`/api/projects/${projectId}/performance-multiplier`)
+      if (!res.ok) throw new Error('Failed to fetch performance multiplier')
+      return res.json() as Promise<{
+        multiplier: number | null
+        selectedPhaseIds: number[]
+        totalRevenue: number
+        totalLaborCost: number
+      }>
+    }
+  })
+
+  useEffect(() => {
+    if (data?.selectedPhaseIds) {
+      setSelectedPhaseIds(data.selectedPhaseIds)
+    }
+  }, [data])
+
+  const saveMutation = useMutation({
+    mutationFn: async (phaseIds: number[]) => {
+      const res = await fetch(`/api/projects/${projectId}/performance-multiplier`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selectedPhaseIds: phaseIds })
+      })
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to save selections')
+      }
+      return res.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performance-multiplier', projectId] })
+      setIsEditOpen(false)
+      toast.success('Performance multiplier updated')
+    },
+    onError: (error: Error) => {
+      console.error('Save error:', error)
+      toast.error(error.message || 'Failed to update performance multiplier')
+    }
+  })
+
+  const togglePhase = (phaseId: number) => {
+    setSelectedPhaseIds(prev =>
+      prev.includes(phaseId)
+        ? prev.filter(id => id !== phaseId)
+        : [...prev, phaseId]
+    )
+  }
+
+  const handleSave = () => {
+    saveMutation.mutate(selectedPhaseIds)
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <CardDescription>Performance Multiplier</CardDescription>
+              <CardTitle className="text-xl group relative cursor-help">
+                {isLoading ? (
+                  <Skeleton className="h-7 w-16" />
+                ) : data?.multiplier != null ? (
+                  <>
+                    {`${data.multiplier.toFixed(2)}x`}
+                    <div className="invisible group-hover:visible absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
+                      <div className="space-y-1 text-sm font-normal">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Selected Revenue:</span>
+                          <span className="font-medium">{formatCurrency(data.totalRevenue)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Selected Cost:</span>
+                          <span className="font-medium">{formatCurrency(data.totalLaborCost)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 pt-1 border-t">
+                          <span className="font-semibold">Multiplier:</span>
+                          <span className="font-semibold">{data.multiplier.toFixed(2)}x</span>
+                        </div>
+                        <div className="text-xs text-gray-500 mt-2">
+                          {data.selectedPhaseIds.length} {data.selectedPhaseIds.length === 1 ? 'phase' : 'phases'} selected
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  '—'
+                )}
+              </CardTitle>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 -mt-1"
+              onClick={() => setIsEditOpen(true)}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardHeader>
+      </Card>
+
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Performance Multiplier</DialogTitle>
+            <DialogDescription>
+              Select which phases to include in the performance calculation
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto">
+            {phases.map((phase) => (
+              <div key={phase.id} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`phase-${phase.id}`}
+                  checked={selectedPhaseIds.includes(phase.id)}
+                  onCheckedChange={() => togglePhase(phase.id)}
+                />
+                <label
+                  htmlFor={`phase-${phase.id}`}
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                >
+                  <span className="font-mono">{phase.phase_code}</span> - {phase.phase_name}
+                </label>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? 'Saving...' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+// Performance History Chart Component
+function PerformanceHistoryChartContent({ projectId, phaseFilter }: { projectId: number; phaseFilter?: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['performance-history', projectId, phaseFilter],
+    queryFn: async () => {
+      const url = phaseFilter && phaseFilter !== 'all'
+        ? `/api/projects/${projectId}/performance-history?phase=${encodeURIComponent(phaseFilter)}`
+        : `/api/projects/${projectId}/performance-history?phase=all`
+      const res = await fetch(url)
+      if (!res.ok) throw new Error('Failed to fetch performance history')
+      return res.json() as Promise<{
+        history: Array<{
+          month: string
+          monthLabel: string
+          cumulativeRevenue: number
+          cumulativeCost: number
+          multiplier: number | null
+        }>
+      }>
+    }
+  })
+
+  if (isLoading) {
+    return <Skeleton className="h-[300px] w-full" />
+  }
+
+  if (!data?.history || data.history.length === 0) {
+    return (
+      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+        No performance history available
+      </div>
+    )
+  }
+
+  return (
+    <div className="h-[300px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data.history} margin={{ top: 10, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="monthLabel" 
+              tick={{ fontSize: 11 }}
+            />
+            <YAxis 
+              tickFormatter={(value) => `${Math.round(Number(value))}x`}
+              allowDecimals={false}
+              label={{ value: 'Multiplier', angle: -90, position: 'insideLeft' }}
+            />
+            <ReferenceLine y={3} stroke="#9ca3af" strokeDasharray="3 3" strokeWidth={2} label={{ value: '3.0x Target', position: 'right', fill: '#6b7280' }} />
+            <ReferenceLine y={2.25} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={2} label={{ value: '2.25x Baseline', position: 'right', fill: '#dc2626' }} />
+            <Tooltip
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload
+                  return (
+                    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                      <p className="font-semibold mb-2">{data.monthLabel}</p>
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Multiplier:</span>
+                          <span className="font-medium">
+                            {data.multiplier != null ? `${data.multiplier.toFixed(2)}x` : '—'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Cumulative Revenue:</span>
+                          <span className="font-medium">{formatCurrency(data.cumulativeRevenue)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Cumulative Cost:</span>
+                          <span className="font-medium">{formatCurrency(data.cumulativeCost)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="multiplier"
+              stroke="#384eaa"
+              strokeWidth={3}
+              dot={{ r: 4 }}
+              name="Performance Multiplier"
+            />
+          </LineChart>
+        </ResponsiveContainer>
+    </div>
+  )
+}
+
 export default function ProjectDetailPage() {
   const params = useParams()
   const projectId = Number(params.id)
@@ -337,7 +811,23 @@ export default function ProjectDetailPage() {
     amount: '',
     project_number: '',
   })
-
+  const [updatingExpenseId, setUpdatingExpenseId] = useState<number | null>(null)
+  const [updatingExpenseChargeId, setUpdatingExpenseChargeId] = useState<number | null>(null)
+  const [updatingExpenseContractId, setUpdatingExpenseContractId] = useState<number | null>(null)
+  const [expenseChargeDrafts, setExpenseChargeDrafts] = useState<Record<number, string>>({})
+  const [isContractDialogOpen, setIsContractDialogOpen] = useState(false)
+  const [isSavingContract, setIsSavingContract] = useState(false)
+  const [isDeletingContract, setIsDeletingContract] = useState(false)
+  const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false)
+  const [editingSubcontractContract, setEditingSubcontractContract] = useState<SubcontractContractRow | null>(null)
+  const [contractForm, setContractForm] = useState({
+    vendor_name: '',
+    description: '',
+    original_amount: '',
+    status: 'active' as 'active' | 'closed' | 'cancelled',
+    start_date: '',
+    end_date: '',
+  })
   const [timeDistributionView, setTimeDistributionView] = useState<'employee' | 'phase'>('phase')
   const [projectInfoFormInitialized, setProjectInfoFormInitialized] = useState(false)
   const [projectInfoDynamicInitialized, setProjectInfoDynamicInitialized] = useState(false)
@@ -362,6 +852,7 @@ export default function ProjectDetailPage() {
   const [selectedBillablesMonth, setSelectedBillablesMonth] = useState(() =>
     formatMonthLabel(subMonths(new Date(), 1), 'yyyy-MM')
   )
+  const [collapsedBillablePhases, setCollapsedBillablePhases] = useState<Record<string, boolean>>({})
   const toggleProjectInfoSection = useCallback((sectionKey: string) => {
     setExpandedProjectInfoSections((prev) => ({
       ...prev,
@@ -384,6 +875,8 @@ export default function ProjectDetailPage() {
   const [projectInfoExtraForm, setProjectInfoExtraForm] = useState<Record<string, string>>(
     buildEmptyExtraProjectInfoForm()
   )
+  const expenseChargeSaveTimers = useRef<Record<number, ReturnType<typeof setTimeout>>>({})
+
   useEffect(() => {
     if (searchParams.get('edit') === 'phases') {
       setIsEditOpen(true)
@@ -2296,6 +2789,17 @@ export default function ProjectDetailPage() {
     })
   }, [expenses, subcontractContracts])
 
+  const getBillablePhaseCollapseKey = (phaseName: string) =>
+    `${normalizedProjectNumber}::${selectedBillablesMonth}::${phaseName}`
+
+  const toggleBillablePhaseCollapsed = (phaseName: string) => {
+    const phaseKey = getBillablePhaseCollapseKey(phaseName)
+    setCollapsedBillablePhases((prev) => ({
+      ...prev,
+      [phaseKey]: !(prev[phaseKey] ?? false),
+    }))
+  }
+
   // Fetch permits
   const { data: permits, isLoading: loadingPermits } = useQuery({
     queryKey: ['project-permits', projectId],
@@ -2585,6 +3089,233 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const handleToggleExpenseReimbursable = async (expenseId: number, checked: boolean) => {
+    setUpdatingExpenseId(expenseId)
+    try {
+      const nextBillingStatus: ExpenseBillingStatus = checked ? 'approved' : 'ignored'
+      const { error } = await supabase
+        .from('project_expenses')
+        .update({
+          is_reimbursable: checked,
+          billing_status: nextBillingStatus,
+          status: legacyStatusFromBillingStatus(nextBillingStatus),
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq('id', expenseId as never)
+      if (error) throw error
+
+      queryClient.invalidateQueries({
+        queryKey: ['project-expenses', normalizedProjectNumber, projectId],
+      })
+      toast.success('Expense updated')
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to update expense')
+    } finally {
+      setUpdatingExpenseId(null)
+    }
+  }
+
+  const openCreateContractDialog = () => {
+    setEditingSubcontractContract(null)
+    setContractForm({
+      vendor_name: '',
+      description: '',
+      original_amount: '',
+      status: 'active',
+      start_date: '',
+      end_date: '',
+    })
+    setIsContractDialogOpen(true)
+  }
+
+  const openEditContractDialog = (contract: SubcontractContractRow) => {
+    setEditingSubcontractContract(contract)
+    setContractForm({
+      vendor_name: contract.vendor_name || '',
+      description: contract.description || '',
+      original_amount: String(Number(contract.original_amount) || 0),
+      status: contract.status || 'active',
+      start_date: contract.start_date || '',
+      end_date: contract.end_date || '',
+    })
+    setIsContractDialogOpen(true)
+  }
+
+  const closeContractDialog = () => {
+    setIsContractDialogOpen(false)
+    setEditingSubcontractContract(null)
+    setIsDeletingContract(false)
+    setIsSavingContract(false)
+  }
+
+  const saveContract = async () => {
+    const vendorName = contractForm.vendor_name.trim()
+    const originalAmount = Number(contractForm.original_amount)
+    if (!vendorName) {
+      toast.error('Vendor is required')
+      return
+    }
+    if (!Number.isFinite(originalAmount) || originalAmount < 0) {
+      toast.error('Original amount must be zero or greater')
+      return
+    }
+
+    setIsSavingContract(true)
+    try {
+      const payload = {
+        project_id: projectId,
+        project_number: normalizedProjectNumber,
+        vendor_name: vendorName,
+        description: contractForm.description.trim() || null,
+        original_amount: Number(originalAmount.toFixed(2)),
+        status: contractForm.status,
+        start_date: contractForm.start_date || null,
+        end_date: contractForm.end_date || null,
+        updated_at: new Date().toISOString(),
+      }
+
+      if (editingSubcontractContract) {
+        const { error } = await supabase
+          .from('subcontract_contracts' as never)
+          .update(payload as never)
+          .eq('id' as never, editingSubcontractContract.id as never)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('subcontract_contracts' as never).insert(payload as never)
+        if (error) throw error
+      }
+
+      queryClient.invalidateQueries({
+        queryKey: ['subcontract-contracts', normalizedProjectNumber, projectId],
+      })
+      toast.success(editingSubcontractContract ? 'Contract updated' : 'Contract created')
+      closeContractDialog()
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to save contract')
+    } finally {
+      setIsSavingContract(false)
+    }
+  }
+
+  const deleteContract = async () => {
+    if (!editingSubcontractContract) return
+    setIsDeletingContract(true)
+    try {
+      const { error } = await supabase
+        .from('subcontract_contracts' as never)
+        .delete()
+        .eq('id' as never, editingSubcontractContract.id as never)
+      if (error) throw error
+      queryClient.invalidateQueries({
+        queryKey: ['subcontract-contracts', normalizedProjectNumber, projectId],
+      })
+      queryClient.invalidateQueries({
+        queryKey: ['project-expenses', normalizedProjectNumber, projectId],
+      })
+      toast.success('Contract deleted')
+      closeContractDialog()
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to delete contract')
+    } finally {
+      setIsDeletingContract(false)
+    }
+  }
+
+  const linkExpenseToContract = async (expenseId: number, contractId: number | null) => {
+    setUpdatingExpenseContractId(expenseId)
+    try {
+      const { error } = await supabase
+        .from('project_expenses')
+        .update({
+          subcontract_contract_id: contractId,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq('id', expenseId as never)
+      if (error) throw error
+
+      queryClient.invalidateQueries({
+        queryKey: ['project-expenses', normalizedProjectNumber, projectId],
+      })
+      toast.success('Expense contract link updated')
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to link expense to contract')
+    } finally {
+      setUpdatingExpenseContractId(null)
+    }
+  }
+
+  useEffect(() => {
+    if (!expenses) return
+    setExpenseChargeDrafts(() => {
+      const next: Record<number, string> = {}
+      expenses.forEach((expense) => {
+        next[expense.id] = formatCurrency(Number(expense.amount_to_charge) || 0)
+      })
+      return next
+    })
+  }, [expenses])
+
+  const parseCurrencyValue = (value: string) => {
+    const normalized = value.replace(/[^0-9.-]/g, '')
+    const numeric = Number(normalized)
+    return Number.isFinite(numeric) ? numeric : NaN
+  }
+
+  useEffect(() => {
+    return () => {
+      Object.values(expenseChargeSaveTimers.current).forEach((timer) => clearTimeout(timer))
+      expenseChargeSaveTimers.current = {}
+    }
+  }, [])
+
+  const updateExpenseAmountToCharge = async (
+    expenseId: number,
+    feeAmount: number,
+    amountToCharge: number
+  ) => {
+    const safeFee = Number(feeAmount) || 0
+    const safeAmount = Math.max(0, Number(amountToCharge) || 0)
+    const markupPct =
+      safeFee > 0 ? Math.max(0, Number(((safeAmount / safeFee) - 1).toFixed(4))) : 0
+
+    setUpdatingExpenseChargeId(expenseId)
+    try {
+      const { error } = await supabase
+        .from('project_expenses')
+        .update({
+          markup_pct: markupPct,
+          updated_at: new Date().toISOString(),
+        } as never)
+        .eq('id', expenseId as never)
+      if (error) throw error
+      queryClient.invalidateQueries({
+        queryKey: ['project-expenses', normalizedProjectNumber, projectId],
+      })
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to update amount to charge')
+    } finally {
+      setUpdatingExpenseChargeId(null)
+    }
+  }
+
+  const applyDefaultExpenseMarkup = async (expenseId: number, feeAmount: number) => {
+    const amount = Math.max(0, (Number(feeAmount) || 0) * 1.15)
+    setExpenseChargeDrafts((prev) => ({ ...prev, [expenseId]: formatCurrency(amount) }))
+    await updateExpenseAmountToCharge(expenseId, feeAmount, amount)
+  }
+
+  const scheduleExpenseChargeSave = (expenseId: number, feeAmount: number, draftValue: string) => {
+    const parsed = parseCurrencyValue(draftValue)
+    if (Number.isNaN(parsed)) return
+    if (expenseChargeSaveTimers.current[expenseId]) {
+      clearTimeout(expenseChargeSaveTimers.current[expenseId])
+    }
+    expenseChargeSaveTimers.current[expenseId] = setTimeout(() => {
+      void updateExpenseAmountToCharge(expenseId, feeAmount, Math.max(0, Number(parsed.toFixed(2))))
+      delete expenseChargeSaveTimers.current[expenseId]
+    }, 700)
+  }
+
   const { data: qbServices } = useQuery({
     queryKey: ['qbo-services'],
     queryFn: async () => {
@@ -2645,6 +3376,7 @@ export default function ProjectDetailPage() {
   }
 
   const [workflowBusy, setWorkflowBusy] = useState(false)
+  const [generatingRequiredItemId, setGeneratingRequiredItemId] = useState<number | null>(null)
   const [itemsDialogPermitId, setItemsDialogPermitId] = useState<number | null>(null)
   const [agenciesDialogOpen, setAgenciesDialogOpen] = useState(false)
   const [permitsDialogOpen, setPermitsDialogOpen] = useState(false)
@@ -2849,6 +3581,83 @@ export default function ProjectDetailPage() {
     }
   }
 
+  const generateApplication = async (requiredItemId: number) => {
+    setGeneratingRequiredItemId(requiredItemId)
+    try {
+      const response = await fetch(`/api/projects/${projectId}/applications/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requiredItemId }),
+      })
+      const payload = await response.json()
+      if (!response.ok) {
+        throw new Error(payload.error || 'Failed to generate application')
+      }
+      const downloadUrl = String(payload.downloadUrl || '')
+      const suggestedFileName = String(payload.fileName || `application-${requiredItemId}.pdf`)
+      if (downloadUrl) {
+        const pdfResponse = await fetch(downloadUrl)
+        if (!pdfResponse.ok) {
+          throw new Error('Application generated but failed to download PDF')
+        }
+        const pdfBlob = await pdfResponse.blob()
+        const downloadBlobFallback = (blob: Blob, filename: string) => {
+          const objectUrl = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = objectUrl
+          link.download = filename
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+          URL.revokeObjectURL(objectUrl)
+        }
+
+        const pickerHost = window as unknown as {
+          showSaveFilePicker?: (options?: {
+            suggestedName?: string
+            types?: Array<{ description?: string; accept?: Record<string, string[]> }>
+          }) => Promise<{
+            createWritable: () => Promise<{
+              write: (data: Blob) => Promise<void>
+              close: () => Promise<void>
+            }>
+          }>
+        }
+
+        if (typeof pickerHost.showSaveFilePicker === 'function') {
+          try {
+            const handle = await pickerHost.showSaveFilePicker({
+              suggestedName: suggestedFileName,
+              types: [{ description: 'PDF Document', accept: { 'application/pdf': ['.pdf'] } }],
+            })
+            const writable = await handle.createWritable()
+            await writable.write(pdfBlob)
+            await writable.close()
+          } catch (pickerError) {
+            if (
+              pickerError instanceof DOMException &&
+              (pickerError.name === 'AbortError' || pickerError.name === 'NotAllowedError')
+            ) {
+              downloadBlobFallback(pdfBlob, suggestedFileName)
+            } else {
+              throw pickerError
+            }
+          }
+        } else {
+          downloadBlobFallback(pdfBlob, suggestedFileName)
+        }
+      }
+
+      toast.success('Application generated and saved')
+      queryClient.invalidateQueries({ queryKey: ['project-required-items', projectId] })
+      queryClient.invalidateQueries({ queryKey: ['project-application-runs', projectId] })
+    } catch (error) {
+      toast.error((error as Error).message || 'Failed to generate application')
+    } finally {
+      setGeneratingRequiredItemId(null)
+    }
+  }
+
   const permitsByAgency = useMemo(() => {
     const map = new Map<number, PermitCatalogRow[]>()
     ;(permitCatalog || []).forEach((permit) => {
@@ -2931,6 +3740,33 @@ export default function ProjectDetailPage() {
       permit_identifier: permit.permit_identifier,
     }))
   }, [permits, projectPermitSelections])
+
+  const [expandedInvoices, setExpandedInvoices] = useState<Set<number>>(new Set())
+
+  const toggleInvoice = (invoiceId: number) => {
+    setExpandedInvoices((prev) => {
+      const next = new Set(prev)
+      if (next.has(invoiceId)) {
+        next.delete(invoiceId)
+      } else {
+        next.add(invoiceId)
+      }
+      return next
+    })
+  }
+
+  const lineItemsByInvoice = useMemo(() => {
+    const map = new Map<number, Tables<'invoice_line_items'>[]>()
+    invoiceLineItems?.forEach((item) => {
+      const list = map.get(item.invoice_id)
+      if (list) {
+        list.push(item)
+      } else {
+        map.set(item.invoice_id, [item])
+      }
+    })
+    return map
+  }, [invoiceLineItems])
 
   const timeFilterOptions = useMemo(() => {
     const employees = new Set<string>()
@@ -3466,29 +4302,262 @@ export default function ProjectDetailPage() {
           )}
         </TabsList>
 
-        <DashboardTab
-          projectId={projectId}
-          totalFee={totalFee}
-          totalRevenue={totalRevenue}
-          totalCost={totalCost}
-          bseLaborOnly={bseLaborOnly}
-          totalExpenses={totalExpenses}
-          projectMultiplier={projectMultiplier}
-          phaseChartData={phaseChartData}
-          loadingPhases={loadingPhases}
-          timeDistributionData={timeDistributionData}
-          totalHours={totalHours}
-          loadingAllTime={loadingAllTime}
-          timeDistributionView={timeDistributionView}
-          setTimeDistributionView={setTimeDistributionView}
-          performanceOverTime={performanceOverTime || []}
-          loadingPerformanceOverTime={loadingPerformanceOverTime}
-          selectedPhaseFilter={selectedPhaseFilter}
-          setSelectedPhaseFilter={setSelectedPhaseFilter}
-          phases={phases || []}
-          PerformanceMultiplierCard={PerformanceMultiplierCard}
-          PerformanceHistoryChartContent={PerformanceHistoryChartContent}
-        />
+        <TabsContent value="dashboard" className="mt-4">
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Contract</CardDescription>
+                  <CardTitle className="text-xl">{formatCurrency(totalFee)}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Revenue</CardDescription>
+                  <CardTitle className="text-xl">{formatCurrency(totalRevenue)}</CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Total Cost</CardDescription>
+                  <CardTitle className="text-xl group relative cursor-help">
+                    {formatCurrency(totalCost)}
+                    <div className="invisible group-hover:visible absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
+                      <div className="space-y-1 text-sm font-normal">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Labor:</span>
+                          <span className="font-medium">{formatCurrency(bseLaborOnly)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-gray-600">Expenses:</span>
+                          <span className="font-medium">{formatCurrency(totalExpenses)}</span>
+                        </div>
+                        <div className="flex justify-between gap-4 pt-1 border-t">
+                          <span className="font-semibold">Total:</span>
+                          <span className="font-semibold">{formatCurrency(totalCost)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardDescription>Project Multiplier</CardDescription>
+                  <CardTitle className="text-xl group relative cursor-help">
+                    {projectMultiplier > 0 ? projectMultiplier.toFixed(2) + 'x' : '—'}
+                    {projectMultiplier > 0 && (
+                      <div className="invisible group-hover:visible absolute left-0 top-full mt-2 bg-white border border-gray-200 rounded-lg shadow-lg p-3 w-64 z-10">
+                        <div className="space-y-1 text-sm font-normal">
+                          <div className="flex justify-between gap-4">
+                            <span className="text-gray-600">Total Revenue:</span>
+                            <span className="font-medium">{formatCurrency(totalRevenue)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4">
+                            <span className="text-gray-600">Total Cost:</span>
+                            <span className="font-medium">{formatCurrency(totalCost)}</span>
+                          </div>
+                          <div className="flex justify-between gap-4 pt-1 border-t">
+                            <span className="font-semibold">Multiplier:</span>
+                            <span className="font-semibold">{projectMultiplier.toFixed(2)}x</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <PerformanceMultiplierCard projectId={projectId} phases={phases || []} />
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-2">
+            {/* Phase Progress Chart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Phase Progress</CardTitle>
+                <CardDescription>Contract amount vs billed-to-date by phase</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {loadingPhases || loadingAllTime ? (
+                  <Skeleton className="h-[300px] w-full" />
+                ) : phaseChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={phaseChartData} layout="vertical" margin={{ left: 20, right: 140 }}>
+                      <CartesianGrid horizontal={false} vertical={false} />
+                      <XAxis type="number" tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                      <YAxis type="category" dataKey="name" width={60} interval={0} />
+                      <Tooltip 
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            const data = payload[0].payload
+                            return (
+                              <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+                                <p className="font-semibold mb-2">{data.fullName}</p>
+                                <div className="space-y-1 text-sm">
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-gray-600">Billed:</span>
+                                    <span className="font-medium">{formatCurrency(data.billed)}</span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-gray-600">Contract:</span>
+                                    <span className="font-medium">{formatCurrency(data.contract)}</span>
+                                  </div>
+                                  <div className="flex justify-between gap-4">
+                                    <span className="text-gray-600">Remaining:</span>
+                                    <span className="font-medium">{formatCurrency(data.remaining)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          }
+                          return null
+                        }}
+                      />
+                      <Bar dataKey="billed" stackId="progress" fill="#000000" name="Billed" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="remaining" stackId="progress" fill="#d4d4d4" name="Remaining" radius={[0, 4, 4, 0]}>
+                        <LabelList dataKey="fullName" position="right" />
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No phase data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Time Distribution */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base">Time Distribution</CardTitle>
+                    <CardDescription>
+                      Total hours by {timeDistributionView} ({formatHours(totalHours)} total)
+                    </CardDescription>
+                  </div>
+                  <Select
+                    value={timeDistributionView}
+                    onValueChange={(value) =>
+                      setTimeDistributionView(value as 'employee' | 'phase')
+                    }
+                  >
+                    <SelectTrigger className="h-8 w-[140px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="phase">Phase</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingAllTime ? (
+                  <Skeleton className="h-[300px] w-full" />
+                ) : timeDistributionData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={timeDistributionData}
+                        dataKey="hours"
+                        nameKey="name"
+                        cx="50%"
+                        cy="40%"
+                        outerRadius={80}
+                      >
+                        {timeDistributionData.map((entry, index) => (
+                          <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip 
+                        formatter={(value) => formatHours(Number(value))}
+                      />
+                      <Legend 
+                        verticalAlign="bottom"
+                        height={60}
+                        wrapperStyle={{ fontSize: '12px' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No time entry data available
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+            </div>
+
+            {/* Project Performance Charts */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Project Performance Over Time</CardTitle>
+                    <CardDescription>Monthly performance and cumulative multiplier by phase</CardDescription>
+                  </div>
+                  <Select value={selectedPhaseFilter} onValueChange={setSelectedPhaseFilter}>
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Filter by phase" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Phases</SelectItem>
+                      {(phases || []).map((phase) => (
+                        <SelectItem key={phase.phase_code} value={phase.phase_name}>
+                          {phase.phase_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                {/* Monthly Performance Chart */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4">Monthly Invoiced Revenue & Billable Amounts</h3>
+                  {loadingPerformanceOverTime ? (
+                    <Skeleton className="h-[300px] w-full" />
+                  ) : (performanceOverTime && performanceOverTime.length > 0) ? (
+                    <ResponsiveContainer width="100%" height={300}>
+                      <ComposedChart data={performanceOverTime} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="monthLabel" />
+                        <YAxis tickFormatter={(val) => `$${(val / 1000).toFixed(0)}k`} />
+                        <Tooltip
+                          formatter={(value) => formatCurrency(Number(value) || 0)}
+                          labelFormatter={(label) => `Month: ${label}`}
+                        />
+                        <Legend />
+                        <Bar dataKey="invoiceAmount" fill="#000000" name="Invoiced" />
+                        <Line
+                          type="monotone"
+                          dataKey="billableAmount"
+                          stroke="#384eaa"
+                          strokeWidth={2}
+                          name="Billable"
+                          dot={{ r: 4 }}
+                        />
+                      </ComposedChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="text-sm text-muted-foreground text-center py-8">
+                      No performance data available for this project
+                    </div>
+                  )}
+                </div>
+
+                {/* Performance Multiplier Chart */}
+                <div>
+                  <h3 className="text-sm font-medium mb-4">Cumulative Performance Multiplier</h3>
+                  <PerformanceHistoryChartContent projectId={projectId} phaseFilter={selectedPhaseFilter} />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
 
         <TabsContent value="project-info" className="mt-4">
           <Tabs defaultValue={hasDynamicProjectInfoSchema ? `schema-${dynamicProjectInfoSections[0]?.id}` : 'legacy-General'} className="w-full">
@@ -3955,97 +5024,1222 @@ export default function ProjectDetailPage() {
           </Tabs>
         </TabsContent>
 
-        <ApplicationsTab
-          projectId={projectId}
-          applicationsByAgency={applicationsByAgency}
-          permitSelectionsById={permitSelectionsById}
-          permitById={permitById}
-          requiredCatalogById={requiredCatalogById}
-          templateById={templateById}
-        />
+        <TabsContent value="applications" className="mt-4">
+          {applicationsByAgency.length > 0 ? (
+            <Tabs defaultValue={`agency-${applicationsByAgency[0].agency.id}`} className="w-full">
+              <TabsList className="mb-4">
+                {applicationsByAgency.map(({ agency }) => (
+                  <TabsTrigger key={`app-agency-${agency.id}`} value={`agency-${agency.id}`}>
+                    {agency.name}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
+              {applicationsByAgency.map(({ agency, items }) => (
+                <TabsContent key={`app-content-${agency.id}`} value={`agency-${agency.id}`} className="mt-0">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle>{agency.name} Applications</CardTitle>
+                      <CardDescription>
+                        Generates downloadable application PDFs from mapped project data.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-4 pt-0">
+                      <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Application Item</TableHead>
+                      <TableHead>Permit</TableHead>
+                      <TableHead>Template</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                        <TableBody>
+                          {items.map((item) => {
+                            const selection = permitSelectionsById.get(item.project_permit_selection_id)
+                            const permit = selection ? permitById.get(selection.permit_id) : null
+                            const requiredCatalog = item.required_item_catalog_id
+                              ? requiredCatalogById.get(item.required_item_catalog_id)
+                              : null
+                            const template = requiredCatalog?.application_template_id
+                              ? templateById.get(requiredCatalog.application_template_id)
+                              : null
+                            return (
+                              <TableRow key={item.id}>
+                                <TableCell>{item.name}</TableCell>
+                                <TableCell>{permit?.name || 'Unknown Permit'}</TableCell>
+                                <TableCell>
+                                  {template ? (
+                                    <div>
+                                      <div className="font-medium">{template.name}</div>
+                                      <div className="text-xs text-muted-foreground">{template.code}</div>
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">No template</span>
+                                  )}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={item.status === 'generated' ? 'default' : 'secondary'}>
+                                    {item.status.replace(/_/g, ' ')}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      disabled={generatingRequiredItemId === item.id || !template}
+                                      onClick={() => void generateApplication(item.id)}
+                                    >
+                                      {generatingRequiredItemId === item.id ? 'Generating...' : 'Generate'}
+                                    </Button>
+                                    {item.output_file_url ? (
+                                      <Button asChild size="sm">
+                                        <a href={item.output_file_url} target="_blank" rel="noreferrer">
+                                          Download
+                                        </a>
+                                      </Button>
+                                    ) : null}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )
+                          })}
+                          {items.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                                No application-type required items for this agency.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))}
+            </Tabs>
+          ) : (
+            <Card>
+              <CardContent className="p-4 text-center text-muted-foreground">
+                No application-type required items are selected yet.
+              </CardContent>
+            </Card>
+          )}
+
+            {/* Hidden: Application Run History 
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle>Application Run History</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Created</TableHead>
+                      <TableHead>Template</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Field Count</TableHead>
+                      <TableHead className="text-right">Download</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(applicationRuns || []).map((run) => {
+                      const template = run.template_id ? templateById.get(run.template_id) : null
+                      return (
+                        <TableRow key={run.id}>
+                          <TableCell>{formatDateTime(run.created_at)}</TableCell>
+                          <TableCell>{template?.name || 'Unknown Template'}</TableCell>
+                          <TableCell>
+                            <Badge variant={run.status === 'completed' ? 'default' : 'secondary'}>
+                              {run.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {Object.keys(run.resolved_fields || {}).length}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {run.generated_file_url ? (
+                              <Button asChild variant="outline" size="sm">
+                                <a href={run.generated_file_url} target="_blank" rel="noreferrer">
+                                  Download
+                                </a>
+                              </Button>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {applicationRuns?.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                          No generated applications yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+            */}
+        </TabsContent>
 
         {perms.canSeeProjectTab('phases') && (
-          <PhasesTab
-            loadingPhases={loadingPhases}
-            displayPhases={displayPhases}
-            phases={phases}
-            totalFee={totalFee}
-            totalInvoicedFromInvoices={totalInvoicedFromInvoices}
-            totalRemainingForTable={totalRemainingForTable}
-            totalReimbursableInvoicedFromInvoiceLines={totalReimbursableInvoicedFromInvoiceLines}
-            billedByPhaseName={billedByPhaseName}
-            laborByPhase={laborByPhase}
-          />
+          <TabsContent value="phases" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
+              {loadingPhases ? (
+                <div className="p-4">
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Phase</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Total Fee</TableHead>
+                      <TableHead className="text-right">Invoiced</TableHead>
+                      <TableHead className="text-right">Remaining</TableHead>
+                      <TableHead className="text-right">Labor</TableHead>
+                      <TableHead className="text-right">Labor Cost</TableHead>
+                      <TableHead className="text-right">Phase Multiplier</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {displayPhases.map((phase) => (
+                      <TableRow key={phase.id}>
+                        <TableCell className="font-mono">{phase.phase_code}</TableCell>
+                        <TableCell>{phase.phase_name}</TableCell>
+                        <TableCell>
+                          {phase.billing_type ? (
+                            <Badge variant={phase.billing_type === 'H' ? 'outline' : 'secondary'}>
+                              {phase.billing_type === 'H' ? 'Hourly' : 'Lump Sum'}
+                            </Badge>
+                          ) : null}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {phase.phase_code === 'ZREIM' ? '—' : formatCurrency(phase.total_fee)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {phase.phase_code === 'ZREIM'
+                            ? formatCurrency(totalReimbursableInvoicedFromInvoiceLines)
+                            : formatCurrency(
+                                billedByPhaseName.get((phase.phase_name || '').trim().toLowerCase()) || 0
+                              )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {phase.phase_code === 'ZREIM'
+                            ? '—'
+                            : formatCurrency(
+                                Number(phase.total_fee) -
+                                  (billedByPhaseName.get((phase.phase_name || '').trim().toLowerCase()) || 0)
+                              )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatHours(
+                            laborByPhase.get((phase.phase_name || '').trim().toLowerCase())?.hours || 0
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(
+                            laborByPhase.get((phase.phase_name || '').trim().toLowerCase())?.cost || 0
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {(() => {
+                            const laborCost =
+                              laborByPhase.get((phase.phase_name || '').trim().toLowerCase())?.cost || 0
+                            const billed =
+                              billedByPhaseName.get((phase.phase_name || '').trim().toLowerCase()) || 0
+                            if (!laborCost) return '—'
+                            return (billed / laborCost).toFixed(2) + 'x'
+                          })()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {phases && phases.length > 0 && (
+                      <TableRow className="font-medium bg-muted/20">
+                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(totalFee)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(totalInvoicedFromInvoices)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(totalRemainingForTable)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatHours(
+                            Array.from(laborByPhase.values()).reduce((sum, item) => sum + item.hours, 0)
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(
+                            Array.from(laborByPhase.values()).reduce((sum, item) => sum + item.cost, 0)
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          —
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {phases?.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          No contract phases defined
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+            </TabsContent>
         )}
 
         {perms.canSeeProjectTab('billables') && (
-          <BillablesTab
-            loadingProjectBillables={loadingProjectBillables}
-            projectBillables={projectBillables}
-            selectedBillablesMonth={selectedBillablesMonth}
-            setSelectedBillablesMonth={setSelectedBillablesMonth}
-            selectedBillablesMonthLabel={selectedBillablesMonthLabel}
-            billablesMonthOptions={billablesMonthOptions}
-            normalizedProjectNumber={normalizedProjectNumber}
-            projectName={project?.name}
-          />
+          <TabsContent value="billables" className="mt-4">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Billables — {selectedBillablesMonthLabel}</h3>
+                <p className="text-sm text-muted-foreground">
+                  Monthly billable detail for this project
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Select value={selectedBillablesMonth} onValueChange={setSelectedBillablesMonth}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select month" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {billablesMonthOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Card className="px-4 py-2">
+                  <div className="text-sm text-muted-foreground">Project Total</div>
+                  <div className="text-xl font-bold">
+                    {formatCurrency(projectBillables?.grandTotal || 0)}
+                  </div>
+                </Card>
+              </div>
+            </div>
+
+            {loadingProjectBillables ? (
+              <Card>
+                <CardContent className="p-4">
+                  <Skeleton className="h-64 w-full" />
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  {(Object.keys(projectBillables?.phases || {}).length || 0) === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      No time entries found for the selected month
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Project</TableHead>
+                          <TableHead className="text-right">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell className="font-medium">
+                            {normalizedProjectNumber} {projectBillables?.projectName || project?.name || ''}
+                          </TableCell>
+                          <TableCell className="text-right font-bold font-mono">
+                            {formatCurrency(projectBillables?.grandTotal || 0)}
+                          </TableCell>
+                        </TableRow>
+                        <TableRow>
+                          <TableCell colSpan={2} className="bg-muted/20">
+                            <div className="space-y-4 py-2 pl-6">
+                              {Object.values(projectBillables?.phases || {}).map((phase) => {
+                                const phaseCollapseKey = getBillablePhaseCollapseKey(phase.phase_name)
+                                const isPhaseCollapsed = collapsedBillablePhases[phaseCollapseKey] ?? false
+
+                                return (
+                                  <div key={phase.phase_name} className="space-y-2">
+                                    <div className="flex items-center justify-between border-b pb-1">
+                                      <button
+                                        type="button"
+                                        className="flex items-center text-left font-medium text-sm"
+                                        onClick={() => toggleBillablePhaseCollapsed(phase.phase_name)}
+                                      >
+                                        {isPhaseCollapsed ? (
+                                          <ChevronRight className="mr-1 h-4 w-4" />
+                                        ) : (
+                                          <ChevronDown className="mr-1 h-4 w-4" />
+                                        )}
+                                        {phase.phase_name}
+                                      </button>
+                                      <span className="font-medium text-sm">{formatCurrency(phase.total)}</span>
+                                    </div>
+                                    {isPhaseCollapsed ? null : (
+                                      <div className="pl-6">
+                                        <Table className="w-full table-fixed">
+                                          <TableHeader>
+                                            <TableRow>
+                                              <TableHead className="w-[220px]">Employee</TableHead>
+                                              <TableHead className="w-[120px]">Date</TableHead>
+                                              <TableHead className="w-[100px] text-right">Hours</TableHead>
+                                              <TableHead className="w-[120px] text-right">Rate</TableHead>
+                                              <TableHead className="w-[120px] text-right">Amount</TableHead>
+                                              <TableHead>Notes</TableHead>
+                                            </TableRow>
+                                          </TableHeader>
+                                          <TableBody>
+                                            {Object.values(phase.employees).map((emp) => (
+                                              <Fragment key={emp.employee_name}>
+                                                {emp.entries.map((entry) => (
+                                                  <TableRow key={entry.id}>
+                                                    <TableCell className="w-[220px]">
+                                                      {entry.employee_name}
+                                                    </TableCell>
+                                                    <TableCell className="w-[120px]">
+                                                      {formatDate(entry.entry_date)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[100px] text-right font-mono">
+                                                      {formatHours(entry.hours)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[120px] text-right font-mono">
+                                                      {entry.is_rate_unresolved
+                                                        ? 'Unresolved'
+                                                        : formatCurrency(entry.hourly_rate)}
+                                                    </TableCell>
+                                                    <TableCell className="w-[120px] text-right font-mono">
+                                                      {formatCurrency(entry.amount)}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm max-w-[300px] truncate">
+                                                      {entry.notes || '—'}
+                                                    </TableCell>
+                                                  </TableRow>
+                                                ))}
+                                                <TableRow className="bg-muted/50">
+                                                  <TableCell colSpan={4} className="text-right font-medium">
+                                                    Total {emp.employee_name}
+                                                  </TableCell>
+                                                  <TableCell className="text-right font-bold font-mono">
+                                                    {formatCurrency(emp.total)}
+                                                  </TableCell>
+                                                  <TableCell />
+                                                </TableRow>
+                                              </Fragment>
+                                            ))}
+                                          </TableBody>
+                                        </Table>
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+            </TabsContent>
         )}
 
         {perms.canSeeProjectTab('invoices') && (
-          <InvoicesTab
-            invoices={invoices}
-            loadingInvoices={loadingInvoices}
-            invoiceLineItems={invoiceLineItems}
-          />
+          <TabsContent value="invoices" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
+              {loadingInvoices ? (
+                <div className="p-4">
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[40px]"></TableHead>
+                      <TableHead className="w-[140px]">Invoice #</TableHead>
+                      <TableHead className="w-[140px]">Date Issued</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date Paid</TableHead>
+                      <TableHead className="w-[140px] text-right">Amount</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices?.map((invoice) => {
+                      const isExpanded = expandedInvoices.has(invoice.id)
+                      const items = lineItemsByInvoice.get(invoice.id) || []
+                      return (
+                        <Fragment key={invoice.id}>
+                          <TableRow className="hover:bg-muted/50">
+                            <TableCell>
+                              {items.length > 0 ? (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => toggleInvoice(invoice.id)}
+                                  aria-label={isExpanded ? 'Collapse invoice' : 'Expand invoice'}
+                                >
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4" />
+                                  )}
+                                </Button>
+                              ) : null}
+                            </TableCell>
+                            <TableCell className="font-mono font-medium">{invoice.invoice_number}</TableCell>
+                            <TableCell>{formatDate(invoice.date_issued)}</TableCell>
+                            <TableCell>
+                              <Badge variant={invoice.date_paid ? 'default' : 'secondary'}>
+                                {invoice.date_paid ? 'Paid' : 'Unpaid'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {invoice.date_paid ? formatDate(invoice.date_paid) : '—'}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(invoice.amount)}
+                            </TableCell>
+                          </TableRow>
+                          {isExpanded && items.length > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={6} className="p-0">
+                                <div className="bg-muted/20 p-4">
+                                  <Table>
+                                    <TableHeader>
+                                      <TableRow>
+                                        <TableHead className="w-[40px]"></TableHead>
+                                        <TableHead colSpan={2}>Phase</TableHead>
+                                        <TableHead></TableHead>
+                                        <TableHead></TableHead>
+                                        <TableHead className="w-[140px] text-right">Amount</TableHead>
+                                      </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                      {items.map((item, index) => (
+                                        <TableRow key={`${item.invoice_id}-${index}`}>
+                                          <TableCell className="w-[40px]"></TableCell>
+                                          <TableCell colSpan={2}>{item.phase_name || 'Unassigned'}</TableCell>
+                                          <TableCell></TableCell>
+                                          <TableCell></TableCell>
+                                          <TableCell className="w-[140px] text-right font-mono">
+                                            {formatCurrency(Number(item.amount) || 0)}
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                    {invoices && invoices.length > 0 && (
+                      <TableRow className="font-medium bg-muted/20">
+                        <TableCell colSpan={5}>Total</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(
+                            invoices.reduce((sum, invoice) => sum + (Number(invoice.amount) || 0), 0)
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {invoices?.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                          No invoices yet
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+              </CardContent>
+            </Card>
+            </TabsContent>
         )}
 
         {perms.canSeeProjectTab('labor') && (
-          <TimeTab
-            loadingTime={loadingTime}
-            timeFilterStart={timeFilterStart}
-            setTimeFilterStart={setTimeFilterStart}
-            timeFilterEnd={timeFilterEnd}
-            setTimeFilterEnd={setTimeFilterEnd}
-            timeFilterEmployee={timeFilterEmployee}
-            setTimeFilterEmployee={setTimeFilterEmployee}
-            timeFilterPhase={timeFilterPhase}
-            setTimeFilterPhase={setTimeFilterPhase}
-            timeFilterOptions={timeFilterOptions}
-            filteredTimeEntries={filteredTimeEntries}
-            isAdmin={perms.isAdmin()}
-          />
+          <TabsContent value="time" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
+              {loadingTime ? (
+                <div className="p-4">
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : (
+                <div className="space-y-4 p-4">
+                  <div className="flex flex-wrap items-end gap-3">
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">Start Date</div>
+                      <Input
+                        type="date"
+                        value={timeFilterStart}
+                        onChange={(event) => setTimeFilterStart(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">End Date</div>
+                      <Input
+                        type="date"
+                        value={timeFilterEnd}
+                        onChange={(event) => setTimeFilterEnd(event.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">Employee</div>
+                      <Select value={timeFilterEmployee} onValueChange={setTimeFilterEmployee}>
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue placeholder="All employees" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {timeFilterOptions.employees.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="text-xs font-medium text-muted-foreground">Phase</div>
+                      <Select value={timeFilterPhase} onValueChange={setTimeFilterPhase}>
+                        <SelectTrigger className="w-[220px]">
+                          <SelectValue placeholder="All phases" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {timeFilterOptions.phases.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setTimeFilterStart('')
+                        setTimeFilterEnd('')
+                        setTimeFilterEmployee('all')
+                        setTimeFilterPhase('all')
+                      }}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Employee</TableHead>
+                        <TableHead>Phase</TableHead>
+                        <TableHead className="text-right">Hours</TableHead>
+                        {perms.isAdmin() && (
+                          <TableHead className="text-right">Amount</TableHead>
+                        )}
+                        <TableHead>Notes</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTimeEntries.map((entry) => (
+                        <TableRow key={entry.id}>
+                          <TableCell>{formatDate(entry.entry_date)}</TableCell>
+                          <TableCell>{entry.employee_name}</TableCell>
+                          <TableCell>{entry.phase_name}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatHours(entry.hours)}
+                          </TableCell>
+                          {perms.isAdmin() && (
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(Number(entry.labor_cost) || 0)}
+                            </TableCell>
+                          )}
+                          <TableCell className="max-w-[200px] truncate text-muted-foreground text-sm">
+                            {entry.notes || '—'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {filteredTimeEntries.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={perms.isAdmin() ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                            No time entries
+                          </TableCell>
+                        </TableRow>
+                      )}
+                      {filteredTimeEntries.length > 0 && (
+                        <TableRow className="font-medium bg-muted/20">
+                          <TableCell colSpan={3}>Total</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatHours(
+                              filteredTimeEntries.reduce((sum, entry) => sum + (Number(entry.hours) || 0), 0)
+                            )}
+                          </TableCell>
+                          {perms.isAdmin() && (
+                            <TableCell className="text-right font-mono">
+                              {formatCurrency(
+                                filteredTimeEntries.reduce((sum, entry) => sum + (Number(entry.labor_cost) || 0), 0)
+                              )}
+                            </TableCell>
+                          )}
+                          <TableCell colSpan={1}></TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+            </TabsContent>
         )}
 
         {perms.canSeeProjectTab('expenses') && (
-          <ExpensesTab
-            expenses={expenses}
-            loadingExpenses={loadingExpenses}
-            subcontractContracts={subcontractContracts}
-            normalizedProjectNumber={normalizedProjectNumber}
-            projectId={projectId}
-          />
+          <TabsContent value="expenses" className="mt-4">
+            <Card>
+              <CardContent className="p-4">
+              {loadingExpenses ? (
+                <div className="p-4">
+                  <Skeleton className="h-48 w-full" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead className="text-center">Reimbursable</TableHead>
+                      <TableHead>Contract</TableHead>
+                      <TableHead className="text-right">Amount to Charge</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {expenses?.map((expense) => {
+                      const billingStatus = normalizeExpenseBillingStatus(expense)
+                      const isInvoiced =
+                        Boolean(expense.invoice_number) || isExpenseInvoicedStatus(billingStatus)
+                      const statusLabel = expense.is_reimbursable
+                        ? isInvoiced
+                          ? 'Invoiced'
+                          : 'To Be Invoiced'
+                        : '—'
+
+                      return (
+                        <TableRow key={expense.id}>
+                          <TableCell>
+                            {(expense.source_entity_type === 'contract_labor'
+                              ? expense.qb_vendor_name || expense.vendor_name
+                              : expense.vendor_name) || '—'}
+                          </TableCell>
+                          <TableCell>{formatDate(expense.expense_date)}</TableCell>
+                          <TableCell>{expense.description || '—'}</TableCell>
+                          <TableCell className="text-right font-mono">
+                            {formatCurrency(Number(expense.fee_amount) || 0)}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox
+                              checked={Boolean(expense.is_reimbursable)}
+                              disabled={updatingExpenseId === expense.id}
+                              onCheckedChange={(checked) =>
+                                void handleToggleExpenseReimbursable(expense.id, Boolean(checked))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={
+                                expense.subcontract_contract_id
+                                  ? String(expense.subcontract_contract_id)
+                                  : 'unassigned'
+                              }
+                              disabled={updatingExpenseContractId === expense.id}
+                              onValueChange={(value) =>
+                                void linkExpenseToContract(
+                                  expense.id,
+                                  value === 'unassigned' ? null : Number(value)
+                                )
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue placeholder="Unassigned" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {(subcontractContracts || []).map((contract) => (
+                                  <SelectItem key={contract.id} value={String(contract.id)}>
+                                    {contract.vendor_name}
+                                    {contract.description ? ` - ${contract.description}` : ''}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </TableCell>
+                          <TableCell className="text-right font-mono">
+                            {expense.is_reimbursable ? (
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2 text-xs"
+                                  disabled={updatingExpenseChargeId === expense.id}
+                                  onClick={() =>
+                                    void applyDefaultExpenseMarkup(expense.id, Number(expense.fee_amount) || 0)
+                                  }
+                                >
+                                  15%
+                                </Button>
+                                <Input
+                                  value={
+                                    expenseChargeDrafts[expense.id] ??
+                                    formatCurrency(Number(expense.amount_to_charge) || 0)
+                                  }
+                                  className="h-8 w-[130px] text-right font-mono"
+                                  disabled={updatingExpenseChargeId === expense.id}
+                                  onChange={(event) => {
+                                    const nextValue = event.target.value
+                                    setExpenseChargeDrafts((prev) => ({
+                                      ...prev,
+                                      [expense.id]: nextValue,
+                                    }))
+                                    scheduleExpenseChargeSave(
+                                      expense.id,
+                                      Number(expense.fee_amount) || 0,
+                                      nextValue
+                                    )
+                                  }}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.currentTarget.blur()
+                                    }
+                                  }}
+                                  onBlur={(event) => {
+                                    if (expenseChargeSaveTimers.current[expense.id]) {
+                                      clearTimeout(expenseChargeSaveTimers.current[expense.id])
+                                      delete expenseChargeSaveTimers.current[expense.id]
+                                    }
+                                    const parsed = parseCurrencyValue(event.target.value)
+                                    if (Number.isNaN(parsed)) {
+                                      setExpenseChargeDrafts((prev) => ({
+                                        ...prev,
+                                        [expense.id]: formatCurrency(Number(expense.amount_to_charge) || 0),
+                                      }))
+                                      return
+                                    }
+                                    const rounded = Math.max(0, Number(parsed.toFixed(2)))
+                                    setExpenseChargeDrafts((prev) => ({
+                                      ...prev,
+                                      [expense.id]: formatCurrency(rounded),
+                                    }))
+                                    void updateExpenseAmountToCharge(
+                                      expense.id,
+                                      Number(expense.fee_amount) || 0,
+                                      rounded
+                                    )
+                                  }}
+                                />
+                              </div>
+                            ) : (
+                              '—'
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={statusLabel === 'Invoiced' ? 'default' : 'secondary'}>
+                              {statusLabel}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {expenses && expenses.length > 0 && (
+                      <TableRow className="font-medium bg-muted/20">
+                        <TableCell colSpan={3}>Total</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(
+                            expenses.reduce((sum, item) => sum + (Number(item.fee_amount) || 0), 0)
+                          )}
+                        </TableCell>
+                        <TableCell />
+                        <TableCell />
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(
+                            expenses.reduce(
+                              (sum, item) =>
+                                sum +
+                                (item.is_reimbursable ? Number(item.amount_to_charge) || 0 : 0),
+                              0
+                            )
+                          )}
+                        </TableCell>
+                        <TableCell />
+                      </TableRow>
+                    )}
+                    {expenses?.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                          No expenses
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+              </CardContent>
+            </Card>
+            </TabsContent>
         )}
 
         {perms.canSeeProjectTab('contracts') && (
-          <ContractsTab
-            projectId={projectId}
-            loadingSubcontractContracts={loadingSubcontractContracts}
-            loadingExpenses={loadingExpenses}
-            contractSummaries={contractSummaries}
-          />
+          <TabsContent value="contracts" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Subcontract Contracts</CardTitle>
+                <CardDescription>
+                  Track original amount, paid-to-date, and outstanding by contract.
+                </CardDescription>
+              </div>
+              <Button onClick={openCreateContractDialog}>Add Contract</Button>
+            </CardHeader>
+            <CardContent className="p-4">
+              {loadingSubcontractContracts || loadingExpenses ? (
+                <Skeleton className="h-48 w-full" />
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Original Amount</TableHead>
+                      <TableHead className="text-right">Paid To Date</TableHead>
+                      <TableHead className="text-right">Outstanding</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {contractSummaries.map((contract) => (
+                      <TableRow key={contract.id}>
+                        <TableCell>{contract.vendor_name}</TableCell>
+                        <TableCell>{contract.description || '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant={contract.status === 'active' ? 'default' : 'secondary'}>
+                            {contract.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(Number(contract.original_amount) || 0)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(contract.paid_to_date)}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {formatCurrency(contract.outstanding_amount)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => openEditContractDialog(contract)}
+                          >
+                            Edit
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {contractSummaries.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                          No contracts
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+              </CardContent>
+            </Card>
+            </TabsContent>
         )}
 
         {perms.canSeeProjectTab('team') && (
-          <TeamTab
-            projectId={projectId}
-            teamAssignments={teamAssignments}
-            loadingTeam={loadingTeam}
-            teamError={teamError}
-            projectManagers={projectManagers}
-          />
+          <TabsContent value="team" className="mt-4">
+            <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Team Assignments</CardTitle>
+                <CardDescription>
+                  Manage team members assigned to this project
+                </CardDescription>
+              </div>
+              <Button onClick={() => setIsTeamDialogOpen(true)}>Add Team Member</Button>
+            </CardHeader>
+            <CardContent className="p-4">
+              {loadingTeam ? (
+                <Skeleton className="h-48 w-full" />
+              ) : teamError ? (
+                <div className="py-8 text-center text-red-600">
+                  Error loading team: {teamError.message}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Assigned</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(teamAssignments || []).map((assignment) => (
+                      <TableRow key={assignment.id}>
+                        <TableCell className="font-medium">
+                          {assignment.profiles?.full_name || 'Unknown'}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {assignment.profiles?.email || '—'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={assignment.role === 'project_manager' ? 'default' : 'secondary'}>
+                            {assignment.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {formatDate(assignment.assigned_at)}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={async () => {
+                              if (!confirm(`Remove ${assignment.profiles?.full_name} from team?`)) return
+                              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                              const { error } = await (supabase as any)
+                                .from('project_team_assignments')
+                                .delete()
+                                .eq('id', assignment.id)
+                              if (error) {
+                                alert(`Error: ${error.message}`)
+                              } else {
+                                queryClient.invalidateQueries({ queryKey: ['project-team', projectId] })
+                              }
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {(teamAssignments || []).length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground">
+                          No team members assigned yet
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+            </TabsContent>
         )}
 
       </Tabs>
+
+      <Dialog open={isTeamDialogOpen} onOpenChange={setIsTeamDialogOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Add Team Member</DialogTitle>
+            <DialogDescription>
+              Select users to add to this project team
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] space-y-2 overflow-y-auto pr-1">
+            {(projectManagers || []).map((user) => {
+              const isAssigned = (teamAssignments || []).some(a => a.user_id === user.id)
+              return (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                >
+                  <div>
+                    <div className="text-sm font-medium">{user.full_name}</div>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={isAssigned ? 'secondary' : 'default'}
+                    disabled={isAssigned}
+                    onClick={async () => {
+                      if (!projectId) return
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      const { error } = await (supabase as any)
+                        .from('project_team_assignments')
+                        .insert({
+                          project_id: projectId,
+                          user_id: user.id,
+                          role: 'team_member'
+                        })
+                      if (error) {
+                        alert(`Error: ${error.message}`)
+                      } else {
+                        queryClient.invalidateQueries({ queryKey: ['project-team', projectId] })
+                      }
+                    }}
+                  >
+                    {isAssigned ? 'Already Added' : 'Add'}
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsTeamDialogOpen(false)}>
+              Done
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isContractDialogOpen} onOpenChange={setIsContractDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingSubcontractContract ? 'Edit Contract' : 'Add Contract'}</DialogTitle>
+            <DialogDescription>
+              Contracts are unlimited per project/vendor. Link expenses from the Expenses tab.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Vendor</label>
+              <Input
+                value={contractForm.vendor_name}
+                onChange={(event) =>
+                  setContractForm((prev) => ({ ...prev, vendor_name: event.target.value }))
+                }
+                placeholder="Vendor name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">Description</label>
+              <Input
+                value={contractForm.description}
+                onChange={(event) =>
+                  setContractForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+                placeholder="Optional contract description"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Original Amount</label>
+                <Input
+                  value={contractForm.original_amount}
+                  onChange={(event) =>
+                    setContractForm((prev) => ({ ...prev, original_amount: event.target.value }))
+                  }
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  value={contractForm.status}
+                  onValueChange={(value: 'active' | 'closed' | 'cancelled') =>
+                    setContractForm((prev) => ({ ...prev, status: value }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">active</SelectItem>
+                    <SelectItem value="closed">closed</SelectItem>
+                    <SelectItem value="cancelled">cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input
+                  type="date"
+                  value={contractForm.start_date}
+                  onChange={(event) =>
+                    setContractForm((prev) => ({ ...prev, start_date: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input
+                  type="date"
+                  value={contractForm.end_date}
+                  onChange={(event) =>
+                    setContractForm((prev) => ({ ...prev, end_date: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex items-center justify-between gap-2">
+            <div>
+              {editingSubcontractContract && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => void deleteContract()}
+                  disabled={isSavingContract || isDeletingContract}
+                >
+                  Delete
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="outline" onClick={closeContractDialog}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void saveContract()}
+                disabled={isSavingContract || isDeletingContract}
+              >
+                {isSavingContract ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
     </div>
   )
