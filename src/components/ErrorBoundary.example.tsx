@@ -43,10 +43,9 @@ export function ErrorBoundaryExample() {
         <ErrorBoundary
           onError={(error, errorInfo) => {
             // In production, send to Sentry or logging service
-            console.log("Error logged:", error.message)
           }}
           onReset={() => {
-            console.log("User clicked Try Again")
+            // Handle reset
           }}
         >
           <BuggyCounter />

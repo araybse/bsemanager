@@ -72,7 +72,6 @@ export async function getApplicableRate(
     .single()
 
   if (projectOverride && !overrideError) {
-    console.log(`[Rate Resolution] Project override found for ${positionTitle} on project ${projectId}`)
     const override = projectOverride as { 
       id: number
       hourly_rate: string
@@ -141,7 +140,6 @@ export async function getApplicableRate(
         .single()
 
       if (scheduleRate && !rateError) {
-        console.log(`[Rate Resolution] Rate schedule "${schedule.name}" found for ${positionTitle} on project ${projectId}`)
         const rate = scheduleRate as {
           id: number
           hourly_rate: string
@@ -201,7 +199,6 @@ export async function getApplicableRate(
     )
 
     if (matchingRate) {
-      console.log(`[Rate Resolution] Default schedule found for ${positionTitle}`)
       return {
         hourlyRate: parseFloat(matchingRate.hourly_rate),
         source: 'default_schedule',

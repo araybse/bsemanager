@@ -49,15 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(data.user)
         setProfile(data.profile)
         setAssignedProjectIds(data.assignedProjectIds || [])
-        console.log('[Auth] Fetch success:', data.user?.email)
         return true
       } else if (response.status === 401 && retries > 0) {
         // Session might not be ready yet, retry after a short delay
-        console.log('[Auth] 401 received, retrying in 500ms...')
         await new Promise(resolve => setTimeout(resolve, 500))
         return fetchAuthState(retries - 1)
       } else {
-        console.log('[Auth] Fetch failed:', response.status)
         setUser(null)
         setProfile(null)
         setAssignedProjectIds([])
@@ -66,7 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[Auth] Fetch error:', error)
       if (retries > 0) {
-        console.log('[Auth] Retrying after error...')
         await new Promise(resolve => setTimeout(resolve, 500))
         return fetchAuthState(retries - 1)
       }
@@ -85,12 +81,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true
 
     const initAuth = async () => {
-      console.log('[Auth] Initializing...')
-      
       await fetchAuthState()
       
       if (mounted) {
-        console.log('[Auth] Init complete')
         setIsLoading(false)
         setIsReady(true)
       }
@@ -100,8 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event) => {
         if (!mounted) return
-        
-        console.log('[Auth] State change:', event)
         
         if (event === 'SIGNED_OUT') {
           setUser(null)

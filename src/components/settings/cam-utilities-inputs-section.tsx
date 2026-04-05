@@ -35,12 +35,15 @@ export function CamUtilitiesInputsSection() {
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+    
     async function bootstrap() {
       const { data, error } = await supabase
         .from('projects')
         .select('id, project_number, project_name')
         .order('project_number')
         .limit(500)
+      if (cancelled) return
       if (error) {
         toast.error(error.message)
         return
@@ -52,15 +55,23 @@ export function CamUtilitiesInputsSection() {
       }
     }
     void bootstrap()
+    
+    return () => {
+      cancelled = true
+    }
   }, [supabase])
 
   useEffect(() => {
+    let cancelled = false
+    
     async function loadLetters() {
       if (!projectId) return
       const response = await fetch(`/api/cam/utilities/letters?projectId=${projectId}`, {
         method: 'GET',
       })
+      if (cancelled) return
       const json = await response.json()
+      if (cancelled) return
       if (!response.ok) {
         toast.error(json.error || 'Failed to load letters')
         return
@@ -68,6 +79,10 @@ export function CamUtilitiesInputsSection() {
       setLetters(json.letters || [])
     }
     void loadLetters()
+    
+    return () => {
+      cancelled = true
+    }
   }, [projectId])
 
   async function handleSubmit(event: FormEvent) {

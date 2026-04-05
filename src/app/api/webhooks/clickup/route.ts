@@ -8,15 +8,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     
-    // Log full payload for debugging
-    console.log('📋 ClickUp webhook received:', JSON.stringify(body, null, 2))
-    
     // ClickUp sends different event types
     const eventType = body.event
     const taskId = body.task_id
     const historyItems = body.history_items || []
-    
-    console.log(`   Event: ${eventType}, Task: ${taskId}`)
     
     // Check if this is a task assignment to Austin (user ID: 96293060)
     const assignmentChange = historyItems.find((item: any) => 
@@ -25,19 +20,12 @@ export async function POST(request: NextRequest) {
     )
     
     if (assignmentChange || eventType === 'taskAssigneeUpdated') {
-      console.log('   🎯 Task assigned to Austin!')
-      
       // TODO: Notify Max via Telegram
       // TODO: Fetch task details and add to Austin's schedule
       // TODO: Check for conflicts and suggest rescheduling
       
       // For now, just log it
       // Future: Send Telegram notification with task details
-    }
-    
-    // Log other important events
-    if (eventType === 'taskCreated' || eventType === 'taskUpdated') {
-      console.log(`   Task event: ${eventType}`)
     }
     
     // Return 200 OK with JSON body (ClickUp expects fast response)

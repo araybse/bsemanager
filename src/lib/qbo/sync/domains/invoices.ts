@@ -208,7 +208,6 @@ export async function syncInvoices(
 
   // Mark invoices deleted in QB
   // Get all QB invoice IDs we just synced
-  console.log('[DELETE DETECTION] Starting delete detection for invoices...')
   const syncedQbIds = new Set<string>()
   startPosition = 1
   while (true) {
@@ -226,14 +225,11 @@ export async function syncInvoices(
   }
 
   // Find invoices in IRIS that have QB IDs but weren't in the sync
-  console.log(`[DELETE DETECTION] Collected ${syncedQbIds.size} QB invoice IDs from sync`)
   const { data: irisInvoices } = await supabase
     .from('invoices')
     .select('id, qb_invoice_id, invoice_number')
     .not('qb_invoice_id', 'is', null)
     .gte('date_issued' as never, startDate as never)
-  
-  console.log(`[DELETE DETECTION] Found ${irisInvoices?.length || 0} IRIS invoices with QB IDs to check`)
 
   if (irisInvoices && irisInvoices.length > 0) {
     const deletedIds: number[] = []
@@ -241,12 +237,10 @@ export async function syncInvoices(
       const inv = invoice as { id: number; qb_invoice_id: string; invoice_number: string }
       if (!syncedQbIds.has(inv.qb_invoice_id)) {
         deletedIds.push(inv.id)
-        console.log(`Marking invoice as deleted: ${inv.invoice_number} (QB ID: ${inv.qb_invoice_id})`)
       }
     }
 
     if (deletedIds.length > 0) {
-      console.log(`[DELETE DETECTION] Marking ${deletedIds.length} invoice(s) as deleted...`)
       await supabase
         .from('invoices')
         .update({ 
@@ -254,10 +248,6 @@ export async function syncInvoices(
           deleted_at: new Date().toISOString() 
         } as never)
         .in('id' as never, deletedIds as never)
-      
-      console.log(`[DELETE DETECTION] ✅ Successfully marked ${deletedIds.length} invoice(s) as deleted`)
-    } else {
-      console.log('[DELETE DETECTION] No invoices to mark as deleted')
     }
   }
 

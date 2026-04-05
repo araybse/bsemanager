@@ -53,7 +53,6 @@ export async function updateTimeBilledStatus(
     }
 
     if (!timeEntries || timeEntries.length === 0) {
-      console.log(`[Billing Status] No unbilled time entries found for project ${projectId} period ${billingPeriod}`)
       return {
         success: true,
         entriesUpdated: 0
@@ -78,8 +77,6 @@ export async function updateTimeBilledStatus(
         error: updateError.message
       }
     }
-
-    console.log(`[Billing Status] Marked ${entryIds.length} time entries as billed for invoice ${invoiceId}`)
 
     return {
       success: true,
@@ -163,8 +160,6 @@ export async function backfillTimeBilledStatus(): Promise<{
       }
     }
 
-    console.log(`[Backfill] Processing ${invoices.length} invoices...`)
-
     for (const invoice of (invoices as Invoice[])) {
       const result = await updateTimeBilledStatus({
         projectId: invoice.project_id,
@@ -178,8 +173,6 @@ export async function backfillTimeBilledStatus(): Promise<{
         errors.push(`Invoice ${invoice.id}: ${result.error}`)
       }
     }
-
-    console.log(`[Backfill] Complete: ${invoices.length} invoices processed, ${entriesUpdated} time entries updated`)
 
     return {
       success: true,

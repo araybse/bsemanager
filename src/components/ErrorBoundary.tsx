@@ -1,3 +1,5 @@
+"use client"
+
 import React, { Component, ReactNode } from "react"
 import { AlertTriangle } from "lucide-react"
 import {
@@ -108,7 +110,7 @@ URL: ${window.location.href}
       })
       .catch(() => {
         // Fallback: show in console
-        console.log("Error Report:\n", report)
+        console.error("Error Report:\n", report)
         alert("Error details logged to console. Please check the console.")
       })
   }

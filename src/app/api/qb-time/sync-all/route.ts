@@ -127,7 +127,6 @@ export async function POST(request: NextRequest) {
       // Expenses sync separately
     ]
 
-    console.log(`[Sync All] Starting parallel sync of ${domains.length} domains...`)
     const overallStartTime = Date.now()
 
     // Sync all domains in parallel
@@ -150,8 +149,6 @@ export async function POST(request: NextRequest) {
     const overallDuration = Date.now() - overallStartTime
     const successCount = results.filter(r => r.success).length
     const failureCount = results.filter(r => !r.success).length
-
-    console.log(`[Sync All] Completed in ${overallDuration}ms - ${successCount} succeeded, ${failureCount} failed`)
 
     // Calculate totals
     const totalCounts = results.reduce((acc, r) => ({

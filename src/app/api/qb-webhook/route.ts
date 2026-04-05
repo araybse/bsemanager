@@ -76,7 +76,6 @@ async function queueEntitySync(
   
   const domain = domainMap[entityType]
   if (!domain) {
-    console.log(`Ignoring webhook for unsupported entity: ${entityType}`)
     return { skipped: true, reason: 'unsupported_entity' }
   }
   
@@ -159,7 +158,6 @@ export async function POST(request: NextRequest) {
       const settings = await refreshTokenIfNeeded(supabase)
       
       if (settings.realm_id !== realmId) {
-        console.log(`Webhook for different realm: ${realmId}, expected: ${settings.realm_id}`)
         continue
       }
       

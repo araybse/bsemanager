@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/header'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
 async function getAuthState() {
   const cookieStore = await cookies()
@@ -53,7 +54,9 @@ export default async function AuthenticatedLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header />
         <main className="flex-1 overflow-auto p-6">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

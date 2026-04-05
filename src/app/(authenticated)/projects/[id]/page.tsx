@@ -679,10 +679,8 @@ export default function ProjectDetailPage() {
     queryKey: ['project-team', projectId],
     queryFn: async () => {
       if (!projectId) {
-        console.log('[Team Tab] No projectId, returning empty array')
         return []
       }
-      console.log('[Team Tab] Fetching team for project ID:', projectId)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('project_team_assignments')
@@ -704,7 +702,6 @@ export default function ProjectDetailPage() {
         console.error('[Team Tab] Query error:', error)
         throw error
       }
-      console.log('[Team Tab] Query success, found:', data?.length, 'members')
       return data as Array<{
         id: number
         user_id: string

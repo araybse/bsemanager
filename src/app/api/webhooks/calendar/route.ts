@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
   const validationToken = request.nextUrl.searchParams.get('validationToken')
   
   if (validationToken) {
-    console.log('✅ Calendar webhook validation')
     return new NextResponse(validationToken, {
       status: 200,
       headers: { 'Content-Type': 'text/plain' }
@@ -23,17 +22,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const notifications = body.value || []
     
-    console.log(`📅 Calendar webhook: ${notifications.length} notification(s)`)
-    
-    for (const notification of notifications) {
-      const changeType = notification.changeType // created, updated, deleted
-      const eventId = notification.resourceData?.id
-      
-      console.log(`   ${changeType}: ${eventId?.substring(0, 30)}...`)
-      
-      // TODO: Store notification for processing
-      // For now, just log it - we'll poll calendars instead
-    }
+    // TODO: Store notification for processing
+    // For now, just log it - we'll poll calendars instead
     
     // Return 202 Accepted immediately (MS365 expects fast response)
     return new NextResponse(null, { status: 202 })

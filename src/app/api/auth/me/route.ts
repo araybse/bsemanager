@@ -5,9 +5,6 @@ import { NextResponse } from 'next/server'
 export async function GET() {
   const cookieStore = await cookies()
   
-  console.log('[/api/auth/me] Starting auth check')
-  console.log('[/api/auth/me] Cookies present:', cookieStore.getAll().map(c => c.name).join(', '))
-  
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -36,10 +33,7 @@ export async function GET() {
       new Promise(resolve => setTimeout(() => resolve(timeoutResult), 3000)),
     ])) as { data: { user: { id: string; email?: string } | null }, error: Error | null }
 
-    console.log('[/api/auth/me] User result:', user ? user.email : 'null', 'Error:', userError?.message || 'none')
-
     if (userError || !user) {
-      console.log('[/api/auth/me] Returning 401 - no user')
       return NextResponse.json({ user: null, profile: null }, { status: 401 })
     }
 
@@ -48,8 +42,6 @@ export async function GET() {
       .select('*')
       .eq('id', user.id)
       .single()
-
-    console.log('[/api/auth/me] Profile result:', profile?.full_name || 'null', 'Error:', profileError?.message || 'none')
 
     // Fetch assigned project IDs (PM or team member)
     let assignedProjectIds: number[] = []
@@ -83,13 +75,10 @@ export async function GET() {
           ...teamProjects.map(p => p.project_id),
         ])]
       }
-
-      console.log('[/api/auth/me] Assigned projects:', assignedProjectIds.length)
     }
 
     return NextResponse.json({ user, profile, assignedProjectIds })
   } catch (error) {
-    console.log('[/api/auth/me] Error during auth check:', error)
     return NextResponse.json({ user: null, profile: null }, { status: 401 })
   }
 }

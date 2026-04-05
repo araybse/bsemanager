@@ -41,8 +41,6 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    console.log('[Cron QB Sync] Starting automated sync...')
-
     // 1. Sync QB Time data (all domains)
     try {
       const qbTimeResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/qb-time/sync?trigger=scheduled`, {
@@ -56,7 +54,6 @@ export async function GET(request: NextRequest) {
       if (qbTimeResponse.ok) {
         const qbTimeData = await qbTimeResponse.json()
         results.qbTime = qbTimeData
-        console.log('[Cron QB Sync] ✅ QB Time sync completed')
       } else {
         const error = await qbTimeResponse.text()
         results.qbTime = { error, status: qbTimeResponse.status }
@@ -93,7 +90,6 @@ export async function GET(request: NextRequest) {
 
       if (prevPlResponse.ok) {
         plResults.previousMonth = await prevPlResponse.json()
-        console.log('[Cron QB Sync] ✅ Previous month P&L sync completed')
       } else {
         const error = await prevPlResponse.text()
         plResults.previousMonth = { error, status: prevPlResponse.status }
@@ -119,7 +115,6 @@ export async function GET(request: NextRequest) {
 
       if (currPlResponse.ok) {
         plResults.currentMonth = await currPlResponse.json()
-        console.log('[Cron QB Sync] ✅ Current month P&L sync completed')
       } else {
         const error = await currPlResponse.text()
         plResults.currentMonth = { error, status: currPlResponse.status }
@@ -156,7 +151,6 @@ export async function GET(request: NextRequest) {
 
       if (prevBsResponse.ok) {
         bsResults.previousMonth = await prevBsResponse.json()
-        console.log('[Cron QB Sync] ✅ Previous month Balance Sheet sync completed')
       } else {
         const error = await prevBsResponse.text()
         bsResults.previousMonth = { error, status: prevBsResponse.status }
@@ -181,7 +175,6 @@ export async function GET(request: NextRequest) {
 
       if (currBsResponse.ok) {
         bsResults.currentMonth = await currBsResponse.json()
-        console.log('[Cron QB Sync] ✅ Current month Balance Sheet sync completed')
       } else {
         const error = await currBsResponse.text()
         bsResults.currentMonth = { error, status: currBsResponse.status }
@@ -202,8 +195,6 @@ export async function GET(request: NextRequest) {
         status: 'success',
         results,
       } as never)
-
-    console.log('[Cron QB Sync] ✅ Automated sync completed')
 
     return NextResponse.json({
       ok: true,

@@ -148,35 +148,7 @@ export default function TimePage() {
   const filteredEntries = useMemo(() => {
     if (!timeEntries) return []
     
-    // ENHANCED DEBUG LOGGING - CRITICAL STATE CHECK
-    console.log('🔥 === FILTER RUN START ===')
-    console.log('🔍 FILTER STATE CHECK:', {
-      entriesEmployeeFilter: entriesEmployeeFilter,
-      entriesProjectFilter: entriesProjectFilter,
-      entriesPhaseFilter: entriesPhaseFilter,
-      entriesStartDate: entriesStartDate,
-      entriesEndDate: entriesEndDate,
-      startDateType: typeof entriesStartDate,
-      endDateType: typeof entriesEndDate,
-      startDateLength: entriesStartDate?.length,
-      endDateLength: entriesEndDate?.length,
-      startDateTruthy: !!entriesStartDate,
-      endDateTruthy: !!entriesEndDate,
-      startDateIsEmptyString: entriesStartDate === '',
-      endDateIsEmptyString: entriesEndDate === '',
-      totalEntries: timeEntries.length
-    })
-    
-    if (entriesStartDate || entriesEndDate) {
-      console.log('🔍 Date Filter Active - Sample Entry Dates:', 
-        timeEntries.slice(0, 5).map((e: any) => ({
-          raw: e.entry_date,
-          type: typeof e.entry_date,
-          length: e.entry_date?.length,
-          splitResult: e.entry_date?.split('T')[0]
-        }))
-      )
-    }
+
     
     let filteredCount = { employee: 0, project: 0, phase: 0, startDate: 0, endDate: 0, passed: 0 }
     
@@ -205,58 +177,18 @@ export default function TimePage() {
       
       if (entriesStartDate && entryDateOnly < entriesStartDate) {
         filteredCount.startDate++
-        console.log('❌ Filtered out (before start):', {
-          entryDateOnly,
-          entriesStartDate,
-          comparison: `${entryDateOnly} < ${entriesStartDate}`,
-          result: entryDateOnly < entriesStartDate
-        })
         return false
       }
       if (entriesEndDate && entryDateOnly > entriesEndDate) {
         filteredCount.endDate++
-        console.log('❌ Filtered out (after end):', {
-          entryDateOnly,
-          entriesEndDate,
-          comparison: `${entryDateOnly} > ${entriesEndDate}`,
-          result: entryDateOnly > entriesEndDate
-        })
         return false
-      }
-      
-      // Log entries that PASS the date filter
-      if (entriesStartDate || entriesEndDate) {
-        console.log('✅ Entry PASSED date filter:', {
-          entryDateOnly,
-          entriesStartDate,
-          entriesEndDate
-        })
       }
       
       filteredCount.passed++
       return true
     })
     
-    // Log filter summary
-    console.log('📊 FILTER SUMMARY:', {
-      totalEntries: timeEntries.length,
-      filteredOutBy: {
-        employee: filteredCount.employee,
-        project: filteredCount.project,
-        phase: filteredCount.phase,
-        startDate: filteredCount.startDate,
-        endDate: filteredCount.endDate
-      },
-      passed: filteredCount.passed,
-      resultCount: filtered.length,
-      activeFilters: {
-        employee: entriesEmployeeFilter !== 'all' ? entriesEmployeeFilter : 'none',
-        project: entriesProjectFilter !== 'all' ? entriesProjectFilter : 'none',
-        phase: entriesPhaseFilter !== 'all' ? entriesPhaseFilter : 'none',
-        startDate: entriesStartDate || 'none',
-        endDate: entriesEndDate || 'none'
-      }
-    })
+
     
     // Sort by date
     filtered.sort((a: any, b: any) => {
@@ -264,17 +196,6 @@ export default function TimePage() {
       const dateB = new Date(b.entry_date).getTime()
       return dateSortDirection === 'asc' ? dateA - dateB : dateB - dateA
     })
-    
-    // Debug logging for filter results
-    if (entriesStartDate || entriesEndDate) {
-      console.log('✅ Filter Results:', {
-        totalFiltered: filtered.length,
-        dateRange: filtered.length > 0 ? {
-          earliest: filtered[filtered.length - 1]?.entry_date,
-          latest: filtered[0]?.entry_date
-        } : 'No entries'
-      })
-    }
     
     return filtered
   }, [timeEntries, entriesEmployeeFilter, entriesProjectFilter, entriesPhaseFilter, entriesStartDate, entriesEndDate, dateSortDirection])
@@ -526,11 +447,6 @@ export default function TimePage() {
                     type="date"
                     value={entriesStartDate}
                     onChange={(e) => {
-                      console.log('📅 START DATE CHANGED:', {
-                        value: e.target.value,
-                        type: typeof e.target.value,
-                        length: e.target.value?.length
-                      })
                       setEntriesStartDate(e.target.value)
                     }}
                     className="h-9"
@@ -544,11 +460,6 @@ export default function TimePage() {
                     type="date"
                     value={entriesEndDate}
                     onChange={(e) => {
-                      console.log('📅 END DATE CHANGED:', {
-                        value: e.target.value,
-                        type: typeof e.target.value,
-                        length: e.target.value?.length
-                      })
                       setEntriesEndDate(e.target.value)
                     }}
                     className="h-9"
