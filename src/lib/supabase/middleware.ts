@@ -41,7 +41,7 @@ export async function updateSession(request: NextRequest) {
   ])) as { data: { user: { id: string; email?: string } | null }, error: Error | null }
 
   // Protected routes - redirect to login if not authenticated
-  const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/contract-labor', '/settings']
+  const protectedPaths = ['/dashboard', '/projects', '/contracts', '/invoices', '/unbilled', '/reimbursables', '/time-entries', '/rates', '/clients', '/proposals', '/cash-flow', '/contract-labor', '/settings', '/admin']
   const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
 
   if (!user && isProtectedPath) {
@@ -82,7 +82,7 @@ export async function updateSession(request: NextRequest) {
       }
     } else if (userRole !== 'admin') {
       // Admins can access everything; others redirect to dashboard
-      const adminOnlyPaths = ['/accounting', '/cash-flow', '/contract-labor', '/proposals', '/time-entries']
+      const adminOnlyPaths = ['/accounting', '/cash-flow', '/contract-labor', '/proposals', '/time-entries', '/admin']
       if (adminOnlyPaths.some(path => request.nextUrl.pathname.startsWith(path))) {
         const url = request.nextUrl.clone()
         url.pathname = '/dashboard'

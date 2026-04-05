@@ -794,7 +794,7 @@ export default function ProposalsPage() {
             </div>
             <ResponsiveContainer width="100%" height={330}>
               <BarChart
-                data={proposedSeries.length ? proposedSeries : [{ label: 'Q1', total: 0 }]}
+                data={proposedSeries.length ? proposedSeries : [{ label: 'Q1', total: 0, trend: 0 }]}
                 margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -828,7 +828,7 @@ export default function ProposalsPage() {
             </div>
             <ResponsiveContainer width="100%" height={330}>
               <BarChart
-                data={executedSeries.length ? executedSeries : [{ label: 'Q1', total: 0 }]}
+                data={executedSeries.length ? executedSeries : [{ label: 'Q1', total: 0, trend: 0 }]}
                 margin={{ left: 8, right: 8, top: 8, bottom: 0 }}
               >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />

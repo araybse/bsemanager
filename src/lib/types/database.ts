@@ -512,6 +512,11 @@ export interface Database {
           invoice_id: number | null
           billing_period: string | null
           labor_cost: number
+          status: 'draft' | 'submitted' | 'approved'
+          week_ending_date: string
+          submitted_at: string | null
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
         }
         Insert: {
@@ -530,6 +535,11 @@ export interface Database {
           invoice_id?: number | null
           billing_period?: string | null
           labor_cost?: number
+          status?: 'draft' | 'submitted' | 'approved'
+          week_ending_date?: string
+          submitted_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
         }
         Update: {
@@ -548,6 +558,11 @@ export interface Database {
           invoice_id?: number | null
           billing_period?: string | null
           labor_cost?: number
+          status?: 'draft' | 'submitted' | 'approved'
+          week_ending_date?: string
+          submitted_at?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
         }
       }

@@ -35,6 +35,7 @@ export const PAGE_VISIBILITY: Record<string, Record<UserRole, PageVisibility>> =
   'reimbursables': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
   'unbilled': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
   'cam': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
+  'admin-costs': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
 }
 
 /**

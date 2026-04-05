@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Line, ReferenceLine } from 'recharts'
+import { TimesheetTab } from './components/TimesheetTab'
 
 export default function TimePage() {
   const supabase = createClient()
@@ -259,11 +260,21 @@ export default function TimePage() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="dashboard" className="space-y-6">
+      <Tabs defaultValue="timesheet" className="space-y-6">
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+          <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
           <TabsTrigger value="entries">Entries</TabsTrigger>
         </TabsList>
+
+        {/* Timesheet Tab */}
+        <TabsContent value="timesheet" className="space-y-6">
+          <TimesheetTab
+            currentUserId={currentUser.id}
+            userRole={userRole || 'employee'}
+            employees={employees}
+          />
+        </TabsContent>
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="space-y-6">

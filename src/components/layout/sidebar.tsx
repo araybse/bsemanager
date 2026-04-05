@@ -21,6 +21,7 @@ import {
   LogOut,
   Menu,
   X,
+  DollarSign,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -47,6 +48,7 @@ const navItems: NavItem[] = [
   { title: 'Expenses', href: '/reimbursables', icon: CreditCard, pageKey: 'expenses' },
   { title: 'Contract Labor', href: '/contract-labor', icon: Hammer, pageKey: 'contract-labor' },
   { title: 'Contracts', href: '/contracts', icon: FileSpreadsheet, pageKey: 'contracts' },
+  { title: 'API Costs', href: '/admin/costs', icon: DollarSign, pageKey: 'admin-costs' },
   { title: 'Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
 ]
 

@@ -27,6 +27,8 @@ import { formatCurrency, formatPercent } from '@/lib/utils/format'
 import { FileText, ArrowRight, DollarSign, Clock, Receipt } from 'lucide-react'
 import Link from 'next/link'
 import type { Views } from '@/lib/types/database'
+import { APICostWidget } from '@/components/admin/api-cost-widget'
+import { KnowledgeReviewWidget } from '@/components/admin/knowledge-review-widget'
 import { Badge } from '@/components/ui/badge'
 import {
   freshnessBadgeVariant,
@@ -904,7 +906,7 @@ export default function DashboardPage() {
           </Select>
         )}
       </div>
-      <div className={userRole === 'admin' ? "grid gap-4 lg:grid-cols-2" : "grid gap-4"}>
+      <div className={userRole === 'admin' ? "grid gap-4 lg:grid-cols-3" : "grid gap-4"}>
         <Card>
           <CardHeader>
             <CardTitle>Revenue Trend</CardTitle>
@@ -992,6 +994,12 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         )}
+        
+        {/* API Cost Widget - Admin only */}
+        {userRole === 'admin' && <APICostWidget />}
+        
+        {/* Knowledge Review Widget - Admin only */}
+        {userRole === 'admin' && <KnowledgeReviewWidget />}
       </div>
 
       {/* Monthly Multipliers Chart (Admin Only) */}
