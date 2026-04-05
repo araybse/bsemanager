@@ -19,6 +19,7 @@ export const PAGE_VISIBILITY: Record<string, Record<UserRole, PageVisibility>> =
   'proposals': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
   'projects': { admin: 'visible', project_manager: 'visible', employee: 'visible', client: 'hidden' },
   'time-entries': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },
+  'time': { admin: 'visible', project_manager: 'visible', employee: 'visible', client: 'hidden' },
   'timesheet': { admin: 'visible', project_manager: 'visible', employee: 'visible', client: 'hidden' },
   'billables-report': { admin: 'visible', project_manager: 'visible', employee: 'hidden', client: 'hidden' },
   'invoices': { admin: 'visible', project_manager: 'hidden', employee: 'hidden', client: 'hidden' },

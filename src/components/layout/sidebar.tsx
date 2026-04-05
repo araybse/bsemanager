@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
   { title: 'Proposals', href: '/proposals', icon: Briefcase, pageKey: 'proposals' },
   { title: 'Projects', href: '/projects', icon: FolderKanban, pageKey: 'projects' },
   // { title: 'Timesheet', href: '/timesheet', icon: Clock, pageKey: 'timesheet' }, // Hidden - Phase 2
-  { title: 'Time Entries', href: '/time-entries', icon: Clock, pageKey: 'time-entries' },
+  { title: 'Time', href: '/time', icon: Clock, pageKey: 'time' },
   { title: 'Billables Report', href: '/billable', icon: FileSpreadsheet, pageKey: 'billables-report' },
   { title: 'Invoices', href: '/invoices', icon: Receipt, pageKey: 'invoices' },
   { title: 'Accounting', href: '/accounting', icon: Landmark, pageKey: 'accounting' },

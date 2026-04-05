@@ -373,3 +373,268 @@ This document is the north star. Update it when:
 - Success metrics change
 
 Last updated: March 24, 2026
+
+---
+
+## Phase 5: Project Intelligence & Memory System (Future Vision)
+
+### Vision
+Every project has a comprehensive, searchable memory that combines emails, transcripts, IRIS data, and manual notes into an intelligent knowledge base. This enables automated project updates, PM briefings, client communications, and chatbot Q&A—all powered by accurate, context-aware AI that knows the full history and current state of every project.
+
+### Foundation (Built on Phase 4)
+Phase 4 provides email integration and transcript capture. Phase 5 builds the intelligence layer on top:
+- **Structured memory per project** (JSON format with narrative + metadata + relationships)
+- **Real-time processing** of incoming emails and transcripts
+- **Human-in-loop** for uncertain project assignments
+- **Multi-user support** (all employee emails feed the system)
+- **RAG-powered features** (chatbots, briefings, updates)
+
+### 5.1 Real-Time Email Processing
+
+#### Auto-Processing Pipeline
+- [ ] Webhook integration: New email arrives → auto-process
+- [ ] Project assignment logic:
+  - Email folder path (for filed emails)
+  - Project number in subject (24-01, 25-13, etc.)
+  - Sender lookup (known contact → their projects)
+  - Thread inheritance (reply in existing thread → same project)
+  - Content analysis (mentions project name, address, permit number)
+- [ ] Confidence scoring:
+  - **High (>90%)**: Auto-assign to project
+  - **Medium (60-89%)**: Suggest project, request confirmation
+  - **Low (<60%)**: Queue for manual assignment
+- [ ] Memory extraction:
+  - Narrative summary (what happened)
+  - Key metadata (dates, contacts, decisions, action items)
+  - Relationships (links to permits, phases, other entities)
+  - Source tracking (which email this came from)
+
+#### Human-in-Loop Queue
+- [ ] Review UI for unassigned emails:
+  - Show: Sender, subject, body summary, suggested project
+  - Quick actions: Assign to project, mark as non-project, ignore
+- [ ] Learning system:
+  - Human assignments train future auto-assignment
+  - "Austin assigned emails from john@agency.gov to 24-01 → remember this"
+- [ ] Batch processing:
+  - Review multiple emails at once
+  - Keyboard shortcuts for fast assignment
+
+### 5.2 Multi-User Email Backfill
+
+#### Employee Email Integration
+- [ ] MS365 admin setup (or individual OAuth per employee)
+- [ ] Run backfill script per employee:
+  - Austin Burke → process all historical emails
+  - Wesley Koning → process all historical emails
+  - (All employees)
+- [ ] Merge into project memories:
+  - Same project file, multiple contributors
+  - Track: "This memory from Austin's email, that one from Wesley's"
+- [ ] Deduplication:
+  - Same thread processed from multiple inboxes → merge, don't duplicate
+  - Track all participants in thread
+
+#### Plaud Transcript Integration
+- [ ] Auto-detect Plaud emails in inbox
+- [ ] Extract transcript content
+- [ ] Project assignment (same logic as emails)
+- [ ] Memory extraction:
+  - Meeting summary
+  - Attendees, decisions, action items
+  - Link to email thread if meeting was scheduled via email
+
+### 5.3 Manual Memory Management
+
+#### CRUD Interface
+- [ ] View project memories:
+  - Timeline view (chronological)
+  - Category view (emails, transcripts, notes, permits)
+  - Search/filter by date, contact, keyword
+- [ ] Edit memories:
+  - Update narrative if AI got it wrong
+  - Add missing metadata
+  - Link to related entities (permits, invoices, phases)
+- [ ] Delete/archive memories:
+  - Soft delete (audit trail preserved)
+  - "Forget" option for sensitive/irrelevant data
+- [ ] Re-categorize:
+  - Move memory from Project A → Project B
+  - Split memory (one email actually relates to two projects)
+- [ ] Manual upload:
+  - PM adds note: "Had phone call with agency, they said X"
+  - Upload external doc: PDF permit approval, agency email forward
+  - Date-stamped, attributed to PM who added it
+
+### 5.4 RAG-Powered Features
+
+#### Weekly Client Updates (Auto-Generated)
+- [ ] Query: Last 7 days of project activity
+  - Emails sent/received
+  - Permit status changes
+  - Design milestones
+  - Agency interactions
+- [ ] Generate draft email:
+  - "Dear [Client], this week on [Project]..."
+  - Bullet points of activity
+  - Next steps and timeline
+- [ ] PM review:
+  - Edit draft before sending
+  - One-click send or schedule
+- [ ] Learning:
+  - PM edits teach AI better phrasing
+  - Client preferences stored (detail level, tone, format)
+
+#### PM Morning Briefings (Daily Digest)
+- [ ] For each PM's projects:
+  - **New activity** (last 24 hours)
+  - **Pending actions** (emails awaiting reply, submittals due)
+  - **Upcoming deadlines** (next 7 days)
+  - **Risk alerts** ("Permit comments overdue by 3 days")
+- [ ] Suggested drafts:
+  - "Email X needs response, here's a draft"
+  - "Follow up with Y about Z"
+- [ ] Delivered via:
+  - Email (daily digest)
+  - Slack/Teams (real-time alerts)
+  - IRIS dashboard (briefing widget)
+
+#### Project Chatbot (Ask Questions)
+- [ ] Per-user RAG:
+  - PM sees only their projects
+  - Client sees only their project
+  - Admin sees all
+- [ ] Example queries:
+  - "When did we submit the stormwater permit?"
+  - "What did the agency say about the tree mitigation?"
+  - "Who is the contact at JEA for this project?"
+  - "What's the status of the SJRWMD approval?"
+- [ ] Answers cite sources:
+  - "According to email from john@agency.gov on March 15..."
+  - Link to original email/transcript
+- [ ] Combines data:
+  - Memory (emails, transcripts)
+  - IRIS data (permits table, phases, invoices)
+  - External context (agency rules, firm standards)
+
+#### Client Portal Chatbot
+- [ ] Client login to IRIS:
+  - See their project(s) only
+  - View invoices, timeline, permit status
+- [ ] Client chatbot:
+  - Same RAG as PM, filtered to their project
+  - Answers questions about their project
+  - Can't see internal notes (cost, labor, PM discussions)
+- [ ] Auto-updates:
+  - Weekly progress emails (same as PM client updates)
+  - Milestone notifications ("Permit approved!")
+
+### 5.5 Data Quality & Reliability
+
+#### Validation & Confidence
+- [ ] Schema validation:
+  - Every memory has: narrative, date, source, project_id
+  - Metadata fields match expected types (dates are dates, etc.)
+- [ ] Confidence scoring:
+  - AI rates its own extraction: High / Medium / Low
+  - Low-confidence memories flagged for PM review
+- [ ] Cross-reference checks:
+  - Does this contradict existing memory?
+  - Alert PM if conflicting data detected
+- [ ] Source transparency:
+  - Every fact links back to email/transcript
+  - PM can see: "Why does it think permit is due Friday?" → "Email from agency on April 1"
+
+#### Incremental Quality Improvement
+- [ ] V1 (Current): Basic extraction (narrative + metadata)
+- [ ] V2: Add validation + confidence scores
+- [ ] V3: 20-dimension deep analysis (for critical projects)
+  - Technical details (design specs, calculations)
+  - Regulatory context (agency rules, precedents)
+  - Risk analysis (what could go wrong)
+- [ ] V4: Multi-source fusion
+  - Combine emails + IRIS + external data (GIS, agency portals)
+  - Resolve conflicts intelligently
+  - Detect gaps (missing data, unanswered questions)
+
+#### Audit Trail
+- [ ] Every memory update logged:
+  - Who changed it (PM name)
+  - When (timestamp)
+  - What changed (old → new)
+  - Why (reason if provided)
+- [ ] Version history:
+  - Roll back to previous version if needed
+  - See evolution of understanding over time
+- [ ] Deletion tracking:
+  - Soft delete preserves data
+  - "Forgotten" memories marked, not erased
+
+### 5.6 Advanced Features (Long-term Vision)
+
+#### Predictive Alerts
+- [ ] Timeline risk detection:
+  - "This permit usually takes 8 weeks, we're at week 6 with no response"
+  - "Agency comments due in 2 days, no draft prepared yet"
+- [ ] Cost overrun prediction:
+  - "This phase is trending 20% over budget"
+  - "We've logged 40 hours, proposal only had 30 allocated"
+- [ ] Communication gaps:
+  - "No contact with client in 14 days"
+  - "Email from agency unanswered for 5 days"
+
+#### Learning & Improvement
+- [ ] Pattern recognition:
+  - "COJ permitting usually requires 3 RFI rounds"
+  - "SJRWMD responses average 6 weeks"
+- [ ] Best practices:
+  - "Projects with early pre-app meetings close faster"
+  - "This submittal format has 90% approval rate"
+- [ ] Template generation:
+  - "Based on 50 similar projects, here's the ideal RFI response template"
+
+#### Integration with External Systems
+- [ ] Agency portals:
+  - Auto-check permit status (COJ, SJRWMD, etc.)
+  - Pull application updates into memory
+- [ ] GIS data:
+  - Link parcels to projects
+  - Overlay zoning, utilities, wetlands
+- [ ] Regulatory databases:
+  - Pull current code requirements
+  - Alert if regulations change mid-project
+
+### Phase 5 Completion Criteria
+- [ ] All company emails (5+ employees) auto-processed into project memories
+- [ ] 95%+ project assignment accuracy (high-confidence auto-assignments)
+- [ ] Weekly client updates drafted automatically (PM review/send)
+- [ ] PM morning briefings delivered daily (actionable insights)
+- [ ] Project chatbot answers 80%+ of common questions accurately
+- [ ] Client portal live (clients can self-serve project info)
+- [ ] Data quality: No hallucinations, all facts cite sources
+- [ ] PM feedback: "The AI actually knows what's going on"
+
+### Dependencies
+- **Phase 1 Complete**: Stable IRIS database, QB sync working
+- **Phase 4 Complete**: Email integration, transcript capture, API foundation
+- **Infrastructure**: Vector DB for semantic search (Supabase pgvector or Pinecone)
+- **Approval**: Client portal requires legal review (what can clients see?)
+
+### Estimated Timeline
+- **Phase 5.1-5.2** (Real-time processing, multi-user backfill): 4-6 weeks
+- **Phase 5.3** (Manual memory management): 2-3 weeks
+- **Phase 5.4** (RAG features - briefings, updates, chatbot): 6-8 weeks
+- **Phase 5.5** (Quality & reliability hardening): Ongoing
+- **Phase 5.6** (Advanced features): 3-6 months post-launch
+
+### Success Metrics
+- **Time saved**: PMs spend 50% less time on email/updates
+- **Accuracy**: Client updates are factually correct (no corrections needed)
+- **Adoption**: 100% of PMs use morning briefings daily
+- **Client satisfaction**: Clients use chatbot instead of calling PM
+- **Data coverage**: 95%+ of project activity captured in memory
+- **Response time**: Chatbot answers in <5 seconds with cited sources
+
+---
+
+**Phase 5 transforms IRIS from a project management tool into an intelligent operating system that knows, remembers, and assists.**

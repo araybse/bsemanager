@@ -726,7 +726,8 @@ function PerformanceHistoryChartContent({ projectId, phaseFilter }: { projectId:
               allowDecimals={false}
               label={{ value: 'Multiplier', angle: -90, position: 'insideLeft' }}
             />
-            <ReferenceLine y={3} stroke="#ef4444" strokeDasharray="3 3" label="Target: 3x" />
+            <ReferenceLine y={3} stroke="#9ca3af" strokeDasharray="3 3" strokeWidth={2} label={{ value: '3.0x Target', position: 'right', fill: '#6b7280' }} />
+            <ReferenceLine y={2.25} stroke="#ef4444" strokeDasharray="3 3" strokeWidth={2} label={{ value: '2.25x Baseline', position: 'right', fill: '#dc2626' }} />
             <Tooltip
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {

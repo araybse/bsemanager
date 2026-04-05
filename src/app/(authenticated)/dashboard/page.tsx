@@ -68,6 +68,8 @@ export default function DashboardPage() {
     billableAmount: number
   } | null>(null)
 
+  // Global dashboard filters removed - moved to Time page
+
   // Query for month breakdown details
   const { data: monthBreakdown, isLoading: loadingBreakdown } = useQuery({
     queryKey: ['month-breakdown', selectedMonth?.month, selectedPM],
@@ -772,6 +774,8 @@ export default function DashboardPage() {
     enabled: userRole === 'project_manager' && !!pmProjects?.length,
   })
 
+  // Utilization and PTO queries removed - moved to Time page
+
   // Show loading state while fetching user (after all hooks)
   if (loadingUser) {
     return (
@@ -881,7 +885,7 @@ export default function DashboardPage() {
 
   const adminView = (
     <div className="space-y-6">
-      {/* Page Header with Global PM Filter (admins only) */}
+      {/* Page Header with PM Filter (admins only) */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
         {userRole === 'admin' && (
@@ -1020,6 +1024,7 @@ export default function DashboardPage() {
                   })()}
                 />
                 <ReferenceLine y={3} stroke="#9ca3af" strokeDasharray="5 5" strokeWidth={2} label={{ value: '3.0x Target', position: 'right', fill: '#6b7280' }} />
+                <ReferenceLine y={2.25} stroke="#ef4444" strokeDasharray="5 5" strokeWidth={2} label={{ value: '2.25x Baseline', position: 'right', fill: '#dc2626' }} />
                 <Tooltip 
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {

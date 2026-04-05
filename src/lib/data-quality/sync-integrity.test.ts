@@ -34,6 +34,15 @@ function toMonth(value: string | null | undefined) {
   return value.slice(0, 7)
 }
 
+type QbSettingsRow = {
+  last_invoice_sync_at: string | null
+  last_customer_sync_at: string | null
+  last_project_sync_at: string | null
+  last_time_sync_at: string | null
+  last_contract_labor_sync_at: string | null
+  last_payment_sync_at: string | null
+}
+
 describe.runIf(HAS_SUPABASE_ENV)('QBO sync integrity checks', () => {
   it('has populated QBO sync timestamps', async () => {
     const supabase = createAdminClient()
@@ -45,13 +54,15 @@ describe.runIf(HAS_SUPABASE_ENV)('QBO sync integrity checks', () => {
       .limit(1)
       .maybeSingle()
     if (error) throw error
-    expect(data).toBeTruthy()
-    expect(data?.last_invoice_sync_at).toBeTruthy()
-    expect(data?.last_customer_sync_at).toBeTruthy()
-    expect(data?.last_project_sync_at).toBeTruthy()
-    expect(data?.last_time_sync_at).toBeTruthy()
-    expect(data?.last_contract_labor_sync_at).toBeTruthy()
-    expect(data?.last_payment_sync_at).toBeTruthy()
+    
+    const typedData = data as QbSettingsRow | null
+    expect(typedData).toBeTruthy()
+    expect(typedData?.last_invoice_sync_at).toBeTruthy()
+    expect(typedData?.last_customer_sync_at).toBeTruthy()
+    expect(typedData?.last_project_sync_at).toBeTruthy()
+    expect(typedData?.last_time_sync_at).toBeTruthy()
+    expect(typedData?.last_contract_labor_sync_at).toBeTruthy()
+    expect(typedData?.last_payment_sync_at).toBeTruthy()
   })
 
   it('keeps synced time entries and invoice linkage consistent', async () => {
