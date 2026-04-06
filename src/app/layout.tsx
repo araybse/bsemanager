@@ -12,8 +12,8 @@ export const metadata: Metadata = {
   title: 'IRIS',
   description: 'Integrated Resource Intelligence System - Project management and billing portal for Blackstone Engineering',
   icons: {
-    icon: '/icon.png',
-    apple: '/icon.png',
+    icon: '/favicon.png',
+    apple: '/favicon.png',
   },
 }
 
