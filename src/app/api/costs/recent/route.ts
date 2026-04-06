@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     .from('api_costs')
     .select('id, usage_date, model, workspace, token_type, cost_usd, created_at')
     .order('usage_date', { ascending: false })
-    .limit(limit);
+    .limit(limit) as { data: Array<{ id: number; usage_date: string; model: string; workspace: string | null; token_type: string; cost_usd: string; created_at: string }> | null };
   
   // Transform to match expected frontend format
   const costs = (rawCosts || []).map(c => ({

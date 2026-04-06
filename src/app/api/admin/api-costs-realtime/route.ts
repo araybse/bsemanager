@@ -55,8 +55,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// Convert UTC timestamp to EST date string
+function getESTDateString(date: Date = new Date()): string {
+  return date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+}
+
+// Convert UTC timestamp to EST hour
+function getESTHour(utcDateString: string): number {
+  const date = new Date(utcDateString);
+  return parseInt(date.toLocaleString('en-US', { 
+    timeZone: 'America/New_York', 
+    hour: 'numeric', 
+    hour12: false 
+  }));
+}
+
 async function handleToday(supabase: any) {
-  const today = new Date().toISOString().split('T')[0];
+  const today = getESTDateString();
   return handleQuery(supabase, today);
 }
 
@@ -110,10 +125,10 @@ async function handleQuery(supabase: any, date: string) {
     byModel[model].tokens += c.total_tokens;
   });
   
-  // Hourly breakdown
+  // Hourly breakdown (in EST)
   const hourlyMap: Record<string, number> = {};
   costs.forEach((c: CostRecord) => {
-    const hour = new Date(c.created_at).getHours();
+    const hour = getESTHour(c.created_at);
     const hourKey = `${hour.toString().padStart(2, '0')}:00`;
     hourlyMap[hourKey] = (hourlyMap[hourKey] || 0) + parseFloat(c.estimated_cost_usd);
   });
