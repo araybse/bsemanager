@@ -64,7 +64,7 @@ export async function POST(request: Request) {
       .order('memory_version', { ascending: false })
       .limit(1);
 
-    const newVersion = (existingCorrections?.[0]?.memory_version || 0) + 1;
+    const newVersion = ((existingCorrections as any[] || [])[0]?.memory_version || 0) + 1;
 
     // Insert correction
     const { data: correction, error: insertError } = await supabase
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         source_email_from,
         source_email_subject,
         source_project,
-      })
+      } as any)
       .select()
       .single();
 
@@ -100,11 +100,11 @@ export async function POST(request: Request) {
       source_thread: thread_id,
       corrected_by: user.email || user.id,
       impact_score: 0.5, // Default, updated later based on learning success
-    });
+    } as any);
 
     // Try to generate learning from this correction
     const learning = await generateLearningFromCorrection({
-      correction_id: correction.id,
+      correction_id: (correction as any).id,
       correction_type,
       before_value,
       after_value,
@@ -115,7 +115,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      correction_id: correction.id,
+      correction_id: (correction as any).id,
       version: newVersion,
       learning_generated: learning,
     });

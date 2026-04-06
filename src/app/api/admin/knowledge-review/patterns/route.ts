@@ -41,7 +41,7 @@ export async function GET(request: Request) {
       lastSeen: string;
     }> = {};
 
-    corrections?.forEach(c => {
+    (corrections as any[] || []).forEach((c: any) => {
       const key = `${c.correction_type}:${c.correction_reason?.slice(0, 50) || 'no reason'}`;
       
       if (!patterns[key]) {
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
       stats: stats?.[0] || null,
       patterns: patternList,
       stored_patterns: storedPatterns || [],
-      correction_types: [...new Set(corrections?.map(c => c.correction_type) || [])],
+      correction_types: [...new Set((corrections as any[] || []).map((c: any) => c.correction_type))],
     });
   } catch (error) {
     console.error('Patterns API error:', error);

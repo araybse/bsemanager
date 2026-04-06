@@ -38,7 +38,7 @@ export async function GET() {
       .gte('heartbeat_at', new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString())
       .order('heartbeat_at', { ascending: true });
     
-    const currentHealth = health?.[0] || {
+    const currentHealth = ((health || []) as any[])[0] || {
       status: 'unknown',
       uptime_hours: 0,
       last_heartbeat: null,

@@ -36,14 +36,15 @@ export async function GET() {
       .from('contact_profiles')
       .select('company');
     
-    const uniqueCompanies = new Set(contactStats?.map(c => c.company).filter(Boolean));
-    const totalContacts = contactStats?.length || 0;
+    const uniqueCompanies = new Set(((contactStats || []) as any[]).map(c => c.company).filter(Boolean));
+    const totalContacts = ((contactStats || []) as any[]).length;
     
     // Get relationship breakdown from latest stats
-    const relationshipTypes = latestStats?.[0]?.relationship_types || {};
+    const latestStatsArray = ((latestStats || []) as any[]);
+    const relationshipTypes = latestStatsArray[0]?.relationship_types || {};
     
     // Calculate entity totals
-    const stats = latestStats?.[0] || {
+    const stats = latestStatsArray[0] || {
       person_count: 0,
       company_count: 0,
       project_count: 0,
@@ -72,7 +73,8 @@ export async function GET() {
     const topEntities = stats.top_entities || [];
     
     // Growth metrics (compare to 7 days ago)
-    const sevenDaysAgo = growthTrend?.find(s => {
+    const growthTrendArray = ((growthTrend || []) as any[]);
+    const sevenDaysAgo = growthTrendArray.find(s => {
       const date = new Date(s.snapshot_at);
       const target = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       return Math.abs(date.getTime() - target.getTime()) < 24 * 60 * 60 * 1000; // within 1 day
@@ -107,7 +109,7 @@ export async function GET() {
       entity_distribution: entityDistribution,
       relationship_types: relationshipTypes,
       top_entities: topEntities.slice(0, 10),
-      growth_trend: growthTrend?.map(s => ({
+      growth_trend: growthTrendArray.map(s => ({
         date: new Date(s.snapshot_at).toISOString().split('T')[0],
         entities: s.person_count + s.company_count + s.project_count + 
                  ((s as any).location_count || 0) + ((s as any).topic_count || 0),

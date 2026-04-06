@@ -37,7 +37,7 @@ export async function GET() {
       .order('processed_at', { ascending: true });
     
     // Group by day
-    const dailyVolume = processedByDay?.reduce((acc: any[], curr) => {
+    const dailyVolume = ((processedByDay || []) as any[]).reduce((acc: any[], curr) => {
       const date = new Date(curr.processed_at).toISOString().split('T')[0];
       const existing = acc.find(item => item.date === date);
       
@@ -69,7 +69,7 @@ export async function GET() {
       needs_review: 0
     };
     
-    backlogBreakdown?.forEach(item => {
+    ((backlogBreakdown || []) as any[]).forEach(item => {
       if (item.status === 'pending') backlogCounts.pending++;
       if (item.status === 'failed') backlogCounts.failed++;
       if (item.status === 'needs_review') backlogCounts.needs_review++;
@@ -84,7 +84,7 @@ export async function GET() {
     
     const processingRate = last24h ? (last24h.length / 24).toFixed(1) : '0';
     
-    const coverageData = coverage?.[0] || {
+    const coverageData = ((coverage || []) as any[])[0] || {
       total_processed: 0,
       backlog_size: 0,
       success_rate: 0,

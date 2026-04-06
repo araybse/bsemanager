@@ -36,7 +36,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Learning not found' }, { status: 404 });
     }
 
-    if (!learning.active) {
+    const learningData = learning as any;
+    if (!learningData?.active) {
       return NextResponse.json({ error: 'Learning is not active' }, { status: 400 });
     }
 
@@ -53,9 +54,9 @@ export async function POST(request: Request) {
         .limit(100);
 
       // Filter based on learning conditions
-      if (learning.rule_condition && pendingItems) {
-        targetMemories = pendingItems
-          .filter(item => matchesLearningCondition(item, learning))
+      if (learningData.rule_condition && pendingItems) {
+        targetMemories = (pendingItems as any[] || [])
+          .filter(item => matchesLearningCondition(item, learningData))
           .map(item => item.memory_id);
       }
     }
@@ -67,11 +68,11 @@ export async function POST(request: Request) {
       const { data: application, error: appError } = await supabase
         .from('learning_application_log')
         .insert({
-          learning_id: learning.id,
+          learning_id: learningData.id,
           memory_id: memoryId,
-          confidence_change: learning.confidence_boost,
+          confidence_change: learningData.confidence_boost,
           applied_at: new Date().toISOString(),
-        })
+        } as any)
         .select()
         .single();
 
@@ -81,17 +82,17 @@ export async function POST(request: Request) {
     }
 
     // Update learning stats
-    await supabase
-      .from('evolution_learnings')
+    await (supabase
+      .from('evolution_learnings') as any)
       .update({
-        times_validated: learning.times_validated + applications.length,
+        times_validated: (learningData.times_validated || 0) + applications.length,
         last_validated_at: new Date().toISOString(),
       })
-      .eq('id', learning.id);
+      .eq('id', learningData.id);
 
     return NextResponse.json({
       success: true,
-      learning_id: learning.id,
+      learning_id: learningData.id,
       applied_to: applications.length,
       target_memories: targetMemories.length,
     });
@@ -182,9 +183,9 @@ export async function GET(request: Request) {
     }
 
     // Get validation stats
-    const validated = data?.filter(d => d.validated === true).length || 0;
-    const invalidated = data?.filter(d => d.validated === false).length || 0;
-    const pending = data?.filter(d => d.validated === null).length || 0;
+    const validated = (data as any[] || []).filter(d => d.validated === true).length || 0;
+    const invalidated = (data as any[] || []).filter(d => d.validated === false).length || 0;
+    const pending = (data as any[] || []).filter(d => d.validated === null).length || 0;
 
     return NextResponse.json({
       applications: data || [],

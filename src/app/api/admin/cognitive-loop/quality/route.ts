@@ -30,7 +30,8 @@ export async function GET() {
       .order('extracted_at', { ascending: true });
     
     // Group by day and calculate daily averages
-    const dailyAverages = qualityTrend?.reduce((acc: any[], curr) => {
+    const qualityTrendArray = ((qualityTrend || []) as any[]);
+    const dailyAverages = qualityTrendArray.reduce((acc: any[], curr) => {
       const date = new Date(curr.extracted_at).toISOString().split('T')[0];
       const existing = acc.find(item => item.date === date);
       
@@ -84,7 +85,7 @@ export async function GET() {
       low: 0         // < 6.0
     };
     
-    allScores?.forEach(item => {
+    ((allScores || []) as any[]).forEach(item => {
       const score = item.overall_score;
       if (score >= 9.0) distribution.excellent++;
       else if (score >= 8.0) distribution.high++;
@@ -92,7 +93,7 @@ export async function GET() {
       else distribution.low++;
     });
     
-    const metrics = qualityMetrics?.[0] || {
+    const metrics = ((qualityMetrics || []) as any[])[0] || {
       avg_overall: 0,
       avg_entity: 0,
       avg_relationship: 0,

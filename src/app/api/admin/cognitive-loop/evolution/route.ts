@@ -26,7 +26,7 @@ export async function GET() {
       .from('evolution_log')
       .select('correction_type, corrected_at, impact_score');
     
-    const correctionsByType = corrections?.reduce((acc: any, curr) => {
+    const correctionsByType = ((corrections || []) as any[]).reduce((acc: any, curr) => {
       acc[curr.correction_type] = (acc[curr.correction_type] || 0) + 1;
       return acc;
     }, {}) || {};
@@ -46,13 +46,13 @@ export async function GET() {
       .limit(50);
     
     const reflectionSummary = {
-      total: reflections?.length || 0,
-      unresolved: reflections?.filter(r => !r.resolved).length || 0,
+      total: ((reflections || []) as any[]).length,
+      unresolved: ((reflections || []) as any[]).filter(r => !r.resolved).length,
       by_type: {} as Record<string, number>,
       by_severity: {} as Record<string, number>
     };
     
-    reflections?.forEach(r => {
+    ((reflections || []) as any[]).forEach(r => {
       reflectionSummary.by_type[r.reflection_type] = (reflectionSummary.by_type[r.reflection_type] || 0) + 1;
       if (r.severity) {
         reflectionSummary.by_severity[r.severity] = (reflectionSummary.by_severity[r.severity] || 0) + 1;
@@ -60,10 +60,11 @@ export async function GET() {
     });
     
     // Calculate average impact score
-    const avgImpact = corrections?.reduce((sum, c) => sum + (c.impact_score || 0), 0) / (corrections?.length || 1);
+    const correctionsArray = ((corrections || []) as any[]);
+    const avgImpact = correctionsArray.reduce((sum, c) => sum + (c.impact_score || 0), 0) / (correctionsArray.length || 1);
     
     // Calculate error reduction trend (last 12 weeks)
-    const errorTrend = learningRate?.map(week => ({
+    const errorTrend = ((learningRate || []) as any[]).map(week => ({
       week: week.week_number,
       errors: week.error_count,
       corrections: week.correction_count,
@@ -78,7 +79,7 @@ export async function GET() {
       .gte('detected_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
     
     // Calculate corrections velocity (corrections per week)
-    const weeklyCorrections = corrections?.reduce((acc: any[], curr) => {
+    const weeklyCorrections = correctionsArray.reduce((acc: any[], curr) => {
       const week = new Date(curr.corrected_at).toISOString().split('T')[0];
       const existing = acc.find(item => item.week === week);
       
@@ -100,7 +101,7 @@ export async function GET() {
         unresolved_issues: reflectionSummary.unresolved
       },
       error_trend: errorTrend,
-      recent_corrections: recentCorrections?.map(c => ({
+      recent_corrections: ((recentCorrections || []) as any[]).map(c => ({
         id: c.id,
         type: c.correction_type,
         description: c.description,

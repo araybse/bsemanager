@@ -88,8 +88,8 @@ export async function PATCH(request: Request) {
       updates.deactivated_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
-      .from('evolution_learnings')
+    const { data, error } = await (supabase
+      .from('evolution_learnings') as any)
       .update(updates)
       .eq('id', id)
       .select()
