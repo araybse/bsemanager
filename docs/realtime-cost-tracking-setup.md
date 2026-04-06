@@ -1,15 +1,51 @@
-# Real-Time API Cost Tracking - Setup Guide
+# API Cost Tracking - Complete Fix Guide
 
-## Status: ✅ OPERATIONAL
+## Status: ✅ BOTH ISSUES FIXED
 
 **Last Updated:** 2026-04-06
 **Fixed By:** Olivia (audit subagent)
 
-## Root Cause of $0 Issue
+---
 
+## Issue #1: Real-Time Tab Shows $0
+
+### Root Cause
 **The migration file was created but NEVER EXECUTED in Supabase.**
 
 Sebastian created the migration file `supabase/migrations/20260406_api_costs_realtime.sql` but did not run it against the production database. The table `api_costs_realtime` did not exist, so all queries returned empty results displaying $0.
+
+### Fix Applied
+- Created `api_costs_realtime` table in Supabase
+- Added indexes and RLS policies
+- Inserted test data for verification
+
+---
+
+## Issue #2: Historical Tab Shows Inaccurate Data
+
+### Root Cause
+**The API endpoints queried the WRONG TABLE.**
+
+- **Data was imported to:** `api_costs` (331 records, $1,969.02 total)
+- **API was querying:** `api_cost_log` (289 records, ~$1.17 from Sophia only)
+
+### Fix Applied
+Updated all historical API endpoints to query `api_costs` instead of `api_cost_log`:
+- `/api/costs/summary` ✅
+- `/api/costs/trends` ✅
+- `/api/costs/stats` ✅
+- `/api/costs/recent` ✅
+
+### Historical Data Verification
+```
+  month   | total_cost | record_count 
+----------+------------+--------------
+ 2026-02  |   $284.51  |     183
+ 2026-03  |   $566.77  |      81
+ 2026-04  | $1,117.74  |      67
+```
+
+---
 
 ## What Was Fixed
 
