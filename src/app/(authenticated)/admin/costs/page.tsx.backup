@@ -12,35 +12,14 @@ import {
   LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { CHART_COLORS, getChartColor, getBudgetColor } from '@/lib/charts/colors';
 
 const DAILY_BUDGET = 150;
 const DAILY_ALERT_THRESHOLD = 200;
 const REFRESH_INTERVAL = 5000; // 5 seconds for true real-time
 
-// Helper to format date in EST/EDT
-// Handles both UTC timestamps (without timezone) and timestamptz (with offset)
+// Helper to format date in EST
 function formatDateEST(dateString: string, options?: Intl.DateTimeFormatOptions): string {
-  let date: Date;
-  
-  // Check if timestamp includes timezone offset (e.g., '2026-04-06 12:30:00-05')
-  const timezoneMatch = dateString.match(/[+-]\d{2}(:\d{2})?$/);
-  if (timezoneMatch) {
-    // Has timezone offset - convert to ISO format and parse
-    let isoString = dateString.includes('T') ? dateString : dateString.replace(' ', 'T');
-    // Add :00 to timezone offset if missing (e.g., '-05' → '-05:00')
-    if (/[+-]\d{2}$/.test(isoString)) {
-      isoString = isoString.replace(/([+-]\d{2})$/, '$1:00');
-    }
-    date = new Date(isoString);
-  } else if (dateString.includes('T') && !dateString.endsWith('Z')) {
-    // UTC timestamp without 'Z' - append it
-    date = new Date(dateString + 'Z');
-  } else {
-    // Already has 'Z' or is plain date - parse as-is
-    date = new Date(dateString);
-  }
-  
+  const date = new Date(dateString);
   return date.toLocaleString('en-US', {
     timeZone: 'America/New_York',
     ...options
@@ -164,12 +143,13 @@ export default function CostsPage() {
         }))
     : [];
   
+  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82ca9d', '#ffc658', '#ff7c7c'];
+  
   // Budget calculations
   const todaysCost = realtime?.total_cost || 0;
   const budgetPercentage = (todaysCost / DAILY_BUDGET) * 100;
   const isOverBudget = todaysCost > DAILY_BUDGET;
   const isAlertLevel = todaysCost > DAILY_ALERT_THRESHOLD;
-  const budgetBarColor = getBudgetColor(budgetPercentage);
   
   return (
     <div className="space-y-6 p-6">
@@ -245,11 +225,10 @@ export default function CostsPage() {
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                       <div 
-                        className="h-3 rounded-full transition-all duration-500"
-                        style={{ 
-                          width: `${Math.min(budgetPercentage, 100)}%`,
-                          backgroundColor: budgetBarColor
-                        }}
+                        className={`h-3 rounded-full transition-all duration-500 ${
+                          isAlertLevel ? 'bg-red-500' : isOverBudget ? 'bg-yellow-500' : 'bg-green-500'
+                        }`}
+                        style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -350,14 +329,14 @@ export default function CostsPage() {
                 ) : hourlyData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <LineChart data={hourlyData}>
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="hour" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
                       <Line 
                         type="monotone" 
                         dataKey="cost" 
-                        stroke={CHART_COLORS.semantic.info}
+                        stroke="#8884d8" 
                         strokeWidth={2}
                         animationDuration={300}
                       />
@@ -389,12 +368,12 @@ export default function CostsPage() {
                         labelLine={false}
                         label={({ name, value }) => `${name}: $${Number(value).toFixed(2)}`}
                         outerRadius={80}
-                        fill={CHART_COLORS.primary[0]}
+                        fill="#8884d8"
                         dataKey="cost"
                         animationDuration={300}
                       >
                         {realtimeAgentData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={getChartColor(index)} />
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                         ))}
                       </Pie>
                       <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
@@ -419,11 +398,11 @@ export default function CostsPage() {
                 ) : realtimeModelData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={realtimeModelData}>
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                       <YAxis tick={{ fontSize: 12 }} />
                       <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-                      <Bar dataKey="cost" fill={CHART_COLORS.primary[0]} animationDuration={300} />
+                      <Bar dataKey="cost" fill="#82ca9d" animationDuration={300} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -512,7 +491,7 @@ export default function CostsPage() {
                 <>
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={monthlyChartData}>
-                      <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                      <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="monthName" 
                         tick={{ fontSize: 12 }}
@@ -527,7 +506,7 @@ export default function CostsPage() {
                       />
                       <Bar 
                         dataKey="cost" 
-                        fill={CHART_COLORS.primary[0]}
+                        fill="#8884d8" 
                         name="Monthly Cost"
                         radius={[4, 4, 0, 0]}
                       />
@@ -573,7 +552,7 @@ export default function CostsPage() {
               ) : modelData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={modelData} layout="vertical">
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" />
                     <XAxis type="number" tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
                     <YAxis 
                       type="category" 
@@ -582,7 +561,7 @@ export default function CostsPage() {
                       width={120}
                     />
                     <Tooltip formatter={(value) => `$${Number(value).toFixed(2)}`} />
-                    <Bar dataKey="value" fill={CHART_COLORS.primary[1]} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="value" fill="#00C49F" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -604,7 +583,7 @@ export default function CostsPage() {
               ) : trends?.trend && trends.trend.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart data={trends.trend}>
-                    <CartesianGrid stroke="#e5e7eb" strokeDasharray="3 3" />
+                    <CartesianGrid strokeDasharray="3 3" />
                     <XAxis 
                       dataKey="date" 
                       tick={{ fontSize: 10 }}
@@ -622,7 +601,7 @@ export default function CostsPage() {
                     <Line 
                       type="monotone" 
                       dataKey="cost" 
-                      stroke={CHART_COLORS.semantic.info}
+                      stroke="#8884d8" 
                       name="Daily Cost" 
                       strokeWidth={2}
                       dot={false}

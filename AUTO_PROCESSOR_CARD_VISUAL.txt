@@ -1,0 +1,139 @@
+╔═════════════════════════════════════════════════════════════════════╗
+║                     IRIS KNOWLEDGE DASHBOARD                        ║
+║                     /admin/knowledge                                ║
+╠═════════════════════════════════════════════════════════════════════╣
+║                                                                     ║
+║  ┌─────────────────────────────────────────────────────────────┐  ║
+║  │ 📡 Auto-Processor Status                                    │  ║
+║  ├─────────────────────────────────────────────────────────────┤  ║
+║  │                                                              │  ║
+║  │   🟢 Running Smoothly                                       │  ║
+║  │   Last processed: 2 minutes ago                             │  ║
+║  │                                                              │  ║
+║  │   📊 Recent Activity (Last 24 Hours)                        │  ║
+║  │   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │  ║
+║  │                                                              │  ║
+║  │   📧 Emails Processed: 47                                   │  ║
+║  │      ↗️ Sent: 18  ↙️ Received: 29                          │  ║
+║  │                                                              │  ║
+║  │   🎙️ Meeting Transcripts: 3                                │  ║
+║  │                                                              │  ║
+║  │   🎯 Avg Confidence: 87%                                    │  ║
+║  │      High (>80%): 38 · Medium: 7 · Low: 2                  │  ║
+║  │                                                              │  ║
+║  └─────────────────────────────────────────────────────────────┘  ║
+║                                                                     ║
+║  ┌──────────────┬──────────────┬──────────────┬──────────────┐    ║
+║  │ 🧠 Total     │ 📁 Projects  │ ⚠️ Pending   │ 📈 Avg       │    ║
+║  │ Memories     │ Covered      │ Reviews      │ Confidence   │    ║
+║  │              │              │              │              │    ║
+║  │ 5,702        │ 234          │ 47           │ 85.3%        │    ║
+║  └──────────────┴──────────────┴──────────────┴──────────────┘    ║
+║                                                                     ║
+║  [Processing Timeline Chart]     [Confidence Distribution Pie]     ║
+║                                                                     ║
+║  [Top 10 Projects Bar Chart]     [Processing Stats Panel]          ║
+║                                                                     ║
+║  [Recent Activity List]                                             ║
+║                                                                     ║
+╚═════════════════════════════════════════════════════════════════════╝
+
+
+HEALTH STATE EXAMPLES:
+═══════════════════════════════════════════════════════════════════════
+
+🟢 HEALTHY (< 10 minutes ago)
+┌─────────────────────────────────────────────────────────────┐
+│ 📡 Auto-Processor Status                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 🟢 Running Smoothly                                         │
+│ Last processed: 2 minutes ago                               │
+└─────────────────────────────────────────────────────────────┘
+
+🟡 WARNING (10-30 minutes ago)
+┌─────────────────────────────────────────────────────────────┐
+│ 📡 Auto-Processor Status                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 🟡 Warning                                                  │
+│ Last processed: 15 minutes ago                              │
+└─────────────────────────────────────────────────────────────┘
+
+🔴 ERROR (> 30 minutes ago)
+┌─────────────────────────────────────────────────────────────┐
+│ 📡 Auto-Processor Status                                    │
+├─────────────────────────────────────────────────────────────┤
+│ 🔴 Error                                                    │
+│ Last processed: 45 minutes ago                              │
+└─────────────────────────────────────────────────────────────┘
+
+⚫ STOPPED (no heartbeats)
+┌─────────────────────────────────────────────────────────────┐
+│ 📡 Auto-Processor Status                                    │
+├─────────────────────────────────────────────────────────────┤
+│ ⚫ Stopped                                                   │
+│ Last processed: Never                                       │
+└─────────────────────────────────────────────────────────────┘
+
+
+RESPONSIVE BEHAVIOR:
+═══════════════════════════════════════════════════════════════════════
+
+Desktop (1024px+):
+- Card spans full width above the 4-column summary cards
+- Stats displayed in 2-column layout within card
+- Full text labels visible
+
+Tablet (768px-1023px):
+- Card width: full
+- Stats stack vertically
+- Icon sizes slightly smaller
+
+Mobile (< 768px):
+- Card width: full
+- Stats stack vertically
+- Font sizes adjusted for readability
+- Compact spacing
+
+
+LOADING STATE:
+═══════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────┐
+│ 📡 Auto-Processor Status                                    │
+├─────────────────────────────────────────────────────────────┤
+│ ▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░ (animated skeleton)                   │
+│ ▓▓▓▓▓░░░░░                                                  │
+│ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░                                      │
+└─────────────────────────────────────────────────────────────┘
+
+
+ERROR STATE:
+═══════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────┐
+│ 📡 Auto-Processor Status                                    │
+├─────────────────────────────────────────────────────────────┤
+│ ⚠️ Failed to load status                                    │
+└─────────────────────────────────────────────────────────────┘
+
+
+DARK MODE SUPPORT:
+═══════════════════════════════════════════════════════════════════════
+
+Colors automatically adapt via Tailwind's dark: variants:
+- Background: bg-card (light: white, dark: dark gray)
+- Text: text-foreground (light: black, dark: white)
+- Muted text: text-muted-foreground
+- Borders: border (adapts to theme)
+- Health colors remain vibrant in both modes
+
+
+ACCESSIBILITY:
+═══════════════════════════════════════════════════════════════════════
+
+✅ Semantic HTML (Card components)
+✅ ARIA labels on status indicators
+✅ Color is not the only indicator (emoji + text)
+✅ Keyboard navigable
+✅ Screen reader friendly
+✅ High contrast ratios

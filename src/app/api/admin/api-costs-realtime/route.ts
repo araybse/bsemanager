@@ -60,9 +60,24 @@ function getESTDateString(date: Date = new Date()): string {
   return date.toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
 }
 
-// Convert UTC timestamp to EST hour
-function getESTHour(utcDateString: string): number {
-  const date = new Date(utcDateString);
+// Convert timestamp to EST/EDT hour
+// Handles both UTC timestamps (without timezone) and timestamptz (with offset)
+function getESTHour(dateString: string): number {
+  // If timestamp includes timezone offset (e.g., '2026-04-06 12:30:00-05'),
+  // extract the hour directly since the offset already represents local time
+  const timezoneMatch = dateString.match(/[+-]\d{2}(:\d{2})?$/);
+  if (timezoneMatch) {
+    const hourMatch = dateString.match(/(\d{2}):(\d{2}):(\d{2})/);
+    if (hourMatch) {
+      return parseInt(hourMatch[1]);
+    }
+  }
+  
+  // For UTC timestamps without timezone info, convert to America/New_York
+  const date = dateString.endsWith('Z') 
+    ? new Date(dateString)
+    : new Date(dateString + 'Z');
+  
   return parseInt(date.toLocaleString('en-US', { 
     timeZone: 'America/New_York', 
     hour: 'numeric', 
