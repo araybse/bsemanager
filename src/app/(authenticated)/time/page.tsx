@@ -11,9 +11,38 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { ResponsiveContainer, ComposedChart, CartesianGrid, XAxis, YAxis, Tooltip, Bar, Line, ReferenceLine } from 'recharts'
 import { TimesheetTab } from './components/TimesheetTab'
+import { ApprovalsTab } from './components/ApprovalsTab'
+import { TotalHoursChart } from '@/components/dashboard/total-hours-chart'
+import { PTOUsageChart } from '@/components/dashboard/pto-usage-chart'
+
+// Helper function for status badge styling
+function getStatusBadgeVariant(status: string): 'default' | 'secondary' | 'destructive' | 'outline' {
+  switch (status?.toLowerCase()) {
+    case 'approved':
+      return 'default' // Green
+    case 'submitted':
+      return 'secondary' // Yellow/Amber
+    case 'draft':
+    default:
+      return 'outline' // Gray
+  }
+}
+
+function getStatusBadgeClass(status: string): string {
+  switch (status?.toLowerCase()) {
+    case 'approved':
+      return 'bg-green-100 text-green-800 hover:bg-green-100'
+    case 'submitted':
+      return 'bg-amber-100 text-amber-800 hover:bg-amber-100'
+    case 'draft':
+    default:
+      return 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+  }
+}
 
 export default function TimePage() {
   const supabase = createClient()
@@ -88,40 +117,41 @@ export default function TimePage() {
     },
   })
 
-  // PTO usage data query
-  const { data: ptoData, isLoading: loadingPto } = useQuery({
-    queryKey: ['pto-usage-time', selectedPeriod, effectiveEmployeeId],
+  // PTO usage data query (for summary card)
+  const { data: ptoData } = useQuery({
+    queryKey: ['pto-usage-time', effectiveEmployeeId],
     queryFn: async () => {
+      const currentYear = new Date().getFullYear()
       const params = new URLSearchParams({
-        period: selectedPeriod,
+        year: currentYear.toString(),
         ...(effectiveEmployeeId ? { employee_id: effectiveEmployeeId } : {})
       })
       const response = await fetch(`/api/dashboard/pto-usage?${params}`)
       if (!response.ok) throw new Error('Failed to fetch PTO usage')
-      const data = await response.json()
-      return data.ptoUsage as Array<{
-        period: string
-        periodLabel: string
-        totalHours: number
-        byType: { PTO: number; Vacation: number; Sick: number }
-      }>
+      return response.json()
     },
   })
 
   // Time entries query - fetch all entries using pagination to bypass 1000-row limit
   const { data: timeEntries, isLoading: loadingEntries } = useQuery({
-    queryKey: ['time-entries-list'],
+    queryKey: ['time-entries-list', currentUser?.id, userRole],
     queryFn: async () => {
       let allData: any[] = []
       let from = 0
       const pageSize = 1000
       
       while (true) {
-        const { data, error } = await supabase
+        let query = supabase
           .from('time_entries')
-          .select('id, employee_id, employee_name, entry_date, hours, project_number, phase_name')
+          .select('id, employee_id, employee_name, entry_date, hours, project_number, phase_name, status, notes')
           .order('entry_date', { ascending: false })
-          .range(from, from + pageSize - 1)
+        
+        // Auto-filter to current user's entries if not admin
+        if (userRole !== 'admin' && currentUser?.id) {
+          query = query.eq('employee_id', currentUser.id)
+        }
+        
+        const { data, error } = await query.range(from, from + pageSize - 1)
         
         if (error) throw error
         if (!data || data.length === 0) break
@@ -254,17 +284,13 @@ export default function TimePage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Time</h1>
-      </div>
-
       {/* Tabs */}
-      <Tabs defaultValue="timesheet" className="space-y-6">
+      <Tabs defaultValue="dashboard" className="space-y-6">
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="timesheet">Timesheet</TabsTrigger>
           <TabsTrigger value="entries">Entries</TabsTrigger>
+          {userRole === 'admin' && <TabsTrigger value="approvals">Approvals</TabsTrigger>}
         </TabsList>
 
         {/* Timesheet Tab */}
@@ -278,9 +304,9 @@ export default function TimePage() {
 
         {/* Dashboard Tab */}
         <TabsContent value="dashboard" className="space-y-6">
-          {/* Dashboard-specific filters */}
-          <div className="flex gap-3 justify-end">
-            {userRole === 'admin' && (
+          {/* Top-level filter - Admin user dropdown only */}
+          {userRole === 'admin' && (
+            <div className="flex gap-3 justify-end">
               <Select value={dashboardEmployee || 'all'} onValueChange={(v) => setDashboardEmployee(v === 'all' ? null : v)}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="All Users" />
@@ -294,32 +320,52 @@ export default function TimePage() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          )}
+          {/* Utilization Chart with Summary Card */}
+          <div className="flex gap-4">
+            {/* Utilization Summary Card */}
+            {utilizationData && utilizationData.length > 0 && (
+              <Card className="w-48 shrink-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Utilization</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center">
+                  <div className="text-3xl font-bold">
+                    {(utilizationData.reduce((sum, item) => sum + item.utilizationRate, 0) / utilizationData.length).toFixed(1)}%
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    {selectedPeriod === 'year' ? 'Year' : selectedPeriod === 'quarter' ? 'Quarter' : 'Month'} average
+                  </p>
+                </CardContent>
+              </Card>
             )}
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="w-[140px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="year">Year</SelectItem>
-                <SelectItem value="quarter">Quarter</SelectItem>
-                <SelectItem value="month">Month</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          {/* Utilization Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Employee Utilization</CardTitle>
-              <CardDescription>
-                Percentage of hours billed to projects vs. overhead
-              </CardDescription>
+            
+          <Card className="flex-1">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Employee Utilization</CardTitle>
+                <CardDescription>
+                  Percentage of hours billed to projects vs. overhead
+                </CardDescription>
+              </div>
+              <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="year">Year</SelectItem>
+                  <SelectItem value="quarter">Quarter</SelectItem>
+                  <SelectItem value="month">Month</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent>
               {loadingUtilization ? (
                 <Skeleton className="h-[300px] w-full" />
               ) : utilizationData && utilizationData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={utilizationData}>
+                  <ComposedChart data={utilizationData} margin={{ top: 20, right: 40, left: 20, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="periodLabel" />
                     <YAxis 
@@ -355,7 +401,15 @@ export default function TimePage() {
                         return null
                       }}
                     />
-                    <Line type="monotone" dataKey="utilizationRate" stroke="#384eaa" strokeWidth={2} dot={{ r: 4 }} name="Utilization %" />
+                    <Line 
+                      type="monotone" 
+                      dataKey="utilizationRate" 
+                      stroke="#384eaa" 
+                      strokeWidth={2} 
+                      dot={{ r: 4 }} 
+                      name="Utilization %"
+                      label={{ position: 'top', formatter: (value: any) => `${value}%`, fontSize: 11 }}
+                    />
                   </ComposedChart>
                 </ResponsiveContainer>
               ) : (
@@ -365,90 +419,53 @@ export default function TimePage() {
               )}
             </CardContent>
           </Card>
+          </div>
 
-          {/* PTO Usage Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle>PTO Usage</CardTitle>
-              <CardDescription>
-                Hours of PTO, vacation, and sick time used
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loadingPto ? (
-                <Skeleton className="h-[300px] w-full" />
-              ) : ptoData && ptoData.length > 0 ? (
-                <ResponsiveContainer width="100%" height={300}>
-                  <ComposedChart data={ptoData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="periodLabel" />
-                    <YAxis 
-                      tickFormatter={(value) => `${value}h`}
-                    />
-                    <Tooltip 
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-                              <p className="font-semibold mb-2">{data.periodLabel}</p>
-                              <div className="space-y-1 text-sm">
-                                <div className="flex justify-between gap-4">
-                                  <span className="text-gray-600">Total PTO:</span>
-                                  <span className="font-medium">{data.totalHours.toFixed(1)}h</span>
-                                </div>
-                                {data.byType && (
-                                  <>
-                                    {data.byType.PTO > 0 && (
-                                      <div className="flex justify-between gap-4">
-                                        <span className="text-gray-600">PTO:</span>
-                                        <span className="font-medium">{data.byType.PTO.toFixed(1)}h</span>
-                                      </div>
-                                    )}
-                                    {data.byType.Vacation > 0 && (
-                                      <div className="flex justify-between gap-4">
-                                        <span className="text-gray-600">Vacation:</span>
-                                        <span className="font-medium">{data.byType.Vacation.toFixed(1)}h</span>
-                                      </div>
-                                    )}
-                                    {data.byType.Sick > 0 && (
-                                      <div className="flex justify-between gap-4">
-                                        <span className="text-gray-600">Sick:</span>
-                                        <span className="font-medium">{data.byType.Sick.toFixed(1)}h</span>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    <Bar dataKey="totalHours" fill="#0891b2" radius={[4, 4, 0, 0]} name="PTO Hours" />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                  No PTO usage available
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* PTO Usage Chart with Summary Card */}
+          <div className="flex gap-4">
+            {/* Total PTO Card */}
+            {ptoData?.ptoUsage && ptoData.ptoUsage.length > 0 && (
+              <Card className="w-48 shrink-0">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Total PTO</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col items-center justify-center">
+                  <div className="text-3xl font-bold">
+                    {ptoData.ptoUsage[ptoData.ptoUsage.length - 1]?.cumulativeHours?.toFixed(1) || 0}h
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    Year to date
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+            
+          <div className="flex-1">
+            <PTOUsageChart 
+            employeeId={effectiveEmployeeId || null} 
+            currentUser={currentUser}
+            userRole={userRole}
+          />
+          </div>
+          </div>
+
+          {/* Total Hours Chart */}
+          <TotalHoursChart 
+            userId={effectiveEmployeeId || currentUser?.id || ''}
+            currentUser={currentUser}
+          />
         </TabsContent>
 
+        {/* Approvals Tab (Admin Only) */}
+        {userRole === 'admin' && (
+          <TabsContent value="approvals">
+            <ApprovalsTab employees={employees} />
+          </TabsContent>
+        )}
+
         {/* Entries Tab */}
-        <TabsContent value="entries">
-          <Card>
-            <CardHeader>
-              <CardTitle>Time Entries</CardTitle>
-              <CardDescription>
-                Browse and filter time entries
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Filter Controls - Inside Entries Tab */}
+        <TabsContent value="entries" className="space-y-4">
+              {/* Filter Controls */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 p-4 bg-gray-50 rounded-lg border">
                 {/* Date Range */}
                 <div className="space-y-1">
@@ -478,23 +495,25 @@ export default function TimePage() {
                   />
                 </div>
 
-                {/* Employee Filter */}
-                <div className="space-y-1">
-                  <Label className="text-xs font-medium">Employee</Label>
-                  <Select value={entriesEmployeeFilter} onValueChange={setEntriesEmployeeFilter}>
-                    <SelectTrigger className="h-9">
-                      <SelectValue placeholder="All Employees" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Employees</SelectItem>
-                      {(employees || []).map((emp) => (
-                        <SelectItem key={emp.id} value={emp.id}>
-                          {emp.full_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {/* Employee Filter - Admin Only */}
+                {userRole === 'admin' && (
+                  <div className="space-y-1">
+                    <Label className="text-xs font-medium">Employee</Label>
+                    <Select value={entriesEmployeeFilter} onValueChange={setEntriesEmployeeFilter}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="All Employees" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Employees</SelectItem>
+                        {(employees || []).map((emp) => (
+                          <SelectItem key={emp.id} value={emp.id}>
+                            {emp.full_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
 
                 {/* Project Filter */}
                 <div className="space-y-1">
@@ -572,10 +591,12 @@ export default function TimePage() {
                             )}
                           </button>
                         </th>
+                        <th className="p-2 font-semibold">Status</th>
                         <th className="p-2 font-semibold">Employee</th>
                         <th className="p-2 font-semibold">Project</th>
                         <th className="p-2 font-semibold">Phase</th>
                         <th className="p-2 font-semibold text-right">Hours</th>
+                        <th className="p-2 font-semibold">Work Description</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -584,21 +605,28 @@ export default function TimePage() {
                           {paginatedEntries.map((entry: any) => (
                             <tr key={entry.id} className="border-b hover:bg-gray-50">
                               <td className="p-2">{new Date(entry.entry_date).toLocaleDateString('en-US')}</td>
+                              <td className="p-2">
+                                <Badge className={getStatusBadgeClass(entry.status)}>
+                                  {entry.status ? entry.status.charAt(0).toUpperCase() + entry.status.slice(1) : 'Draft'}
+                                </Badge>
+                              </td>
                               <td className="p-2">{entry.employee_name}</td>
                               <td className="p-2">{entry.project_number}</td>
                               <td className="p-2">{entry.phase_name}</td>
                               <td className="p-2 text-right">{entry.hours}</td>
+                              <td className="p-2 max-w-xs truncate" title={entry.notes}>{entry.notes || '-'}</td>
                             </tr>
                           ))}
                           {/* Total Row */}
                           <tr className="bg-gray-100 font-semibold sticky bottom-0">
-                            <td className="p-2" colSpan={4}>Total</td>
+                            <td className="p-2" colSpan={6}>Total</td>
                             <td className="p-2 text-right">{totalFilteredHours.toFixed(1)}</td>
+                            <td className="p-2"></td>
                           </tr>
                         </>
                       ) : (
                         <tr>
-                          <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground">
                             No time entries found matching filters
                           </td>
                         </tr>
@@ -688,8 +716,6 @@ export default function TimePage() {
                   </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

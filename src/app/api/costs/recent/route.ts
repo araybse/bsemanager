@@ -27,11 +27,24 @@ export async function GET(request: NextRequest) {
   // Use admin client to bypass RLS
   const supabase = createAdminClient();
   
-  const { data: costs } = await supabase
-    .from('api_cost_log')
-    .select('*')
-    .order('timestamp', { ascending: false })
+  // Query api_costs table and transform to expected format
+  const { data: rawCosts } = await supabase
+    .from('api_costs')
+    .select('id, usage_date, model, workspace, token_type, cost_usd, created_at')
+    .order('usage_date', { ascending: false })
     .limit(limit);
   
-  return Response.json({ costs: costs || [] });
+  // Transform to match expected frontend format
+  const costs = (rawCosts || []).map(c => ({
+    id: c.id,
+    timestamp: c.usage_date,
+    operation: c.token_type,
+    model: c.model,
+    category: c.workspace || 'claude_console',
+    input_tokens: 0,
+    output_tokens: 0,
+    cost_usd: c.cost_usd
+  }));
+  
+  return Response.json({ costs });
 }

@@ -233,13 +233,7 @@ export default function ReimbursablesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-medium">Expenses</h2>
-          <p className="text-sm text-muted-foreground">
-            All job-related QuickBooks expenses with reimbursable controls
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Button variant="outline" disabled>
           <Plus className="mr-2 h-4 w-4" />
           Add Expense (from QuickBooks)

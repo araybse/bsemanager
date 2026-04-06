@@ -57,18 +57,16 @@ export async function GET(request: NextRequest) {
     }
   }
   
-  // Query costs with filters
+  // Query costs with filters - uses api_costs table (CSV backfill data)
   let query = supabase
-    .from('api_cost_log')
-    .select('cost_usd, category, project, timestamp, model')
-    .gte('timestamp', rangeStart.toISOString());
+    .from('api_costs')
+    .select('cost_usd, model, workspace, token_type, usage_date')
+    .gte('usage_date', rangeStart.toISOString().split('T')[0]);
   
-  if (endDate) query = query.lte('timestamp', endDate);
-  if (category) query = query.eq('category', category);
-  if (project) query = query.eq('project', project);
+  if (endDate) query = query.lte('usage_date', endDate.split('T')[0]);
   if (model) query = query.eq('model', model);
   
-  const { data: costs } = await query as { data: Array<{ cost_usd: string; category: string; project: string | null; timestamp: string; model: string }> | null };
+  const { data: costs } = await query as { data: Array<{ cost_usd: string; model: string; workspace: string | null; token_type: string; usage_date: string }> | null };
   
   if (!costs) {
     return Response.json({ total: 0, byCategory: {}, byProject: {}, count: 0 });
@@ -77,17 +75,15 @@ export async function GET(request: NextRequest) {
   // Calculate totals
   const total = costs.reduce((sum, c) => sum + parseFloat(c.cost_usd), 0);
   
-  // Group by category
+  // Group by model (category equivalent for CSV data)
   const byCategory = costs.reduce((acc, c) => {
-    acc[c.category] = (acc[c.category] || 0) + parseFloat(c.cost_usd);
+    acc[c.model] = (acc[c.model] || 0) + parseFloat(c.cost_usd);
     return acc;
   }, {} as Record<string, number>);
   
-  // Group by project
+  // Group by token_type (shows input/output breakdown)
   const byProject = costs.reduce((acc, c) => {
-    if (c.project) {
-      acc[c.project] = (acc[c.project] || 0) + parseFloat(c.cost_usd);
-    }
+    acc[c.token_type] = (acc[c.token_type] || 0) + parseFloat(c.cost_usd);
     return acc;
   }, {} as Record<string, number>);
   
@@ -95,9 +91,9 @@ export async function GET(request: NextRequest) {
   const thisWeekStart = new Date(new Date().setDate(new Date().getDate() - 7));
   const lastWeekStart = new Date(new Date().setDate(new Date().getDate() - 14));
   
-  const thisWeekCosts = costs.filter(c => new Date(c.timestamp) >= thisWeekStart);
+  const thisWeekCosts = costs.filter(c => new Date(c.usage_date) >= thisWeekStart);
   const lastWeekCosts = costs.filter(c => 
-    new Date(c.timestamp) >= lastWeekStart && new Date(c.timestamp) < thisWeekStart
+    new Date(c.usage_date) >= lastWeekStart && new Date(c.usage_date) < thisWeekStart
   );
   
   const thisWeekTotal = thisWeekCosts.reduce((sum, c) => sum + parseFloat(c.cost_usd), 0);

@@ -887,10 +887,9 @@ export default function DashboardPage() {
 
   const adminView = (
     <div className="space-y-6">
-      {/* Page Header with PM Filter (admins only) */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        {userRole === 'admin' && (
+      {/* PM Filter (admins only) */}
+      {userRole === 'admin' && (
+        <div className="flex justify-end">
           <Select value={selectedPM} onValueChange={setSelectedPM}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Filter by PM" />
@@ -904,8 +903,8 @@ export default function DashboardPage() {
               ))}
             </SelectContent>
           </Select>
-        )}
-      </div>
+        </div>
+      )}
       <div className={userRole === 'admin' ? "grid gap-4 lg:grid-cols-3" : "grid gap-4"}>
         <Card>
           <CardHeader>

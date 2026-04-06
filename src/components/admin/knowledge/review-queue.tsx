@@ -13,8 +13,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { 
   CheckCircle, XCircle, ArrowRight, AlertTriangle, Filter, 
-  ChevronLeft, ChevronRight, FileText, Trash2, Check 
+  ChevronLeft, ChevronRight, FileText, Trash2, Check, AlertCircle 
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { logCorrection, logApproval, logRejection } from '@/lib/feedback-capture';
 
 interface ReviewItem {
   id: number;
@@ -124,9 +126,53 @@ export function KnowledgeReviewQueue() {
     setReviewModalOpen(true);
   };
   
-  const handleAction = (action: 'approve' | 'reassign' | 'delete') => {
+  const handleAction = async (action: 'approve' | 'reassign' | 'delete') => {
     if (!selectedItem) return;
     
+    // Log feedback for learning before executing action
+    try {
+      if (action === 'approve') {
+        await logApproval({
+          type: 'project_assignment',
+          agentName: 'Sophia',
+          output: { 
+            project: selectedItem.file_project,
+            threadId: selectedItem.thread_id 
+          },
+          sourceId: selectedItem.thread_id,
+          confidenceWas: selectedItem.metadata?.confidence
+        });
+      } else if (action === 'reassign' && newProject) {
+        await logCorrection({
+          type: 'project_assignment',
+          agentName: 'Sophia',
+          original: { project: selectedItem.file_project },
+          corrected: { project: newProject },
+          reason: `User reassignment via review queue. Original: ${selectedItem.file_project}, Corrected: ${newProject}`,
+          sourceId: selectedItem.thread_id,
+          severity: selectedItem.metadata?.confidence && selectedItem.metadata.confidence < 60 ? 'major' : 'minor',
+          confidenceBefore: selectedItem.metadata?.confidence
+        });
+      } else if (action === 'delete') {
+        await logRejection({
+          type: 'project_assignment',
+          agentName: 'Sophia',
+          rejected: {
+            project: selectedItem.file_project,
+            suggestedProject: selectedItem.suggested_project,
+            threadId: selectedItem.thread_id
+          },
+          reason: `User deleted knowledge entry via review queue. Issue: ${selectedItem.issue_type}`,
+          sourceId: selectedItem.thread_id,
+          severity: 'major'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to log feedback:', error);
+      // Continue anyway - don't block user action
+    }
+    
+    // Execute the actual action
     reviewMutation.mutate({
       id: selectedItem.id,
       action,
@@ -490,6 +536,16 @@ export function KnowledgeReviewQueue() {
                   <p className="text-xs text-muted-foreground mt-1">
                     Enter a project number to reassign this knowledge entry
                   </p>
+                  
+                  <Alert className="mt-3">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Note on Reassignment</AlertTitle>
+                    <AlertDescription>
+                      Reassigning updates the project association in the database. 
+                      The original knowledge file remains unchanged. 
+                      Future queries will use the new project assignment.
+                    </AlertDescription>
+                  </Alert>
                 </div>
                 
                 {/* Actions */}

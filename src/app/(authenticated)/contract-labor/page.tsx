@@ -630,13 +630,6 @@ export default function ContractLaborPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-medium">Contract Labor</h2>
-        <p className="text-sm text-muted-foreground">
-          Contract registry, monthly schedule, synced actuals, and reconciliation
-        </p>
-      </div>
-
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="contracts">Contracts</TabsTrigger>

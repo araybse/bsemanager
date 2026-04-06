@@ -6,8 +6,8 @@ CREATE TABLE IF NOT EXISTS api_cost_log (
   category TEXT NOT NULL, -- e.g., 'llm', 'tts', 'stt', 'vision', 'embedding'
   project TEXT, -- Optional project identifier
   model TEXT, -- Model name (e.g., 'gpt-4', 'claude-sonnet-4')
-  tokens_input INTEGER, -- Input tokens used
-  tokens_output INTEGER, -- Output tokens used
+  input_tokens INTEGER, -- Input tokens used
+  output_tokens INTEGER, -- Output tokens used
   endpoint TEXT, -- API endpoint called
   metadata JSONB, -- Additional metadata
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

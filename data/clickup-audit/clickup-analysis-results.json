@@ -1,0 +1,1267 @@
+{
+  "generatedAt": "2026-04-06T11:57:52.732Z",
+  "overview": {
+    "totalTasks": 920,
+    "totalSubtasks": 2487,
+    "totalLists": 74,
+    "totalFolders": 20,
+    "tasksWithDueDate": 1393,
+    "tasksOverdue": 108,
+    "assignmentRate": "34.5%",
+    "completionRate": "83.3%"
+  },
+  "projectStructure": {
+    "23-01 Adventure Retail": {
+      "folderId": "90117008355",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111873158",
+          "taskCount": 18
+        },
+        {
+          "name": "Closeout",
+          "id": "901111873160",
+          "taskCount": 38
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873159",
+          "taskCount": 39
+        },
+        {
+          "name": "Permits",
+          "id": "901111873161",
+          "taskCount": 20
+        }
+      ],
+      "totalTasks": 115,
+      "tasksByStatus": {
+        "complete": 75,
+        "to do": 33,
+        "in progress": 7
+      }
+    },
+    "23-22 River Rock Church": {
+      "folderId": "90116994137",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111850425",
+          "taskCount": 19
+        },
+        {
+          "name": "Closeout",
+          "id": "901111856053",
+          "taskCount": 53
+        },
+        {
+          "name": "Submittals",
+          "id": "901111848088",
+          "taskCount": 46
+        },
+        {
+          "name": "Permits",
+          "id": "901111850329",
+          "taskCount": 13
+        }
+      ],
+      "totalTasks": 131,
+      "tasksByStatus": {
+        "complete": 98,
+        "to do": 32,
+        "in progress": 1
+      }
+    },
+    "24-01 Glen Kernan Estate Lots": {
+      "folderId": "90116985329",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111873291",
+          "taskCount": 39
+        },
+        {
+          "name": "CA",
+          "id": "901111832659",
+          "taskCount": 37
+        },
+        {
+          "name": "Closeout",
+          "id": "901111832845",
+          "taskCount": 15
+        },
+        {
+          "name": "JEA-E",
+          "id": "901112676872",
+          "taskCount": 16
+        },
+        {
+          "name": "Permits",
+          "id": "901111873130",
+          "taskCount": 31
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873152",
+          "taskCount": 51
+        }
+      ],
+      "totalTasks": 189,
+      "tasksByStatus": {
+        "to do": 15,
+        "complete": 170,
+        "in progress": 4
+      }
+    },
+    "24-04 Owens Ranch Townhomes": {
+      "folderId": "90117008424",
+      "lists": [
+        {
+          "name": "CA",
+          "id": "901112248402",
+          "taskCount": 44
+        },
+        {
+          "name": "Design",
+          "id": "901112121541",
+          "taskCount": 8
+        },
+        {
+          "name": "General",
+          "id": "901111873296",
+          "taskCount": 10
+        },
+        {
+          "name": "JEA-E",
+          "id": "901111873298",
+          "taskCount": 20
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873297",
+          "taskCount": 36
+        },
+        {
+          "name": "Permits",
+          "id": "901111873295",
+          "taskCount": 90
+        }
+      ],
+      "totalTasks": 208,
+      "tasksByStatus": {
+        "complete": 200,
+        "to do": 8
+      }
+    },
+    "24-06 Thorne Warehouse": {
+      "folderId": "90117008432",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111943723",
+          "taskCount": 2
+        },
+        {
+          "name": "CA",
+          "id": "901111873306",
+          "taskCount": 6
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873307",
+          "taskCount": 6
+        },
+        {
+          "name": "Permits",
+          "id": "901111873305",
+          "taskCount": 6
+        }
+      ],
+      "totalTasks": 20,
+      "tasksByStatus": {
+        "complete": 20
+      }
+    },
+    "24-14 Shedd Road Residential": {
+      "folderId": "90117008437",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111873320",
+          "taskCount": 8
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873319",
+          "taskCount": 0
+        },
+        {
+          "name": "Permits",
+          "id": "901111873318",
+          "taskCount": 0
+        }
+      ],
+      "totalTasks": 8,
+      "tasksByStatus": {
+        "complete": 8
+      }
+    },
+    "25-02 Aladdin Road Residential": {
+      "folderId": "90116994759",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111850411",
+          "taskCount": 40
+        },
+        {
+          "name": "CA",
+          "id": "901111849308",
+          "taskCount": 71
+        },
+        {
+          "name": "JEA Electric",
+          "id": "901111849314",
+          "taskCount": 28
+        },
+        {
+          "name": "Submittals",
+          "id": "901111850404",
+          "taskCount": 11
+        },
+        {
+          "name": "Permits",
+          "id": "901111855626",
+          "taskCount": 69
+        }
+      ],
+      "totalTasks": 219,
+      "tasksByStatus": {
+        "complete": 161,
+        "to do": 46,
+        "in progress": 12
+      }
+    },
+    "25-08 US-1 Flex Space": {
+      "folderId": "90117493815",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901109714222",
+          "taskCount": 276
+        }
+      ],
+      "totalTasks": 276,
+      "tasksByStatus": {
+        "in progress": 10,
+        "complete": 225,
+        "to do": 41
+      }
+    },
+    "25-10 Providence Plan Revisions": {
+      "folderId": "90117493821",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901110145456",
+          "taskCount": 93
+        }
+      ],
+      "totalTasks": 93,
+      "tasksByStatus": {
+        "complete": 90,
+        "to do": 3
+      }
+    },
+    "25-11 North Main St Residential": {
+      "folderId": "90116607775",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111660884",
+          "taskCount": 15
+        },
+        {
+          "name": "CA",
+          "id": "901112067138",
+          "taskCount": 19
+        },
+        {
+          "name": "JEA Electric",
+          "id": "901111660889",
+          "taskCount": 43
+        },
+        {
+          "name": "FDOT Bond",
+          "id": "901111660892",
+          "taskCount": 14
+        },
+        {
+          "name": "FDOT",
+          "id": "901111753407",
+          "taskCount": 23
+        },
+        {
+          "name": "Permitting",
+          "id": "901111660923",
+          "taskCount": 24
+        },
+        {
+          "name": "Submittals",
+          "id": "901111661208",
+          "taskCount": 14
+        }
+      ],
+      "totalTasks": 152,
+      "tasksByStatus": {
+        "complete": 144,
+        "to do": 7,
+        "in progress": 1
+      }
+    },
+    "25-12 Medical Office": {
+      "folderId": "90117493823",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901110444293",
+          "taskCount": 168
+        }
+      ],
+      "totalTasks": 168,
+      "tasksByStatus": {
+        "complete": 143,
+        "to do": 25
+      }
+    },
+    "25-13 Patriot Hideaway": {
+      "folderId": "90117008443",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111873332",
+          "taskCount": 19
+        },
+        {
+          "name": "CA",
+          "id": "901112067111",
+          "taskCount": 28
+        },
+        {
+          "name": "JEA Electric",
+          "id": "901112128681",
+          "taskCount": 0
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873331",
+          "taskCount": 27
+        },
+        {
+          "name": "Permits",
+          "id": "901111873330",
+          "taskCount": 69
+        }
+      ],
+      "totalTasks": 143,
+      "tasksByStatus": {
+        "complete": 139,
+        "to do": 4
+      }
+    },
+    "25-16 GK Lot 127": {
+      "folderId": "90117008448",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111873347",
+          "taskCount": 6
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873346",
+          "taskCount": 0
+        },
+        {
+          "name": "Permits",
+          "id": "901111873345",
+          "taskCount": 0
+        }
+      ],
+      "totalTasks": 6,
+      "tasksByStatus": {
+        "to do": 3,
+        "complete": 3
+      }
+    },
+    "25-18 Kayla's Landing": {
+      "folderId": "90117008450",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901111873352",
+          "taskCount": 85
+        },
+        {
+          "name": "Design",
+          "id": "901112190779",
+          "taskCount": 57
+        },
+        {
+          "name": "Submittals",
+          "id": "901111873351",
+          "taskCount": 61
+        },
+        {
+          "name": "Permits",
+          "id": "901111873350",
+          "taskCount": 43
+        }
+      ],
+      "totalTasks": 246,
+      "tasksByStatus": {
+        "to do": 42,
+        "complete": 192,
+        "in progress": 12
+      }
+    },
+    "25-20 Frisch Estate": {
+      "folderId": "90117176165",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901112209459",
+          "taskCount": 1
+        },
+        {
+          "name": "Submittals",
+          "id": "901112209461",
+          "taskCount": 0
+        },
+        {
+          "name": "Permits",
+          "id": "901112209460",
+          "taskCount": 0
+        }
+      ],
+      "totalTasks": 1,
+      "tasksByStatus": {
+        "complete": 1
+      }
+    },
+    "25-27 eTown Parking Modification": {
+      "folderId": "90117493828",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901112474452",
+          "taskCount": 14
+        }
+      ],
+      "totalTasks": 14,
+      "tasksByStatus": {
+        "complete": 14
+      }
+    },
+    "25-28 Sabal Preserve Lot Certifications": {
+      "folderId": "90117452443",
+      "lists": [
+        {
+          "name": "Lot Certifications",
+          "id": "901112817137",
+          "taskCount": 858
+        }
+      ],
+      "totalTasks": 858,
+      "tasksByStatus": {
+        "complete": 843,
+        "ready for asbuilt invoice": 8,
+        "ready for design invoice": 3,
+        "copc asbuilt review": 4
+      }
+    },
+    "26-01 Valley Ridge Commercial Outparcel": {
+      "folderId": "90117453378",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901112819157",
+          "taskCount": 11
+        }
+      ],
+      "totalTasks": 11,
+      "tasksByStatus": {
+        "to do": 2,
+        "complete": 9
+      }
+    },
+    "26-03 Burbank Ave Professional Office": {
+      "folderId": "90117531574",
+      "lists": [
+        {
+          "name": "General",
+          "id": "901112985765",
+          "taskCount": 61
+        },
+        {
+          "name": "Design",
+          "id": "901112985761",
+          "taskCount": 26
+        },
+        {
+          "name": "Submittals",
+          "id": "901112985763",
+          "taskCount": 24
+        },
+        {
+          "name": "Permits",
+          "id": "901112985764",
+          "taskCount": 10
+        }
+      ],
+      "totalTasks": 121,
+      "tasksByStatus": {
+        "to do": 17,
+        "complete": 89,
+        "in progress": 11,
+        "waiting on client": 4
+      }
+    }
+  },
+  "taskPatterns": {},
+  "listTemplates": {
+    "General": {
+      "frequency": 18,
+      "templateTasks": [
+        {
+          "name": "Approve Time Sheets",
+          "frequency": 31
+        },
+        {
+          "name": "Timesheet",
+          "frequency": 5
+        },
+        {
+          "name": "JEA Plan Approval",
+          "frequency": 3
+        },
+        {
+          "name": "🧪 WEBHOOK TEST - Delete this task",
+          "frequency": 2
+        },
+        {
+          "name": "Fill Out Closeout forms",
+          "frequency": 2
+        },
+        {
+          "name": "Prepare Change Order",
+          "frequency": 2
+        },
+        {
+          "name": "JEA W&WW Permit",
+          "frequency": 2
+        },
+        {
+          "name": "Revise Site Plan",
+          "frequency": 2
+        },
+        {
+          "name": "Applications",
+          "frequency": 2
+        },
+        {
+          "name": "Crossing Table",
+          "frequency": 2
+        }
+      ]
+    },
+    "Submittals": {
+      "frequency": 13,
+      "templateTasks": [
+        {
+          "name": "NPDES NOI",
+          "frequency": 3
+        },
+        {
+          "name": "JEA Final Acceptance",
+          "frequency": 2
+        },
+        {
+          "name": "SJC",
+          "frequency": 2
+        },
+        {
+          "name": "COJ Comments",
+          "frequency": 2
+        },
+        {
+          "name": "SJRWMD",
+          "frequency": 2
+        },
+        {
+          "name": "JEA",
+          "frequency": 2
+        }
+      ]
+    },
+    "Permits": {
+      "frequency": 12,
+      "templateTasks": [
+        {
+          "name": "JEA Plan Approval",
+          "frequency": 6
+        },
+        {
+          "name": "NPDES NOI",
+          "frequency": 6
+        },
+        {
+          "name": "SJRWMD ERP",
+          "frequency": 6
+        },
+        {
+          "name": "JEA Electric Design",
+          "frequency": 5
+        },
+        {
+          "name": "COJ Plan Approval",
+          "frequency": 4
+        },
+        {
+          "name": "FDEP DWC",
+          "frequency": 3
+        },
+        {
+          "name": "SJRWMD Minor Mod",
+          "frequency": 2
+        },
+        {
+          "name": "SJC COMM",
+          "frequency": 2
+        },
+        {
+          "name": "SJC MDP",
+          "frequency": 2
+        },
+        {
+          "name": "FDEP PWS",
+          "frequency": 2
+        }
+      ]
+    },
+    "CA": {
+      "frequency": 6,
+      "templateTasks": [
+        {
+          "name": "Plat Bond Approval",
+          "frequency": 4
+        },
+        {
+          "name": "Shop Drawings",
+          "frequency": 2
+        }
+      ]
+    },
+    "Closeout": {
+      "frequency": 3,
+      "templateTasks": []
+    },
+    "Design": {
+      "frequency": 3,
+      "templateTasks": [
+        {
+          "name": "Sheet Set",
+          "frequency": 2
+        },
+        {
+          "name": "File Setup",
+          "frequency": 2
+        },
+        {
+          "name": "Misc.",
+          "frequency": 2
+        },
+        {
+          "name": "Drainage",
+          "frequency": 2
+        }
+      ]
+    },
+    "JEA Electric": {
+      "frequency": 3,
+      "templateTasks": [
+        {
+          "name": "JEA Electric Submittal",
+          "frequency": 2
+        }
+      ]
+    }
+  },
+  "customFieldMapping": {
+    "Agency": {
+      "type": "drop_down",
+      "usageCount": 3407,
+      "options": [
+        "COJ",
+        "JEA",
+        "SJRWMD",
+        "FDOT",
+        "JEA-E",
+        "SJC",
+        "Putnam County",
+        "FDEP"
+      ],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "agency_catalog",
+        "column": "id",
+        "type": "foreign_key"
+      }
+    },
+    "Comments Due": {
+      "type": "date",
+      "usageCount": 3407,
+      "options": [],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "due_date",
+        "type": "timestamptz"
+      }
+    },
+    "Days Since Activity": {
+      "type": "formula",
+      "usageCount": 3407,
+      "options": [],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.days_since_activity",
+        "type": "jsonb"
+      }
+    },
+    "Duration": {
+      "type": "formula",
+      "usageCount": 3407,
+      "options": [],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "computed": true,
+        "formula": "date_diff(created_at, completed_at)"
+      }
+    },
+    "Last Contact": {
+      "type": "date",
+      "usageCount": 3407,
+      "options": [],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.last_contact",
+        "type": "jsonb"
+      }
+    },
+    "Notes": {
+      "type": "text",
+      "usageCount": 3407,
+      "options": [],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "description",
+        "type": "text"
+      }
+    },
+    "Permit Status": {
+      "type": "drop_down",
+      "usageCount": 3407,
+      "options": [
+        "Submitted",
+        "RAI",
+        "Approved",
+        "In Preparation",
+        "On-Hold"
+      ],
+      "usedInLists": [
+        "General",
+        "Office Relocation",
+        "Business Development",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "project_permit_selections",
+        "column": "status",
+        "type": "enum"
+      }
+    },
+    "Development Timeline": {
+      "type": "date",
+      "usageCount": 15,
+      "options": [],
+      "usedInLists": [
+        "General"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.development_timeline",
+        "type": "jsonb"
+      }
+    },
+    "Environmental Impact Assessment": {
+      "type": "short_text",
+      "usageCount": 15,
+      "options": [],
+      "usedInLists": [
+        "General"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.environmental_impact_assessment",
+        "type": "jsonb"
+      }
+    },
+    "Land Acquisition Cost": {
+      "type": "currency",
+      "usageCount": 15,
+      "options": [],
+      "usedInLists": [
+        "General"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.land_acquisition_cost",
+        "type": "jsonb"
+      }
+    },
+    "Land Use Type": {
+      "type": "drop_down",
+      "usageCount": 15,
+      "options": [
+        "Residential",
+        "Commercial",
+        "Agricultural",
+        "Industrial",
+        "Recreational",
+        "Mixed-Use"
+      ],
+      "usedInLists": [
+        "General"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.land_use_type",
+        "type": "jsonb"
+      }
+    },
+    "Permit": {
+      "type": "drop_down",
+      "usageCount": 3189,
+      "options": [
+        "SJC MDP",
+        "SJC SMADJ",
+        "SJC CGCP",
+        "SJC SUBCON",
+        "SJC COMM",
+        "SJC MODCP",
+        "SJC ASBULT",
+        "COJ MFCC, CRC, CDN",
+        "COJ PUD VSC",
+        "COJ Plan Approval",
+        "JEA Plan Approval",
+        "JEA Final Acceptance",
+        "JEA Electric",
+        "FDEP Plan Approval",
+        "FDEP COC",
+        "SJRWMD ERP",
+        "FDOT Drainage",
+        "FDOT Access",
+        "FDOT Utility",
+        "Clay Plan Approval",
+        "CCUA Plan Approval"
+      ],
+      "usedInLists": [
+        "General",
+        "Closeout",
+        "Submittals",
+        "Permits",
+        "CA",
+        "JEA-E",
+        "Design",
+        "JEA Electric",
+        "FDOT Bond",
+        "FDOT",
+        "Permitting",
+        "Lot Certifications",
+        "Project Mangement",
+        "Admin",
+        "Updates to New Job Folder",
+        "AutoCAD",
+        "Calcs",
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.permit",
+        "type": "jsonb"
+      }
+    },
+    "Zoning Regulations": {
+      "type": "text",
+      "usageCount": 15,
+      "options": [],
+      "usedInLists": [
+        "General"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.zoning_regulations",
+        "type": "jsonb"
+      }
+    },
+    "From": {
+      "type": "drop_down",
+      "usageCount": 153,
+      "options": [
+        "From Client",
+        "Engineer",
+        "Contractor"
+      ],
+      "usedInLists": [
+        "Closeout",
+        "Submittals"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.source",
+        "type": "dropdown"
+      }
+    },
+    "Signature": {
+      "type": "drop_down",
+      "usageCount": 85,
+      "options": [
+        "PE",
+        "Client"
+      ],
+      "usedInLists": [
+        "Submittals"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.signature",
+        "type": "dropdown"
+      }
+    },
+    "Status": {
+      "type": "drop_down",
+      "usageCount": 85,
+      "options": [
+        "Signed",
+        "Needs Signature"
+      ],
+      "usedInLists": [
+        "Submittals"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.doc_status",
+        "type": "dropdown"
+      }
+    },
+    "Asbuilt Invoice Date": {
+      "type": "date",
+      "usageCount": 858,
+      "options": [],
+      "usedInLists": [
+        "Lot Certifications"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.asbuilt_invoice_date",
+        "type": "jsonb"
+      }
+    },
+    "Design Invoice Date": {
+      "type": "date",
+      "usageCount": 858,
+      "options": [],
+      "usedInLists": [
+        "Lot Certifications"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.design_invoice_date",
+        "type": "jsonb"
+      }
+    },
+    "Review Comments/Notes": {
+      "type": "text",
+      "usageCount": 858,
+      "options": [],
+      "usedInLists": [
+        "Lot Certifications"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.review_notes",
+        "type": "text"
+      }
+    },
+    "Assigned Developer": {
+      "type": "users",
+      "usageCount": 32,
+      "options": [],
+      "usedInLists": [
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.assigned_developer",
+        "type": "jsonb"
+      }
+    },
+    "Implementation Date": {
+      "type": "date",
+      "usageCount": 32,
+      "options": [],
+      "usedInLists": [
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.implementation_date",
+        "type": "jsonb"
+      }
+    },
+    "Portal Access Level": {
+      "type": "drop_down",
+      "usageCount": 32,
+      "options": [
+        "Admin",
+        "Editor",
+        "Viewer"
+      ],
+      "usedInLists": [
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.portal_access_level",
+        "type": "jsonb"
+      }
+    },
+    "Testing Status": {
+      "type": "short_text",
+      "usageCount": 32,
+      "options": [],
+      "usedInLists": [
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.testing_status",
+        "type": "jsonb"
+      }
+    },
+    "User Feedback": {
+      "type": "text",
+      "usageCount": 32,
+      "options": [],
+      "usedInLists": [
+        "IRIS"
+      ],
+      "irisEquivalent": {
+        "table": "tasks",
+        "column": "custom_fields.user_feedback",
+        "type": "jsonb"
+      }
+    }
+  },
+  "automationOpportunities": [
+    {
+      "name": "Auto-create permit tasks",
+      "trigger": "project_permit_selections.insert",
+      "action": "Create task in Permits list",
+      "details": "When a permit is selected for a project, auto-create the tracking task"
+    },
+    {
+      "name": "Auto-create submittal tasks",
+      "trigger": "project_required_items.insert",
+      "action": "Create task in Submittals list",
+      "details": "When required items are added, create corresponding submittal tracking tasks"
+    },
+    {
+      "name": "Permit status → Task update",
+      "trigger": "project_permit_selections.status.update",
+      "action": "Update task status, create subtasks",
+      "details": "When permit status changes to RAI, create comment response task with due date"
+    },
+    {
+      "name": "Auto-assign by agency",
+      "trigger": "tasks.insert WHERE agency_id IS NOT NULL",
+      "action": "Assign based on agency-engineer mapping",
+      "details": "E.g., SJRWMD tasks → Wesley, JEA tasks → Burke"
+    },
+    {
+      "name": "Due date reminders",
+      "trigger": "CRON: daily at 8am",
+      "action": "Notify assignees of upcoming due dates",
+      "details": "Tasks due within 3 days, tasks overdue"
+    },
+    {
+      "name": "Closeout template",
+      "trigger": "All permits approved for project",
+      "action": "Create closeout task list from template",
+      "details": "Auto-generate standard closeout tasks"
+    },
+    {
+      "name": "Review cycle tracking",
+      "trigger": "Task completed in Permits where name matches \"Nth Review\"",
+      "action": "Create next cycle subtasks if not approved",
+      "details": "Auto-create \"Nth Revision\" and \"N+1 Submittal\" subtasks"
+    }
+  ]
+}

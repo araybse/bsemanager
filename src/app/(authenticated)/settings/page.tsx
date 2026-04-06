@@ -2046,13 +2046,6 @@ function SettingsContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-medium">Settings</h2>
-        <p className="text-sm text-muted-foreground">
-          Manage users and integrations
-        </p>
-      </div>
-
       <Tabs key={selectedSettingsTab} defaultValue={selectedSettingsTab} className="space-y-4">
         <TabsList>
           {perms.isAdmin() && (

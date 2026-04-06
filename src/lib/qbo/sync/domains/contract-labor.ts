@@ -170,17 +170,22 @@ export async function syncContractLabor(
       const paymentDate = exp.TxnDate || null
 
       const lines = Array.isArray(exp.Line) ? exp.Line : []
-      const contractLines = lines.filter((line) => {
-        if (line.DetailType !== 'AccountBasedExpenseLineDetail') return false
-        const accountRef = line.AccountBasedExpenseLineDetail?.AccountRef || {}
-        const accountRefValue = String(accountRef.value || '').trim()
-        if (accountRefValue && accountRefValue === contractLaborAccountId) return true
+      
+      // FIX: Map with original indices BEFORE filtering to ensure stable source_line_id
+      // This prevents duplicates when filtered results change order between syncs
+      const contractLinesWithIndex = lines
+        .map((line, originalIndex) => ({ line, originalIndex }))
+        .filter(({ line }) => {
+          if (line.DetailType !== 'AccountBasedExpenseLineDetail') return false
+          const accountRef = line.AccountBasedExpenseLineDetail?.AccountRef || {}
+          const accountRefValue = String(accountRef.value || '').trim()
+          if (accountRefValue && accountRefValue === contractLaborAccountId) return true
 
-        // Fallback for edge responses where ID is missing.
-        const accountName = String(accountRef.name || '').trim().toLowerCase()
-        return accountName === 'contract labor' || accountName.endsWith(':contract labor')
-      })
-      if (!contractLines.length) continue
+          // Fallback for edge responses where ID is missing.
+          const accountName = String(accountRef.name || '').trim().toLowerCase()
+          return accountName === 'contract labor' || accountName.endsWith(':contract labor')
+        })
+      if (!contractLinesWithIndex.length) continue
 
       const vendorName =
         exp.EntityRef?.name || exp.VendorRef?.name || exp.PayeeRef?.name || 'Unknown'
@@ -188,8 +193,7 @@ export async function syncContractLabor(
       const paymentDateIso = paymentDate || new Date().toISOString().slice(0, 10)
       const datePaid = entityType === 'Purchase' ? paymentDateIso : null
 
-      for (let lineIndex = 0; lineIndex < contractLines.length; lineIndex += 1) {
-        const line = contractLines[lineIndex]
+      for (const { line, originalIndex } of contractLinesWithIndex) {
         const amount = Number(line.Amount) || 0
         if (amount === 0) continue
 
@@ -210,7 +214,8 @@ export async function syncContractLabor(
           description,
         })
         const lineIdValue = String(line.Id || '').trim()
-        const sourceLineId = lineIdValue || `line_${lineIndex + 1}`
+        // FIX: Use ORIGINAL array index, not filtered index, for stable line ID
+        const sourceLineId = lineIdValue || `line_${originalIndex + 1}`
         const seenKey = `${qbKey}::${sourceLineId}`
 
         seenQbKeys.add(seenKey)

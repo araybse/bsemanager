@@ -78,34 +78,38 @@ export async function syncProjectExpenses(
       const datePaid = isPurchaseLike ? expenseDate : null
 
       const lines = Array.isArray(exp.Line) ? exp.Line : []
-      const projectExpenseLines = lines.filter((line) => {
-        if (line.DetailType !== 'AccountBasedExpenseLineDetail') return false
+      
+      // FIX: Map with original indices BEFORE filtering to ensure stable source_line_id
+      // This prevents duplicates when filtered results change order between syncs
+      const projectExpenseLinesWithIndex = lines
+        .map((line, originalIndex) => ({ line, originalIndex }))
+        .filter(({ line }) => {
+          if (line.DetailType !== 'AccountBasedExpenseLineDetail') return false
 
-        const accountRef = line.AccountBasedExpenseLineDetail?.AccountRef || {}
-        const accountRefValue = String(accountRef.value || '').trim()
-        const accountName = normalize(accountRef.name)
-        const isContractLaborAccount =
-          (accountRefValue && accountRefValue === contractLaborAccountId) ||
-          accountName === 'contract labor' ||
-          accountName.endsWith(':contract labor')
-        if (isContractLaborAccount) return false
+          const accountRef = line.AccountBasedExpenseLineDetail?.AccountRef || {}
+          const accountRefValue = String(accountRef.value || '').trim()
+          const accountName = normalize(accountRef.name)
+          const isContractLaborAccount =
+            (accountRefValue && accountRefValue === contractLaborAccountId) ||
+            accountName === 'contract labor' ||
+            accountName.endsWith(':contract labor')
+          if (isContractLaborAccount) return false
 
-        const customerName =
-          line.AccountBasedExpenseLineDetail?.CustomerRef?.name ||
-          exp.CustomerRef?.name ||
-          ''
-        const projectNumber = extractProjectNumberFromName(customerName)
-        return Boolean(projectNumber)
-      })
+          const customerName =
+            line.AccountBasedExpenseLineDetail?.CustomerRef?.name ||
+            exp.CustomerRef?.name ||
+            ''
+          const projectNumber = extractProjectNumberFromName(customerName)
+          return Boolean(projectNumber)
+        })
 
-      if (!projectExpenseLines.length) continue
+      if (!projectExpenseLinesWithIndex.length) continue
 
       const vendorName =
         exp.EntityRef?.name || exp.VendorRef?.name || exp.PayeeRef?.name || 'Unknown'
       const qboUpdatedAt = exp.MetaData?.LastUpdatedTime || null
 
-      for (let lineIndex = 0; lineIndex < projectExpenseLines.length; lineIndex += 1) {
-        const line = projectExpenseLines[lineIndex]
+      for (const { line, originalIndex } of projectExpenseLinesWithIndex) {
         const amount = Number(line.Amount) || 0
         if (amount === 0) continue
 
@@ -120,7 +124,8 @@ export async function syncProjectExpenses(
         const projectId = projectMap.get(projectNumber) || null
         const description = line.Description || (exp.PrivateNote as string | undefined) || null
         const lineIdValue = String(line.Id || '').trim()
-        const sourceLineId = lineIdValue || `line_${lineIndex + 1}`
+        // FIX: Use ORIGINAL array index, not filtered index, for stable line ID
+        const sourceLineId = lineIdValue || `line_${originalIndex + 1}`
         const seenKey = `${qbKey}::${sourceLineId}`
         seenQbKeys.add(seenKey)
 

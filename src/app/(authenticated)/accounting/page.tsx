@@ -418,15 +418,6 @@ export default function AccountingPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-medium">Accounting</h2>
-          <p className="text-sm text-muted-foreground">
-            Financial report snapshots from QuickBooks
-          </p>
-        </div>
-      </div>
-
       <div className="flex items-center gap-3">
         <Select value={periodMode} onValueChange={(value: 'month' | 'year') => setPeriodMode(value)}>
           <SelectTrigger className="w-[150px]">

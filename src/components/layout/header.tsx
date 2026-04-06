@@ -6,10 +6,11 @@ const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
   '/projects': 'Projects',
   '/contracts': 'Active Contracts',
-  '/invoices': 'Invoice Tracker',
+  '/invoices': 'Invoices',
   '/billable': 'Billables Report',
+  '/time': 'Time',
   '/time-entries': 'Time Entries',
-  '/reimbursables': 'Reimbursables',
+  '/reimbursables': 'Expenses',
   '/rates': 'Schedule of Rates',
   '/clients': 'Clients',
   '/proposals': 'Proposals',
@@ -18,6 +19,9 @@ const pageTitles: Record<string, string> = {
   '/data-quality': 'Data Quality',
   '/cam/utilities-inputs': 'CAM Utilities Inputs',
   '/cam/reconciliation': 'CAM Reconciliation',
+  '/accounting': 'Accounting',
+  '/admin/costs': 'API Costs',
+  '/admin/knowledge': 'Knowledge',
   '/settings': 'Settings',
 }
 

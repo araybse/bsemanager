@@ -23,10 +23,10 @@ export async function GET() {
   // Use admin client to bypass RLS
   const supabase = createAdminClient();
   
-  // Get all-time stats
+  // Get all-time stats from api_costs (CSV backfill data)
   const { data: allCosts } = await supabase
-    .from('api_cost_log')
-    .select('cost_usd, model, category, project') as { data: Array<{ cost_usd: string; model: string; category: string; project: string | null }> | null };
+    .from('api_costs')
+    .select('cost_usd, model, token_type, workspace') as { data: Array<{ cost_usd: string; model: string; token_type: string; workspace: string | null }> | null };
   
   if (!allCosts || allCosts.length === 0) {
     return Response.json({
@@ -47,14 +47,13 @@ export async function GET() {
     return acc;
   }, {} as Record<string, number>);
   
-  const projectCosts = allCosts.reduce((acc, c) => {
-    if (c.project) {
-      acc[c.project] = (acc[c.project] || 0) + parseFloat(c.cost_usd);
-    }
+  // Group by token_type instead of project (api_costs doesn't have project)
+  const byTokenType = allCosts.reduce((acc, c) => {
+    acc[c.token_type] = (acc[c.token_type] || 0) + parseFloat(c.cost_usd);
     return acc;
   }, {} as Record<string, number>);
   
-  const mostExpensiveProject = Object.entries(projectCosts)
+  const mostExpensiveModel = Object.entries(byModel)
     .sort(([, a], [, b]) => b - a)[0];
   
   return Response.json({
@@ -62,8 +61,9 @@ export async function GET() {
     totalCalls,
     avgCost,
     byModel,
-    mostExpensiveProject: mostExpensiveProject 
-      ? { project: mostExpensiveProject[0], cost: mostExpensiveProject[1] }
+    byTokenType,
+    mostExpensiveProject: mostExpensiveModel 
+      ? { project: mostExpensiveModel[0], cost: mostExpensiveModel[1] }
       : null
   });
 }

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import path from 'path';
 
 export async function GET(_request: NextRequest) {
@@ -26,10 +27,23 @@ export async function GET(_request: NextRequest) {
   
   try {
     // Get all queue items (not just pending)
-    const { data: allItems } = await supabase
-      .from('knowledge_review_queue')
-      .select('*')
-      .order('created_at', { ascending: false });
+    // Note: Fetching in batches since there may be more than 1000
+    let allItems: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
+    
+    while (true) {
+      const { data: batch } = await supabase
+        .from('knowledge_review_queue')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      
+      if (!batch || batch.length === 0) break;
+      allItems = allItems.concat(batch);
+      if (batch.length < pageSize) break;
+      page++;
+    }
     
     // Get pending reviews count
     const { count: pendingCount } = await supabase
@@ -40,8 +54,30 @@ export async function GET(_request: NextRequest) {
     const items: any[] = allItems || [];
     
     // Calculate stats
-    const totalMemories = items.length;
+    // Note: items.length is only the review queue count
+    // Total memories should include ALL processed threads (from JSON files)
     const pendingReviews = pendingCount || 0;
+    
+    // Calculate total memories from knowledge-v2 directory
+    let totalMemories = 0;
+    try {
+      const homeDir = process.env.HOME || '';
+      const knowledgeDir = path.join(homeDir, '.openclaw', 'workspace', 'memory', 'knowledge-v2');
+      if (existsSync(knowledgeDir)) {
+        const files = await fs.readdir(knowledgeDir);
+        for (const file of files) {
+          if (file.endsWith('.json')) {
+            const content = await fs.readFile(path.join(knowledgeDir, file), 'utf-8');
+            const data = JSON.parse(content);
+            totalMemories += (data.threads || []).length;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error counting total memories:', error);
+      // Fallback to review queue count if directory read fails
+      totalMemories = items.length;
+    }
     
     // Projects covered
     const projects = new Set(items.map(i => i.file_project));

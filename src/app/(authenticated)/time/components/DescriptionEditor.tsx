@@ -89,7 +89,7 @@ export function DescriptionEditor({
 
   return (
     <Sheet open={true} onOpenChange={onClose}>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="w-[400px] sm:w-[540px] px-6">
         <SheetHeader>
           <SheetTitle>
             {entryId ? 'Edit Time Entry' : 'Add Time Entry'}

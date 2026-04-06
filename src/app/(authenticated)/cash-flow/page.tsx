@@ -320,7 +320,7 @@ export default function CashFlowPage() {
         if (!snapshotId) return
         const linesForMonth = allBalanceLines.filter((line) => line.snapshot_id === snapshotId)
         const distributionsLine = linesForMonth.find((line) => 
-          normalize(line.account_name) === 'distributions'
+          normalize(line.account_name).includes('distribution')
         )
         if (distributionsLine) {
           distributionsBalanceByMonth.set(month, Number(distributionsLine.amount) || 0)
@@ -980,7 +980,7 @@ export default function CashFlowPage() {
         phase.billedToDate = Math.max(phase.billedToDate, 0)
         phase.receivedToDate = Math.max(phase.receivedToDate, 0)
         phase.outstandingAr = Math.max(phase.outstandingAr, 0)
-        phase.unbilledRemaining = Math.max(phase.contractFee - phase.billedToDate, 0)
+        phase.unbilledRemaining = Math.max(phase.contractFee - phase.receivedToDate, 0)
       })
 
       const serviceProjects: ServiceProjectRow[] = Array.from(
@@ -1299,7 +1299,7 @@ export default function CashFlowPage() {
     tableColumns.some((column) => Math.abs(resolver(column.key)) > 0.004)
 
   const showCollectionsColumns = false
-  const metricColumnCount = showCollectionsColumns ? 5 : 3
+  const metricColumnCount = 3
   const emptyMetricCell = <TableCell className="text-right font-mono text-muted-foreground">-</TableCell>
   const metricEmptyCells = (
     <>
@@ -1705,23 +1705,70 @@ export default function CashFlowPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="min-w-[260px] sticky left-0 top-0 bg-background z-40">Category</TableHead>
-                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Contract Fee</TableHead>
-                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Billed</TableHead>
+                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">
+                        <UiTooltip>
+                          <TooltipTrigger className="cursor-help">Contract Fee</TooltipTrigger>
+                          <TooltipContent>Ultimate total contract fee for this phase and project</TooltipContent>
+                        </UiTooltip>
+                      </TableHead>
+                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">
+                        <UiTooltip>
+                          <TooltipTrigger className="cursor-help">Received</TooltipTrigger>
+                          <TooltipContent>Total cash received to date for this phase and project</TooltipContent>
+                        </UiTooltip>
+                      </TableHead>
                       {showCollectionsColumns ? (
                         <>
-                          <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Received</TableHead>
-                          <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Outstanding</TableHead>
+                          <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">
+                            <UiTooltip>
+                              <TooltipTrigger className="cursor-help">Outstanding</TooltipTrigger>
+                              <TooltipContent>Invoiced but not yet received (accounts receivable)</TooltipContent>
+                            </UiTooltip>
+                          </TableHead>
                         </>
                       ) : null}
-                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">Unbilled</TableHead>
-                      {tableColumns.map((column) => (
-                        <TableHead
-                          key={column.key}
-                          className={`min-w-[120px] text-right sticky top-0 bg-background z-30 ${currentBoundaryClass(column.key)}`}
-                        >
-                          <div>{column.label}</div>
-                        </TableHead>
-                      ))}
+                      <TableHead className="min-w-[120px] text-right sticky top-0 bg-background z-30">
+                        <UiTooltip>
+                          <TooltipTrigger className="cursor-help">Unbilled</TooltipTrigger>
+                          <TooltipContent>Remaining cash to be received (Contract Fee - Received)</TooltipContent>
+                        </UiTooltip>
+                      </TableHead>
+                      {tableColumns.map((column) => {
+                        const isHistorical = column.key < (cashFlowData?.currentMonthKey || '')
+                        const isCurrent = column.key === cashFlowData?.currentMonthKey
+                        const isNextMonth = (() => {
+                          if (!cashFlowData?.currentMonthKey) return false
+                          const [year, month] = cashFlowData.currentMonthKey.split('-').map(Number)
+                          const nextMonth = new Date(year, month, 1) // month is 0-indexed, so this gives us next month
+                          return column.key === `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, '0')}`
+                        })()
+                        const isFutureMonth = column.key > (cashFlowData?.currentMonthKey || '')
+                        
+                        let tooltipText = ''
+                        if (isHistorical) {
+                          tooltipText = `Actual cash received during ${column.label}`
+                        } else if (isCurrent) {
+                          tooltipText = 'Projected cash to receive (current AR)'
+                        } else if (isNextMonth) {
+                          tooltipText = 'Manual forecast until current invoices issued, then shows current invoice amounts'
+                        } else if (isFutureMonth) {
+                          tooltipText = 'Manual entry projection'
+                        }
+                        
+                        return (
+                          <TableHead
+                            key={column.key}
+                            className={`min-w-[120px] text-right sticky top-0 bg-background z-30 ${currentBoundaryClass(column.key)}`}
+                          >
+                            <UiTooltip>
+                              <TooltipTrigger className="cursor-help">
+                                <div>{column.label}</div>
+                              </TooltipTrigger>
+                              <TooltipContent>{tooltipText}</TooltipContent>
+                            </UiTooltip>
+                          </TableHead>
+                        )
+                      })}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1890,10 +1937,9 @@ export default function CashFlowPage() {
                                                       </div>
                                                     </TableCell>
                                                     <TableCell className="text-right font-mono">{formatCurrency(projectContractFee)}</TableCell>
-                                                    <TableCell className="text-right font-mono">{formatCurrency(projectBilled)}</TableCell>
+                                                    <TableCell className="text-right font-mono">{formatCurrency(projectReceived)}</TableCell>
                                                     {showCollectionsColumns ? (
                                                       <>
-                                                        <TableCell className="text-right font-mono">{formatCurrency(projectReceived)}</TableCell>
                                                         <TableCell className="text-right font-mono">{formatCurrency(projectOutstanding)}</TableCell>
                                                       </>
                                                     ) : null}
@@ -1918,10 +1964,9 @@ export default function CashFlowPage() {
                                                 {phase.phaseName}
                                               </TableCell>
                                               <TableCell className="text-right font-mono">{formatCurrency(phase.contractFee)}</TableCell>
-                                              <TableCell className="text-right font-mono">{formatCurrency(phase.billedToDate)}</TableCell>
+                                              <TableCell className="text-right font-mono">{formatCurrency(phase.receivedToDate)}</TableCell>
                                               {showCollectionsColumns ? (
                                                 <>
-                                                  <TableCell className="text-right font-mono">{formatCurrency(phase.receivedToDate)}</TableCell>
                                                   <TableCell className="text-right font-mono">{formatCurrency(phase.outstandingAr)}</TableCell>
                                                 </>
                                               ) : null}
@@ -2355,7 +2400,7 @@ export default function CashFlowPage() {
                     <XAxis dataKey="label" />
                     <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                     <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
-                    <Legend />
+                    <Legend verticalAlign="top" align="right" wrapperStyle={{ paddingBottom: '10px' }} />
                     <Bar dataKey="grossProfit" fill="#111827" name="Gross Profit" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="totalExpenses" fill="#6B7280" name="Expenses" radius={[4, 4, 0, 0]} />
                     </ComposedChart>
@@ -2396,7 +2441,6 @@ export default function CashFlowPage() {
                     <XAxis dataKey="label" />
                     <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                     <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
-                    <Legend />
                     <ReferenceLine y={0} stroke="#111827" strokeWidth={2} />
                     <Line type="monotone" dataKey="netIncome" stroke="#384eaa" name="Net Income" strokeWidth={2} dot={false} />
                     </LineChart>
@@ -2425,7 +2469,6 @@ export default function CashFlowPage() {
                   <XAxis dataKey="label" />
                   <YAxis tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                   <Tooltip formatter={(value) => formatCurrency(Number(value) || 0)} />
-                  <Legend />
                   <ReferenceLine y={0} stroke="#111827" strokeWidth={2} />
                   <Line
                     type="monotone"

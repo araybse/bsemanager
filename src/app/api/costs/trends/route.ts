@@ -31,14 +31,14 @@ export async function GET(request: NextRequest) {
   startDate.setDate(startDate.getDate() - days);
   
   const { data: costs } = await supabase
-    .from('api_cost_log')
-    .select('cost_usd, timestamp')
-    .gte('timestamp', startDate.toISOString())
-    .order('timestamp') as { data: Array<{ cost_usd: string; timestamp: string }> | null };
+    .from('api_costs')
+    .select('cost_usd, usage_date')
+    .gte('usage_date', startDate.toISOString().split('T')[0])
+    .order('usage_date') as { data: Array<{ cost_usd: string; usage_date: string }> | null };
   
   // Group by day
   const dailyCosts = costs?.reduce((acc, c) => {
-    const date = new Date(c.timestamp).toISOString().split('T')[0];
+    const date = c.usage_date;
     acc[date] = (acc[date] || 0) + parseFloat(c.cost_usd);
     return acc;
   }, {} as Record<string, number>);

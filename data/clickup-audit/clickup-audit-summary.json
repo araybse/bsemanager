@@ -1,0 +1,979 @@
+{
+  "meta": {
+    "teamId": "9011205377",
+    "auditDate": "2026-04-06T11:52:08.025Z",
+    "version": "1.0"
+  },
+  "summary": {
+    "totalSpaces": 2,
+    "totalFolders": 20,
+    "totalLists": 74,
+    "totalTasks": 920,
+    "totalSubtasks": 2487,
+    "tasksByStatus": {
+      "complete": 2838,
+      "to do": 460,
+      "in progress": 59,
+      "ready for asbuilt invoice": 8,
+      "ready for design invoice": 3,
+      "copc asbuilt review": 4,
+      "waiting on client": 4,
+      "not started": 23,
+      "completed": 8
+    },
+    "tasksByAssignee": {
+      "Austin Ray": 442,
+      "Unassigned": 2232,
+      "Wesley Koning": 290,
+      "Austin Burke": 454,
+      "Arber Meta": 97,
+      "Morgan Wilson": 19
+    },
+    "tasksByList": {
+      "General": 155,
+      "Office Relocation": 69,
+      "Business Development": 9,
+      "23-01 Adventure Retail/General": 18,
+      "23-01 Adventure Retail/Closeout": 38,
+      "23-01 Adventure Retail/Submittals": 39,
+      "23-01 Adventure Retail/Permits": 20,
+      "23-22 River Rock Church/General": 19,
+      "23-22 River Rock Church/Closeout": 53,
+      "23-22 River Rock Church/Submittals": 46,
+      "23-22 River Rock Church/Permits": 13,
+      "24-01 Glen Kernan Estate Lots/General": 39,
+      "24-01 Glen Kernan Estate Lots/CA": 37,
+      "24-01 Glen Kernan Estate Lots/Closeout": 15,
+      "24-01 Glen Kernan Estate Lots/JEA-E": 16,
+      "24-01 Glen Kernan Estate Lots/Permits": 31,
+      "24-01 Glen Kernan Estate Lots/Submittals": 51,
+      "24-04 Owens Ranch Townhomes/CA": 44,
+      "24-04 Owens Ranch Townhomes/Design": 8,
+      "24-04 Owens Ranch Townhomes/General": 10,
+      "24-04 Owens Ranch Townhomes/JEA-E": 20,
+      "24-04 Owens Ranch Townhomes/Submittals": 36,
+      "24-04 Owens Ranch Townhomes/Permits": 90,
+      "24-06 Thorne Warehouse/General": 2,
+      "24-06 Thorne Warehouse/CA": 6,
+      "24-06 Thorne Warehouse/Submittals": 6,
+      "24-06 Thorne Warehouse/Permits": 6,
+      "24-14 Shedd Road Residential/General": 8,
+      "25-02 Aladdin Road Residential/General": 40,
+      "25-02 Aladdin Road Residential/CA": 71,
+      "25-02 Aladdin Road Residential/JEA Electric": 28,
+      "25-02 Aladdin Road Residential/Submittals": 11,
+      "25-02 Aladdin Road Residential/Permits": 69,
+      "25-08 US-1 Flex Space/General": 276,
+      "25-10 Providence Plan Revisions/General": 93,
+      "25-11 North Main St Residential/General": 15,
+      "25-11 North Main St Residential/CA": 19,
+      "25-11 North Main St Residential/JEA Electric": 43,
+      "25-11 North Main St Residential/FDOT Bond": 14,
+      "25-11 North Main St Residential/FDOT": 23,
+      "25-11 North Main St Residential/Permitting": 24,
+      "25-11 North Main St Residential/Submittals": 14,
+      "25-12 Medical Office/General": 168,
+      "25-13 Patriot Hideaway/General": 19,
+      "25-13 Patriot Hideaway/CA": 28,
+      "25-13 Patriot Hideaway/Submittals": 27,
+      "25-13 Patriot Hideaway/Permits": 69,
+      "25-16 GK Lot 127/General": 6,
+      "25-18 Kayla's Landing/General": 85,
+      "25-18 Kayla's Landing/Design": 57,
+      "25-18 Kayla's Landing/Submittals": 61,
+      "25-18 Kayla's Landing/Permits": 43,
+      "25-20 Frisch Estate/General": 1,
+      "25-27 eTown Parking Modification/General": 14,
+      "25-28 Sabal Preserve Lot Certifications/Lot Certifications": 858,
+      "26-01 Valley Ridge Commercial Outparcel/General": 11,
+      "26-03 Burbank Ave Professional Office/General": 61,
+      "26-03 Burbank Ave Professional Office/Design": 26,
+      "26-03 Burbank Ave Professional Office/Submittals": 24,
+      "26-03 Burbank Ave Professional Office/Permits": 10,
+      "BSE Improvements/Project Mangement": 15,
+      "BSE Improvements/Admin": 12,
+      "BSE Improvements/Updates to New Job Folder": 23,
+      "BSE Improvements/AutoCAD": 87,
+      "BSE Improvements/Calcs": 26,
+      "BSE Improvements/IRIS": 32
+    },
+    "tasksByFolder": {
+      "23-01 Adventure Retail": 115,
+      "23-22 River Rock Church": 131,
+      "24-01 Glen Kernan Estate Lots": 189,
+      "24-04 Owens Ranch Townhomes": 208,
+      "24-06 Thorne Warehouse": 20,
+      "24-14 Shedd Road Residential": 8,
+      "25-02 Aladdin Road Residential": 219,
+      "25-08 US-1 Flex Space": 276,
+      "25-10 Providence Plan Revisions": 93,
+      "25-11 North Main St Residential": 152,
+      "25-12 Medical Office": 168,
+      "25-13 Patriot Hideaway": 143,
+      "25-16 GK Lot 127": 6,
+      "25-18 Kayla's Landing": 246,
+      "25-20 Frisch Estate": 1,
+      "25-27 eTown Parking Modification": 14,
+      "25-28 Sabal Preserve Lot Certifications": 858,
+      "26-01 Valley Ridge Commercial Outparcel": 11,
+      "26-03 Burbank Ave Professional Office": 121,
+      "BSE Improvements": 195
+    },
+    "tasksWithDueDate": 1393,
+    "tasksOverdue": 108,
+    "tasksByPriority": {
+      "normal": 18,
+      "low": 19,
+      "none": 3332,
+      "high": 3,
+      "urgent": 35
+    },
+    "customFieldsUsed": {
+      "Notes": 76,
+      "Agency": 149,
+      "Comments Due": 31,
+      "Duration": 425,
+      "Permit Status": 116,
+      "From": 16,
+      "Permit": 11,
+      "Signature": 34,
+      "Status": 34,
+      "Review Comments/Notes": 24,
+      "Asbuilt Invoice Date": 13,
+      "Portal Access Level": 9
+    }
+  },
+  "customFields": [
+    {
+      "name": "Agency",
+      "type": "drop_down"
+    },
+    {
+      "name": "Comments Due",
+      "type": "date"
+    },
+    {
+      "name": "Days Since Activity",
+      "type": "formula"
+    },
+    {
+      "name": "Duration",
+      "type": "formula"
+    },
+    {
+      "name": "Last Contact",
+      "type": "date"
+    },
+    {
+      "name": "Notes",
+      "type": "text"
+    },
+    {
+      "name": "Permit Status",
+      "type": "drop_down"
+    },
+    {
+      "name": "Development Timeline",
+      "type": "date"
+    },
+    {
+      "name": "Environmental Impact Assessment",
+      "type": "short_text"
+    },
+    {
+      "name": "Land Acquisition Cost",
+      "type": "currency"
+    },
+    {
+      "name": "Land Use Type",
+      "type": "drop_down"
+    },
+    {
+      "name": "Permit",
+      "type": "drop_down"
+    },
+    {
+      "name": "Zoning Regulations",
+      "type": "text"
+    },
+    {
+      "name": "From",
+      "type": "drop_down"
+    },
+    {
+      "name": "Signature",
+      "type": "drop_down"
+    },
+    {
+      "name": "Status",
+      "type": "drop_down"
+    },
+    {
+      "name": "Asbuilt Invoice Date",
+      "type": "date"
+    },
+    {
+      "name": "Design Invoice Date",
+      "type": "date"
+    },
+    {
+      "name": "Review Comments/Notes",
+      "type": "text"
+    },
+    {
+      "name": "Assigned Developer",
+      "type": "users"
+    },
+    {
+      "name": "Implementation Date",
+      "type": "date"
+    },
+    {
+      "name": "Portal Access Level",
+      "type": "drop_down"
+    },
+    {
+      "name": "Testing Status",
+      "type": "short_text"
+    },
+    {
+      "name": "User Feedback",
+      "type": "text"
+    }
+  ],
+  "statuses": [
+    {
+      "id": "p90113886747_6jAOrZkt",
+      "status": "to do",
+      "type": "open",
+      "orderindex": 0,
+      "color": "#87909e"
+    },
+    {
+      "id": "p90113886747_n0S6O2PL",
+      "status": "in progress",
+      "type": "custom",
+      "orderindex": 1,
+      "color": "#5f55ee"
+    },
+    {
+      "id": "p90113886747_dsSKVqC5",
+      "status": "complete",
+      "type": "closed",
+      "orderindex": 2,
+      "color": "#008844"
+    },
+    {
+      "id": "p90110924558_lmrWuRQ1",
+      "status": "to do",
+      "type": "open",
+      "orderindex": 0,
+      "color": "#87909e"
+    },
+    {
+      "id": "p90110924558_I87kcYRj",
+      "status": "in progress",
+      "type": "custom",
+      "orderindex": 1,
+      "color": "#5f55ee"
+    },
+    {
+      "id": "p90110924558_Oyg9JlzI",
+      "status": "complete",
+      "type": "closed",
+      "orderindex": 2,
+      "color": "#008844"
+    }
+  ],
+  "assignees": [
+    "Austin Ray",
+    "Wesley Koning",
+    "Austin Burke",
+    "Arber Meta",
+    "Morgan Wilson"
+  ],
+  "tags": [
+    "engineer",
+    "contractor",
+    "developer",
+    "important"
+  ],
+  "spaces": [
+    {
+      "id": "90113886747",
+      "name": "Admin",
+      "statuses": [
+        {
+          "id": "p90113886747_6jAOrZkt",
+          "status": "to do",
+          "type": "open",
+          "orderindex": 0,
+          "color": "#87909e"
+        },
+        {
+          "id": "p90113886747_n0S6O2PL",
+          "status": "in progress",
+          "type": "custom",
+          "orderindex": 1,
+          "color": "#5f55ee"
+        },
+        {
+          "id": "p90113886747_dsSKVqC5",
+          "status": "complete",
+          "type": "closed",
+          "orderindex": 2,
+          "color": "#008844"
+        }
+      ]
+    },
+    {
+      "id": "90110924558",
+      "name": "Land Development",
+      "statuses": [
+        {
+          "id": "p90110924558_lmrWuRQ1",
+          "status": "to do",
+          "type": "open",
+          "orderindex": 0,
+          "color": "#87909e"
+        },
+        {
+          "id": "p90110924558_I87kcYRj",
+          "status": "in progress",
+          "type": "custom",
+          "orderindex": 1,
+          "color": "#5f55ee"
+        },
+        {
+          "id": "p90110924558_Oyg9JlzI",
+          "status": "complete",
+          "type": "closed",
+          "orderindex": 2,
+          "color": "#008844"
+        }
+      ]
+    }
+  ],
+  "folders": [
+    {
+      "id": "90117008355",
+      "name": "23-01 Adventure Retail",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90116994137",
+      "name": "23-22 River Rock Church",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90116985329",
+      "name": "24-01 Glen Kernan Estate Lots",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117008424",
+      "name": "24-04 Owens Ranch Townhomes",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117008432",
+      "name": "24-06 Thorne Warehouse",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117008437",
+      "name": "24-14 Shedd Road Residential",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90116994759",
+      "name": "25-02 Aladdin Road Residential",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117493815",
+      "name": "25-08 US-1 Flex Space",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117493821",
+      "name": "25-10 Providence Plan Revisions",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90116607775",
+      "name": "25-11 North Main St Residential",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117493823",
+      "name": "25-12 Medical Office",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117008443",
+      "name": "25-13 Patriot Hideaway",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117008448",
+      "name": "25-16 GK Lot 127",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117008450",
+      "name": "25-18 Kayla's Landing",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117176165",
+      "name": "25-20 Frisch Estate",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117493828",
+      "name": "25-27 eTown Parking Modification",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117452443",
+      "name": "25-28 Sabal Preserve Lot Certifications",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117453378",
+      "name": "26-01 Valley Ridge Commercial Outparcel",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117531574",
+      "name": "26-03 Burbank Ave Professional Office",
+      "spaceName": "Land Development"
+    },
+    {
+      "id": "90117508693",
+      "name": "BSE Improvements",
+      "spaceName": "Land Development"
+    }
+  ],
+  "lists": [
+    {
+      "id": "901111646165",
+      "name": "General",
+      "spaceName": "Admin",
+      "folderName": null,
+      "taskCount": 15
+    },
+    {
+      "id": "901111646183",
+      "name": "Office Relocation",
+      "spaceName": "Admin",
+      "folderName": null,
+      "taskCount": 1
+    },
+    {
+      "id": "901111766346",
+      "name": "Business Development",
+      "spaceName": "Admin",
+      "folderName": null,
+      "taskCount": 9
+    },
+    {
+      "id": "901112120685",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": null,
+      "taskCount": 3
+    },
+    {
+      "id": "901111873158",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "23-01 Adventure Retail",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873160",
+      "name": "Closeout",
+      "spaceName": "Land Development",
+      "folderName": "23-01 Adventure Retail",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873159",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "23-01 Adventure Retail",
+      "taskCount": 3
+    },
+    {
+      "id": "901111873161",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "23-01 Adventure Retail",
+      "taskCount": 0
+    },
+    {
+      "id": "901111850425",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "23-22 River Rock Church",
+      "taskCount": 2
+    },
+    {
+      "id": "901111856053",
+      "name": "Closeout",
+      "spaceName": "Land Development",
+      "folderName": "23-22 River Rock Church",
+      "taskCount": 1
+    },
+    {
+      "id": "901111848088",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "23-22 River Rock Church",
+      "taskCount": 3
+    },
+    {
+      "id": "901111850329",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "23-22 River Rock Church",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873291",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "24-01 Glen Kernan Estate Lots",
+      "taskCount": 2
+    },
+    {
+      "id": "901111832659",
+      "name": "CA",
+      "spaceName": "Land Development",
+      "folderName": "24-01 Glen Kernan Estate Lots",
+      "taskCount": 4
+    },
+    {
+      "id": "901111832845",
+      "name": "Closeout",
+      "spaceName": "Land Development",
+      "folderName": "24-01 Glen Kernan Estate Lots",
+      "taskCount": 1
+    },
+    {
+      "id": "901112676872",
+      "name": "JEA-E",
+      "spaceName": "Land Development",
+      "folderName": "24-01 Glen Kernan Estate Lots",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873130",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "24-01 Glen Kernan Estate Lots",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873152",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "24-01 Glen Kernan Estate Lots",
+      "taskCount": 0
+    },
+    {
+      "id": "901112248402",
+      "name": "CA",
+      "spaceName": "Land Development",
+      "folderName": "24-04 Owens Ranch Townhomes",
+      "taskCount": 3
+    },
+    {
+      "id": "901112121541",
+      "name": "Design",
+      "spaceName": "Land Development",
+      "folderName": "24-04 Owens Ranch Townhomes",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873296",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "24-04 Owens Ranch Townhomes",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873298",
+      "name": "JEA-E",
+      "spaceName": "Land Development",
+      "folderName": "24-04 Owens Ranch Townhomes",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873297",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "24-04 Owens Ranch Townhomes",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873295",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "24-04 Owens Ranch Townhomes",
+      "taskCount": 0
+    },
+    {
+      "id": "901111943723",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "24-06 Thorne Warehouse",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873306",
+      "name": "CA",
+      "spaceName": "Land Development",
+      "folderName": "24-06 Thorne Warehouse",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873307",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "24-06 Thorne Warehouse",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873305",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "24-06 Thorne Warehouse",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873320",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "24-14 Shedd Road Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873319",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "24-14 Shedd Road Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873318",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "24-14 Shedd Road Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901111850411",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-02 Aladdin Road Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901111849308",
+      "name": "CA",
+      "spaceName": "Land Development",
+      "folderName": "25-02 Aladdin Road Residential",
+      "taskCount": 6
+    },
+    {
+      "id": "901111849314",
+      "name": "JEA Electric",
+      "spaceName": "Land Development",
+      "folderName": "25-02 Aladdin Road Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901111850404",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "25-02 Aladdin Road Residential",
+      "taskCount": 2
+    },
+    {
+      "id": "901111855626",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "25-02 Aladdin Road Residential",
+      "taskCount": 4
+    },
+    {
+      "id": "901109714222",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-08 US-1 Flex Space",
+      "taskCount": 9
+    },
+    {
+      "id": "901110145456",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-10 Providence Plan Revisions",
+      "taskCount": 2
+    },
+    {
+      "id": "901111660884",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 1
+    },
+    {
+      "id": "901112067138",
+      "name": "CA",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 1
+    },
+    {
+      "id": "901111660889",
+      "name": "JEA Electric",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901111660892",
+      "name": "FDOT Bond",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 1
+    },
+    {
+      "id": "901111753407",
+      "name": "FDOT",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 2
+    },
+    {
+      "id": "901111660923",
+      "name": "Permitting",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 1
+    },
+    {
+      "id": "901111661208",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "25-11 North Main St Residential",
+      "taskCount": 0
+    },
+    {
+      "id": "901110444293",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-12 Medical Office",
+      "taskCount": 4
+    },
+    {
+      "id": "901111873332",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-13 Patriot Hideaway",
+      "taskCount": 0
+    },
+    {
+      "id": "901112067111",
+      "name": "CA",
+      "spaceName": "Land Development",
+      "folderName": "25-13 Patriot Hideaway",
+      "taskCount": 0
+    },
+    {
+      "id": "901112128681",
+      "name": "JEA Electric",
+      "spaceName": "Land Development",
+      "folderName": "25-13 Patriot Hideaway",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873331",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "25-13 Patriot Hideaway",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873330",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "25-13 Patriot Hideaway",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873347",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-16 GK Lot 127",
+      "taskCount": 1
+    },
+    {
+      "id": "901111873346",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "25-16 GK Lot 127",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873345",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "25-16 GK Lot 127",
+      "taskCount": 0
+    },
+    {
+      "id": "901111873352",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-18 Kayla's Landing",
+      "taskCount": 4
+    },
+    {
+      "id": "901112190779",
+      "name": "Design",
+      "spaceName": "Land Development",
+      "folderName": "25-18 Kayla's Landing",
+      "taskCount": 2
+    },
+    {
+      "id": "901111873351",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "25-18 Kayla's Landing",
+      "taskCount": 5
+    },
+    {
+      "id": "901111873350",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "25-18 Kayla's Landing",
+      "taskCount": 10
+    },
+    {
+      "id": "901112209459",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-20 Frisch Estate",
+      "taskCount": 0
+    },
+    {
+      "id": "901112209461",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "25-20 Frisch Estate",
+      "taskCount": 0
+    },
+    {
+      "id": "901112209460",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "25-20 Frisch Estate",
+      "taskCount": 0
+    },
+    {
+      "id": "901112474452",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "25-27 eTown Parking Modification",
+      "taskCount": 0
+    },
+    {
+      "id": "901112817137",
+      "name": "Lot Certifications",
+      "spaceName": "Land Development",
+      "folderName": "25-28 Sabal Preserve Lot Certifications",
+      "taskCount": 15
+    },
+    {
+      "id": "901112819157",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "26-01 Valley Ridge Commercial Outparcel",
+      "taskCount": 2
+    },
+    {
+      "id": "901112985765",
+      "name": "General",
+      "spaceName": "Land Development",
+      "folderName": "26-03 Burbank Ave Professional Office",
+      "taskCount": 6
+    },
+    {
+      "id": "901112985761",
+      "name": "Design",
+      "spaceName": "Land Development",
+      "folderName": "26-03 Burbank Ave Professional Office",
+      "taskCount": 2
+    },
+    {
+      "id": "901112985763",
+      "name": "Submittals",
+      "spaceName": "Land Development",
+      "folderName": "26-03 Burbank Ave Professional Office",
+      "taskCount": 3
+    },
+    {
+      "id": "901112985764",
+      "name": "Permits",
+      "spaceName": "Land Development",
+      "folderName": "26-03 Burbank Ave Professional Office",
+      "taskCount": 5
+    },
+    {
+      "id": "901112939724",
+      "name": "Project Mangement",
+      "spaceName": "Land Development",
+      "folderName": "BSE Improvements",
+      "taskCount": 5
+    },
+    {
+      "id": "901112939725",
+      "name": "Admin",
+      "spaceName": "Land Development",
+      "folderName": "BSE Improvements",
+      "taskCount": 4
+    },
+    {
+      "id": "901112939727",
+      "name": "Updates to New Job Folder",
+      "spaceName": "Land Development",
+      "folderName": "BSE Improvements",
+      "taskCount": 16
+    },
+    {
+      "id": "901112939732",
+      "name": "AutoCAD",
+      "spaceName": "Land Development",
+      "folderName": "BSE Improvements",
+      "taskCount": 5
+    },
+    {
+      "id": "901112939733",
+      "name": "Calcs",
+      "spaceName": "Land Development",
+      "folderName": "BSE Improvements",
+      "taskCount": 4
+    },
+    {
+      "id": "901113223082",
+      "name": "IRIS",
+      "spaceName": "Land Development",
+      "folderName": "BSE Improvements",
+      "taskCount": 1
+    }
+  ]
+}

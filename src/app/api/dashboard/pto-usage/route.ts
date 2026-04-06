@@ -10,14 +10,16 @@ export async function GET(request: NextRequest) {
     const supabase = createAdminClient()
     const searchParams = request.nextUrl.searchParams
     
-    const period = searchParams.get('period') || 'month'
+    const year = searchParams.get('year') || new Date().getFullYear().toString()
     const employeeId = searchParams.get('employee_id') || null
     
-    // Query ALL PTO entries
+    // Query PTO entries for the specified year only
     let query = supabase
       .from('time_entries')
       .select('employee_id, entry_date, hours, phase_name')
       .in('phase_name', ['PTO', 'Vacation', 'Sick'])
+      .gte('entry_date', `${year}-01-01`)
+      .lte('entry_date', `${year}-12-31`)
     
     // Filter by employee
     if (employeeId) {
@@ -38,61 +40,37 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch PTO entries' }, { status: 500 })
     }
     
-    // Group by period
-    const ptoMap = new Map<string, {
-      period: string
-      periodLabel: string
-      totalHours: number
-      byType: { PTO: number; Vacation: number; Sick: number }
-    }>()
+    // Group by month within the year
+    const monthOrder = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const monthlyPTO: Record<string, number> = {}
     
+    // Initialize all months to 0
+    monthOrder.forEach(month => {
+      monthlyPTO[month] = 0
+    })
+    
+    // Aggregate PTO hours by month
     for (const entry of (ptoEntries as any[]) || []) {
       const date = new Date(entry.entry_date)
+      const month = date.toLocaleString('default', { month: 'short' })
       const hours = parseFloat(entry.hours?.toString() || '0')
-      const type = entry.phase_name as 'PTO' | 'Vacation' | 'Sick'
       
-      let key: string
-      let label: string
-      
-      if (period === 'year') {
-        key = date.getFullYear().toString()
-        label = key
-      } else if (period === 'quarter') {
-        const year = date.getFullYear()
-        const quarter = Math.ceil((date.getMonth() + 1) / 3)
-        key = `${year}-Q${quarter}`
-        label = `Q${quarter} ${year}`
-      } else {
-        const year = date.getFullYear()
-        const month = date.getMonth() + 1
-        key = `${year}-${month.toString().padStart(2, '0')}`
-        label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-      }
-      
-      if (!ptoMap.has(key)) {
-        ptoMap.set(key, {
-          period: key,
-          periodLabel: label,
-          totalHours: 0,
-          byType: { PTO: 0, Vacation: 0, Sick: 0 }
-        })
-      }
-      
-      const data = ptoMap.get(key)!
-      data.totalHours += hours
-      data.byType[type] = (data.byType[type] || 0) + hours
+      monthlyPTO[month] += hours
     }
     
-    // Sort and limit
-    let ptoUsage = Array.from(ptoMap.values())
-      .sort((a, b) => a.period.localeCompare(b.period))
-    
-    if (period === 'month') {
-      ptoUsage = ptoUsage.slice(-12)
-    }
+    // Calculate cumulative PTO for each month
+    let cumulative = 0
+    const ptoUsage = monthOrder.map(month => {
+      cumulative += monthlyPTO[month]
+      return {
+        month,
+        monthlyHours: monthlyPTO[month],
+        cumulativeHours: cumulative
+      }
+    })
     
     return NextResponse.json({
-      period,
+      year: parseInt(year),
       employeeId: employeeId || (auth.role === 'employee' ? auth.user.id : null),
       ptoUsage
     })

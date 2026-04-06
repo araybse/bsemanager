@@ -11,6 +11,10 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'IRIS',
   description: 'Integrated Resource Intelligence System - Project management and billing portal for Blackstone Engineering',
+  icons: {
+    icon: '/icon.png',
+    apple: '/icon.png',
+  },
 }
 
 export default function RootLayout({

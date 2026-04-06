@@ -87,7 +87,7 @@ export function TimesheetTab({ currentUserId, userRole, employees }: TimesheetTa
   }
 
   const isEditable = timesheet?.weekStatus !== 'approved' && (effectiveEmployeeId === currentUserId || userRole === 'admin')
-  const isViewingOthers = effectiveEmployeeId !== currentUserId
+  const isViewingOthers = effectiveEmployeeId !== currentUserId && userRole !== 'admin'
 
   return (
     <div className="space-y-4">
@@ -144,7 +144,7 @@ export function TimesheetTab({ currentUserId, userRole, employees }: TimesheetTa
       {/* Viewing Others Notice */}
       {isViewingOthers && (
         <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-md text-sm">
-          Viewing timesheet for another employee (read-only)
+          Viewing timesheet for another employee
         </div>
       )}
 
@@ -193,7 +193,7 @@ export function TimesheetTab({ currentUserId, userRole, employees }: TimesheetTa
       )}
 
       {/* Admin Approve Button when viewing others' timesheets */}
-      {timesheet && isViewingOthers && userRole === 'admin' && timesheet.weekStatus === 'submitted' && (
+      {timesheet && effectiveEmployeeId !== currentUserId && userRole === 'admin' && timesheet.weekStatus === 'submitted' && (
         <TimesheetActions
           weekStatus={timesheet.weekStatus}
           weekEndingDate={currentWeek.weekEndingDate}

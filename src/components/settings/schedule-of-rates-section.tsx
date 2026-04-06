@@ -12,7 +12,6 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { formatCurrency } from '@/lib/utils/format'
 
@@ -67,12 +66,11 @@ type TimeEntryDuplicateProbe = {
 export function ScheduleOfRatesSection() {
   const supabase = createClient()
   const queryClient = useQueryClient()
-  const [selectedYear, setSelectedYear] = useState<string>('')
+  const [selectedYear, setSelectedYear] = useState<string>('2026')
   const [newYearLabel, setNewYearLabel] = useState('')
   const [cloneFromYear, setCloneFromYear] = useState<string>('')
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
-  const [collapsedYears, setCollapsedYears] = useState<Set<string>>(new Set())
   const [newOverride, setNewOverride] = useState({
     position_id: '',
     hourly_rate: '',
@@ -582,21 +580,6 @@ export function ScheduleOfRatesSection() {
       <TabsContent value="schedules" className="space-y-4">
           <div className="flex flex-wrap gap-3 items-end">
             <div className="space-y-2">
-              <Label>Year</Label>
-              <Select value={selectedYear || String(selectedSchedule?.year_label || '')} onValueChange={setSelectedYear}>
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Select year" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(schedules || []).map((schedule) => (
-                    <SelectItem key={schedule.id} value={String(schedule.year_label)}>
-                      {schedule.year_label} {schedule.is_active ? '' : '(inactive)'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
               <Label>New Year</Label>
               <Input
                 value={newYearLabel}
@@ -629,45 +612,58 @@ export function ScheduleOfRatesSection() {
             ) : null}
           </div>
 
-          {loadingSchedules || loadingPositions ? (
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Position</TableHead>
-                  <TableHead className="w-[240px] text-right">Hourly Rate</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {activePositions.map((position) => {
-                  const rateItem = scheduleRateByPosition.get(position.id)
-                  return (
-                    <TableRow key={position.id}>
-                      <TableCell>{position.name}</TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Input
-                            defaultValue={rateItem ? String(rateItem.hourly_rate) : ''}
-                            onBlur={(event) => handleRateSave(position.id, event.target.value)}
-                            className="w-[140px] text-right font-mono"
-                            placeholder="0.00"
-                          />
-                          <Badge variant="outline">
-                            {rateItem ? formatCurrency(rateItem.hourly_rate) : 'Unresolved'}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          )}
+          <Tabs value={selectedYear} onValueChange={setSelectedYear} className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="2023">2023</TabsTrigger>
+              <TabsTrigger value="2024">2024</TabsTrigger>
+              <TabsTrigger value="2025">2025</TabsTrigger>
+              <TabsTrigger value="2026">2026</TabsTrigger>
+            </TabsList>
+
+            {['2023', '2024', '2025', '2026'].map((year) => (
+              <TabsContent key={year} value={year} className="space-y-4">
+                {loadingSchedules || loadingPositions ? (
+                  <div className="space-y-3">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Position</TableHead>
+                        <TableHead className="w-[240px] text-right">Hourly Rate</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {activePositions.map((position) => {
+                        const rateItem = scheduleRateByPosition.get(position.id)
+                        return (
+                          <TableRow key={position.id}>
+                            <TableCell>{position.name}</TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Input
+                                  defaultValue={rateItem ? String(rateItem.hourly_rate) : ''}
+                                  onBlur={(event) => handleRateSave(position.id, event.target.value)}
+                                  className="w-[140px] text-right font-mono"
+                                  placeholder="0.00"
+                                />
+                                <Badge variant="outline">
+                                  {rateItem ? formatCurrency(rateItem.hourly_rate) : 'Unresolved'}
+                                </Badge>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </TabsContent>
+            ))}
+          </Tabs>
       </TabsContent>
 
       <TabsContent value="project-assignments" className="space-y-3">
@@ -676,129 +672,101 @@ export function ScheduleOfRatesSection() {
             <Badge variant="secondary">Missing Timeline: {unresolvedCounts.timelineMissing}</Badge>
             <Badge variant="secondary">Missing Rates (selected year): {unresolvedCounts.scheduleRateMissing}</Badge>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project #</TableHead>
-                <TableHead>Project Name</TableHead>
-                <TableHead>Proposal #</TableHead>
-                <TableHead>Proposal Year</TableHead>
-                <TableHead>Effective Schedule</TableHead>
-                <TableHead>Source</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {(() => {
-                // Filter out QB projects (overhead) and group by year
-                const realProjects = (projects || []).filter(p => !p.project_number.startsWith('QB'))
-                const projectsByYear = new Map<string, typeof projects>()
-                realProjects.forEach((project) => {
-                  const year = project.project_number.slice(0, 2)
-                  if (!projectsByYear.has(year)) {
-                    projectsByYear.set(year, [])
-                  }
-                  projectsByYear.get(year)!.push(project)
-                })
-                
-                // Sort years descending (26, 25, 24, 23...)
-                const sortedYears = Array.from(projectsByYear.keys()).sort((a, b) => b.localeCompare(a))
-                
-                // Initialize all years as collapsed
-                if (collapsedYears.size === 0 && sortedYears.length > 0) {
-                  setCollapsedYears(new Set(sortedYears))
-                }
-                
-                const toggleYear = (year: string) => {
-                  setCollapsedYears(prev => {
-                    const next = new Set(prev)
-                    if (next.has(year)) {
-                      next.delete(year)
-                    } else {
-                      next.add(year)
-                    }
-                    return next
-                  })
-                }
-                
-                return sortedYears.flatMap((year) => {
-                  const yearProjects = projectsByYear.get(year) || []
-                  const isCollapsed = collapsedYears.has(year)
-                  return [
-                    // Year header row (clickable)
-                    <TableRow 
-                      key={`year-${year}`} 
-                      className="bg-muted/50 cursor-pointer hover:bg-muted/70"
-                      onClick={() => toggleYear(year)}
-                    >
-                      <TableCell colSpan={6} className="font-semibold">
-                        <div className="flex items-center gap-2">
-                          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          20{year} Projects ({yearProjects.length})
-                        </div>
-                      </TableCell>
-                    </TableRow>,
-                    // Project rows for this year (only if expanded)
-                    ...(isCollapsed ? [] :
-                    yearProjects.map((project) => {
-                      const assignment = assignmentByProjectId.get(project.id)
-                      const proposalYear = project.proposals?.date_submitted?.slice(0, 4) || '—'
-                      return (
-                        <TableRow key={project.id}>
-                    <TableCell className="font-mono">{project.project_number}</TableCell>
-                    <TableCell>{project.name}</TableCell>
-                    <TableCell>
-                      <Select
-                        value={project.proposal_id ? String(project.proposal_id) : 'none'}
-                        onValueChange={(value) => handleProjectProposalChange(project.id, value)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">None</SelectItem>
-                          {(proposals || []).map((proposal) => (
-                            <SelectItem key={proposal.id} value={String(proposal.id)}>
-                              {proposal.proposal_number}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>{proposalYear}</TableCell>
-                    <TableCell>
-                      <Select
-                        value={assignment ? String(assignment.schedule_id) : ''}
-                        onValueChange={(value) => handleProjectScheduleChange(project.id, value)}
-                      >
-                        <SelectTrigger className="w-[180px]">
-                          <SelectValue placeholder="Needs Assignment" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(schedules || []).map((schedule) => (
-                            <SelectItem key={schedule.id} value={String(schedule.id)}>
-                              {schedule.year_label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell>
-                      {assignment ? (
-                        <Badge variant={assignment.source === 'manual_override' ? 'default' : 'outline'}>
-                          {assignment.source}
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive">Needs Assignment</Badge>
-                      )}
-                    </TableCell>
+          
+          <Tabs defaultValue="2026" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="2023">2023</TabsTrigger>
+              <TabsTrigger value="2024">2024</TabsTrigger>
+              <TabsTrigger value="2025">2025</TabsTrigger>
+              <TabsTrigger value="2026">2026</TabsTrigger>
+            </TabsList>
+
+            {['2023', '2024', '2025', '2026'].map((yearTab) => {
+              const realProjects = (projects || []).filter(p => !p.project_number.startsWith('QB'))
+              const yearProjects = realProjects.filter(p => p.project_number.slice(0, 2) === yearTab.slice(2))
+              
+              return (
+                <TabsContent key={yearTab} value={yearTab}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Project #</TableHead>
+                        <TableHead>Project Name</TableHead>
+                        <TableHead>Proposal #</TableHead>
+                        <TableHead>Proposal Year</TableHead>
+                        <TableHead>Effective Schedule</TableHead>
+                        <TableHead>Source</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {yearProjects.map((project) => {
+                        const assignment = assignmentByProjectId.get(project.id)
+                        const proposalYear = project.proposals?.date_submitted?.slice(0, 4) || '—'
+                        return (
+                          <TableRow key={project.id}>
+                            <TableCell className="font-mono">{project.project_number}</TableCell>
+                            <TableCell>{project.name}</TableCell>
+                            <TableCell>
+                              <Select
+                                value={project.proposal_id ? String(project.proposal_id) : 'none'}
+                                onValueChange={(value) => handleProjectProposalChange(project.id, value)}
+                              >
+                                <SelectTrigger className="w-[180px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  {(proposals || []).map((proposal) => (
+                                    <SelectItem key={proposal.id} value={String(proposal.id)}>
+                                      {proposal.proposal_number}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>{proposalYear}</TableCell>
+                            <TableCell>
+                              <Select
+                                value={assignment ? String(assignment.schedule_id) : ''}
+                                onValueChange={(value) => handleProjectScheduleChange(project.id, value)}
+                              >
+                                <SelectTrigger className="w-[180px]">
+                                  <SelectValue placeholder="Needs Assignment" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {(schedules || []).map((schedule) => (
+                                    <SelectItem key={schedule.id} value={String(schedule.id)}>
+                                      {schedule.year_label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              {assignment ? (
+                                <Badge variant={assignment.source === 'manual_override' ? 'default' : 'outline'}>
+                                  {assignment.source}
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive">Needs Assignment</Badge>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
+                      {yearProjects.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                            No projects found for {yearTab}
+                          </TableCell>
                         </TableRow>
-                      )
-                    }))
-                  ]
-                })
-              })()}
-            </TableBody>
-          </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+              )
+            })}
+          </Tabs>
       </TabsContent>
 
       <TabsContent value="project-overrides" className="space-y-4">
@@ -914,88 +882,93 @@ export function ScheduleOfRatesSection() {
       </TabsContent>
 
       <TabsContent value="employee-timeline" className="space-y-4">
-          <div className="flex flex-wrap gap-3 items-end">
-            <div className="space-y-2">
-              <Label>Employee</Label>
-              <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                <SelectTrigger className="w-[260px]">
-                  <SelectValue placeholder="Select employee" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(profiles || []).map((profile) => (
-                    <SelectItem key={profile.id} value={profile.id}>
-                      {profile.full_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Position</Label>
-              <Select
-                value={newTimeline.position_id}
-                onValueChange={(value) => setNewTimeline((prev) => ({ ...prev, position_id: value }))}
-              >
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Select position" />
-                </SelectTrigger>
-                <SelectContent>
-                  {activePositions.map((position) => (
-                    <SelectItem key={position.id} value={String(position.id)}>
-                      {position.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Effective Start</Label>
-              <Input
-                type="date"
-                value={newTimeline.effective_from}
-                onChange={(event) => setNewTimeline((prev) => ({ ...prev, effective_from: event.target.value }))}
-              />
-            </div>
-            <Button onClick={addTimelineRow}>Add Promotion Row</Button>
-          </div>
-
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Position</TableHead>
-                <TableHead>Effective Start</TableHead>
-                <TableHead>Effective End</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {selectedEmployeeTimeline.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>{row.title}</TableCell>
-                  <TableCell>{row.effective_from}</TableCell>
-                  <TableCell>{row.effective_to || 'Current'}</TableCell>
-                  <TableCell>
-                    <Badge variant={row.is_current ? 'default' : 'outline'}>
-                      {row.is_current ? 'Current' : 'Historical'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => deleteTimelineRow(row.id)}>
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
+          <Tabs value={selectedEmployeeId || (profiles && profiles.length > 0 ? profiles[0].id : '')} onValueChange={setSelectedEmployeeId} className="space-y-4">
+            <TabsList>
+              {(profiles || []).map((profile) => (
+                <TabsTrigger key={profile.id} value={profile.id}>
+                  {profile.full_name}
+                </TabsTrigger>
               ))}
-              {selectedEmployeeId && selectedEmployeeTimeline.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
-                    No timeline rows for this employee.
-                  </TableCell>
-                </TableRow>
-              ) : null}
-            </TableBody>
-          </Table>
+            </TabsList>
+
+            {(profiles || []).map((profile) => {
+              const employeeTimeline = (timelineRows || [])
+                .filter((row) => row.employee_id === profile.id)
+                .sort((a, b) => (a.effective_from > b.effective_from ? 1 : -1))
+              
+              return (
+                <TabsContent key={profile.id} value={profile.id} className="space-y-4">
+                  <div className="flex flex-wrap gap-3 items-end">
+                    <div className="space-y-2">
+                      <Label>Position</Label>
+                      <Select
+                        value={newTimeline.position_id}
+                        onValueChange={(value) => setNewTimeline((prev) => ({ ...prev, position_id: value }))}
+                      >
+                        <SelectTrigger className="w-[220px]">
+                          <SelectValue placeholder="Select position" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activePositions.map((position) => (
+                            <SelectItem key={position.id} value={String(position.id)}>
+                              {position.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Effective Start</Label>
+                      <Input
+                        type="date"
+                        value={newTimeline.effective_from}
+                        onChange={(event) => setNewTimeline((prev) => ({ ...prev, effective_from: event.target.value }))}
+                      />
+                    </div>
+                    <Button onClick={addTimelineRow}>Add Promotion Row</Button>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Position</TableHead>
+                        <TableHead>Effective Start</TableHead>
+                        <TableHead>Effective End</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {employeeTimeline.map((row) => (
+                        <TableRow key={row.id}>
+                          <TableCell>{row.title}</TableCell>
+                          <TableCell>{row.effective_from}</TableCell>
+                          <TableCell>{row.effective_to || 'Current'}</TableCell>
+                          <TableCell>
+                            <Badge variant={row.is_current ? 'default' : 'outline'}>
+                              {row.is_current ? 'Current' : 'Historical'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="outline" size="sm" onClick={() => deleteTimelineRow(row.id)}>
+                              Delete
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {employeeTimeline.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                            No timeline rows for {profile.full_name}
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </TabsContent>
+              )
+            })}
+          </Tabs>
       </TabsContent>
 
       <TabsContent value="diagnostics" className="flex flex-wrap gap-2">

@@ -12,16 +12,6 @@ export default function KnowledgePage() {
   
   return (
     <div className="space-y-6 p-6">
-      <div className="flex items-center gap-3">
-        <Brain className="h-8 w-8" />
-        <div>
-          <h1 className="text-3xl font-bold">Knowledge Management</h1>
-          <p className="text-muted-foreground">
-            AI-extracted project knowledge from emails and transcripts
-          </p>
-        </div>
-      </div>
-      
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>

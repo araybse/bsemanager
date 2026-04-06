@@ -206,13 +206,6 @@ export default function InvoicesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-medium">Invoice Tracker</h2>
-        <p className="text-sm text-muted-foreground">
-          Track all invoices and their payment status
-        </p>
-      </div>
-
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-end">
         <div className="flex flex-col gap-1.5">
