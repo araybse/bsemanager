@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Brain, TrendingUp, AlertTriangle, CheckCircle, Database, DollarSign, Mail, MessageSquare } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPie, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Badge } from '@/components/ui/badge';
+import { AutoProcessorStatusCard } from '@/components/knowledge/auto-processor-status-card';
 
 interface KnowledgeStats {
   totalMemories: number;
@@ -91,6 +92,9 @@ export function KnowledgeDashboard() {
   
   return (
     <div className="space-y-6">
+      {/* Auto-Processor Status - Top of page */}
+      <AutoProcessorStatusCard />
+      
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
