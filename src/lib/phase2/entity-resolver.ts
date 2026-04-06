@@ -51,7 +51,7 @@ export async function getPendingReviews(limit: number = 50): Promise<MatchCandid
   }
   
   // Transform to MatchCandidate format
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     id: row.id,
     entityAId: row.entity_a_id,
     entityBId: row.entity_b_id,
@@ -75,7 +75,7 @@ export async function mergeEntities(
   const supabase = await createClient()
   
   // Call the merge_entities RPC function
-  const { data, error } = await supabase.rpc('merge_entities', {
+  const { data, error } = await (supabase as any).rpc('merge_entities', {
     p_survivor_id: survivorId,
     p_merged_id: mergedId,
     p_merged_by: mergedBy
@@ -111,8 +111,8 @@ export async function mergeEntities(
 export async function rejectMatch(matchId: string, reason?: string): Promise<void> {
   const supabase = await createClient()
   
-  const { error } = await supabase
-    .from('entity_match_candidates')
+  const { error } = await (supabase
+    .from('entity_match_candidates') as any)
     .update({
       status: 'rejected',
       reviewed_at: new Date().toISOString(),
@@ -126,7 +126,7 @@ export async function rejectMatch(matchId: string, reason?: string): Promise<voi
   
   // Optionally record the rejection reason
   if (reason) {
-    await supabase.from('merge_corrections').insert({
+    await (supabase.from('merge_corrections') as any).insert({
       correction_type: 'should_not_merge',
       entity_a_id: matchId, // This would need the actual entity IDs
       entity_b_id: matchId,
@@ -156,8 +156,8 @@ export async function approveMatch(matchId: string): Promise<MergeResult> {
   }
   
   // Mark as approved
-  await supabase
-    .from('entity_match_candidates')
+  await (supabase
+    .from('entity_match_candidates') as any)
     .update({
       status: 'approved',
       reviewed_at: new Date().toISOString(),
@@ -166,7 +166,7 @@ export async function approveMatch(matchId: string): Promise<MergeResult> {
     .eq('id', matchId)
   
   // Perform the merge
-  return await mergeEntities(match.entity_a_id, match.entity_b_id, 'current_user')
+  return await mergeEntities((match as any).entity_a_id, (match as any).entity_b_id, 'current_user')
 }
 
 /**

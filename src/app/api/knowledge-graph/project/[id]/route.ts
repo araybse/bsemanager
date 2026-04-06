@@ -3,10 +3,11 @@ import { getProjectKnowledge } from '@/lib/phase2/knowledge-graph-queries'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const knowledge = await getProjectKnowledge(params.id)
+    const { id } = await params
+    const knowledge = await getProjectKnowledge(id)
     
     if (!knowledge) {
       return NextResponse.json(

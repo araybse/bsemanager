@@ -3,13 +3,14 @@ import { getEntityGraph } from '@/lib/phase2/relationship-manager'
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { searchParams } = new URL(request.url)
     const maxHops = parseInt(searchParams.get('maxHops') || '2')
     
-    const graphData = await getEntityGraph(params.id, maxHops)
+    const graphData = await getEntityGraph(id, maxHops)
     
     return NextResponse.json({
       success: true,

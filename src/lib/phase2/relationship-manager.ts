@@ -64,7 +64,7 @@ export async function getEntityRelationships(entityId: string): Promise<Relation
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     id: row.id,
     fromEntityId: row.from_entity_id,
     toEntityId: row.to_entity_id,
@@ -98,7 +98,7 @@ export async function getRelationshipHistory(relationshipId: string): Promise<Re
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     timestamp: row.recorded_at,
     strength: row.strength,
     changeType: row.change_type,
@@ -117,7 +117,7 @@ export async function recordInteraction(
 ): Promise<string | null> {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('record_interaction', {
+  const { data, error } = await (supabase as any).rpc('record_interaction', {
     p_from_entity_id: fromEntityId,
     p_to_entity_id: toEntityId,
     p_relationship_type: relationshipType,
@@ -140,7 +140,7 @@ export async function getEntityGraph(entityId: string, maxHops: number = 2): Pro
   const supabase = await createClient()
   
   // Use the find_connected_entities RPC function
-  const { data: connectedEntities, error } = await supabase.rpc('find_connected_entities', {
+  const { data: connectedEntities, error } = await (supabase as any).rpc('find_connected_entities', {
     p_entity_id: entityId,
     p_max_hops: maxHops,
     p_min_strength: 0.3
@@ -161,8 +161,8 @@ export async function getEntityGraph(entityId: string, maxHops: number = 2): Pro
   const nodes: GraphNode[] = [
     {
       id: entityId,
-      name: centerEntity?.canonical_name || 'Unknown',
-      type: centerEntity?.entity_type || 'unknown'
+      name: (centerEntity as any)?.canonical_name || 'Unknown',
+      type: (centerEntity as any)?.entity_type || 'unknown'
     }
   ]
   
@@ -189,11 +189,11 @@ export async function getEntityGraph(entityId: string, maxHops: number = 2): Pro
     
     for (const rel of relationships || []) {
       edges.push({
-        from: rel.from_entity_id,
-        to: rel.to_entity_id,
-        type: rel.relationship_type,
-        strength: rel.current_strength,
-        label: rel.relationship_type.replace(/_/g, ' ')
+        from: (rel as any).from_entity_id,
+        to: (rel as any).to_entity_id,
+        type: (rel as any).relationship_type,
+        strength: (rel as any).current_strength,
+        label: (rel as any).relationship_type.replace(/_/g, ' ')
       })
     }
   }
@@ -221,7 +221,7 @@ export async function inferRelationships(entityId: string): Promise<Relationship
   }
   
   // Convert inferences to relationship format
-  return (data || []).map(inf => ({
+  return (data || []).map((inf: any) => ({
     id: inf.id,
     fromEntityId: inf.from_entity_id,
     toEntityId: inf.to_entity_id,

@@ -3,9 +3,10 @@ import { changeActionStatus, type ActionStatus } from '@/lib/phase2/action-state
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const { newStatus, evidence, changedBy } = body
     
@@ -17,7 +18,7 @@ export async function PATCH(
     }
     
     const result = await changeActionStatus(
-      params.id,
+      id,
       newStatus as ActionStatus,
       evidence,
       changedBy || 'system'

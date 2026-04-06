@@ -86,10 +86,10 @@ export async function parseAndExecute(query: string): Promise<QueryResult> {
             *,
             from_entity:canonical_entities!from_entity_id(*)
           `)
-          .eq('to_entity_id', projectEntity.id)
+          .eq('to_entity_id', (projectEntity as any).id)
           .eq('relationship_type', 'WORKS_ON')
         
-        const team = relationships?.map(rel => rel.from_entity) || []
+        const team = relationships?.map((rel: any) => rel.from_entity) || []
         
         return {
           results: team,
@@ -114,7 +114,7 @@ export async function parseAndExecute(query: string): Promise<QueryResult> {
       results: actions || [],
       confidence: 0.75,
       sources: ['canonical_actions'],
-      relatedActions: (actions || []).map(a => a.id)
+      relatedActions: (actions || []).map((a: any) => a.id)
     }
   }
   
@@ -141,7 +141,7 @@ export async function findConnectedEntities(
 ): Promise<ConnectedEntity[]> {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('find_connected_entities', {
+  const { data, error } = await (supabase as any).rpc('find_connected_entities', {
     p_entity_id: entityId,
     p_max_hops: maxHops,
     p_min_strength: 0.3
@@ -152,7 +152,7 @@ export async function findConnectedEntities(
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     entityId: row.entity_id,
     entityName: row.entity_name,
     entityType: row.entity_type,
@@ -168,7 +168,7 @@ export async function findConnectedEntities(
 export async function findPath(fromId: string, toId: string): Promise<EntityPath | null> {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('find_entity_path', {
+  const { data, error } = await (supabase as any).rpc('find_entity_path', {
     p_from_entity_id: fromId,
     p_to_entity_id: toId,
     p_max_depth: 5
@@ -192,7 +192,7 @@ export async function findPath(fromId: string, toId: string): Promise<EntityPath
 export async function getNetworkSummary(entityId: string): Promise<NetworkSummary | null> {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('get_entity_network_summary', {
+  const { data, error } = await (supabase as any).rpc('get_entity_network_summary', {
     p_entity_id: entityId
   })
   
@@ -228,7 +228,7 @@ export async function detectPatterns(): Promise<GraphPattern[]> {
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     id: row.id,
     name: row.pattern_name,
     type: row.pattern_type,
@@ -288,7 +288,7 @@ export async function getProjectTeam(projectId: string): Promise<ConnectedEntity
     .eq('to_entity_id', projectId)
     .in('relationship_type', ['WORKS_ON', 'MANAGES', 'ASSIGNED_TO'])
   
-  return (relationships || []).map(rel => ({
+  return (relationships || []).map((rel: any) => ({
     entityId: rel.from_entity.id,
     entityName: rel.from_entity.canonical_name,
     entityType: rel.from_entity.entity_type,
@@ -327,13 +327,13 @@ export async function getProjectKnowledge(projectId: string): Promise<ProjectKno
     .limit(20)
   
   // Get permits (actions of type permit/approval)
-  const permits = (actions || []).filter(a => 
+  const permits = (actions || []).filter((a: any) => 
     a.action_type.toLowerCase().includes('permit') ||
     a.action_type.toLowerCase().includes('approval')
   )
   
   // Get action items (pending/in progress)
-  const actionItems = (actions || []).filter(a => 
+  const actionItems = (actions || []).filter((a: any) => 
     ['pending', 'in_progress'].includes(a.current_status)
   )
   

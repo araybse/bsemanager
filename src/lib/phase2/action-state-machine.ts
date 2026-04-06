@@ -89,7 +89,7 @@ export async function getActionsByStatus(
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     id: row.id,
     actionType: row.action_type,
     description: row.description,
@@ -127,7 +127,7 @@ export async function getOverdueActions(limit: number = 50): Promise<Action[]> {
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     id: row.id,
     actionType: row.action_type,
     description: row.description,
@@ -169,10 +169,10 @@ export async function changeActionStatus(
     throw new Error('Action not found')
   }
   
-  const previousStatus = action.current_status
+  const previousStatus = (action as any).current_status
   
   // Call update_action_status RPC function
-  const { error } = await supabase.rpc('update_action_status', {
+  const { error } = await (supabase as any).rpc('update_action_status', {
     p_action_id: actionId,
     p_new_status: newStatus,
     p_confidence: 1.0,
@@ -215,7 +215,7 @@ export async function getActionHistory(actionId: string): Promise<StatusUpdate[]
     return []
   }
   
-  return (data || []).map(row => ({
+  return (data || []).map((row: any) => ({
     actionId: row.action_id,
     previousStatus: row.previous_status,
     newStatus: row.new_status,
@@ -236,7 +236,7 @@ export async function findMatchingActions(
 ): Promise<Action[]> {
   const supabase = await createClient()
   
-  const { data, error } = await supabase.rpc('find_matching_action', {
+  const { data, error } = await (supabase as any).rpc('find_matching_action', {
     p_description: description,
     p_owner_id: ownerId || null,
     p_due_date: null,
@@ -260,7 +260,7 @@ export async function findMatchingActions(
     .select('*')
     .in('id', actionIds)
   
-  return (actions || []).map(row => ({
+  return (actions || []).map((row: any) => ({
     id: row.id,
     actionType: row.action_type,
     description: row.description,
