@@ -49,6 +49,35 @@ export interface Database {
           updated_at?: string
         }
       }
+      pto_budgets: {
+        Row: {
+          id: string
+          user_id: string
+          year: number
+          month: number
+          budgeted_hours: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          year: number
+          month: number
+          budgeted_hours: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          year?: number
+          month?: number
+          budgeted_hours?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
       clients: {
         Row: {
           id: number
@@ -964,3 +993,25 @@ export type Tables<T extends keyof Database['public']['Tables']> = Database['pub
 export type InsertTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Insert']
 export type UpdateTables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Update']
 export type Views<T extends keyof Database['public']['Views']> = Database['public']['Views'][T]['Row']
+
+// Knowledge Graph types
+export interface CanonicalEntity {
+  id: string
+  canonical_name: string
+  entity_type: string
+  confidence: number
+  attributes: Record<string, any>
+  created_at: string
+  updated_at: string
+}
+
+export interface CanonicalRelationship {
+  id: string
+  from_entity_id: string
+  to_entity_id: string
+  relationship_type: string
+  current_strength: number
+  interaction_count: number
+  created_at: string
+  updated_at: string
+}
